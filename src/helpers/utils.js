@@ -1,0 +1,78 @@
+require("dotenv").config();
+const fs = require("fs");
+const UserModel = require("../models/user");
+const ShopModel = require("../models/shop");
+const crypto = require("crypto");
+const algorithm = "aes-256-ctr";
+const ENCRYPTION_KEY = process.env.ZEAPCRYPTOKEY;
+//const ENCRYPTION_KEY = "emVhcCBmYXNoaW9uIGFwcCBpcyBvd25l==";
+const IV_LENGTH = 16;
+
+const deleteLocalFile = async (path) => {
+  return new Promise((resolve) => {
+    fs.unlink(path, (error) => {
+      error && console.log("WARNING:: Delete local file", error);
+      resolve();
+    });
+  });
+};
+const numberWithCommas = (x) => {
+  return x?.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+};
+
+function onlyUnique(value, index, array) {
+  return array.indexOf(value) === index;
+}
+const cryptoEncrypt = (text) => {
+  let iv = crypto.randomBytes(IV_LENGTH);
+
+  let cipher = crypto.createCipheriv(
+    algorithm,
+    Buffer.concat([Buffer.from(ENCRYPTION_KEY), Buffer.alloc(32)], 32),
+    iv
+  );
+
+  let encrypted = cipher.update(text);
+  encrypted = Buffer.concat([encrypted, cipher.final()]);
+  const result = iv.toString("hex") + ":" + encrypted.toString("hex");
+
+  return result;
+};
+const cryptoDecrypt = (text) => {
+  let textParts = text.split(":");
+  let iv = Buffer.from(textParts.shift(), "hex");
+  let encryptedText = Buffer.from(textParts.join(":"), "hex");
+  let decipher = crypto.createDecipheriv(
+    algorithm,
+    Buffer.concat([Buffer.from(ENCRYPTION_KEY), Buffer.alloc(32)], 32),
+    iv
+  );
+  let decrypted = decipher.update(encryptedText);
+  decrypted = Buffer.concat([decrypted, decipher.final()]);
+
+  return decrypted.toString();
+};
+const verifyUserId = async (userId) => {
+  const user = await UserModel.findOne({ userId });
+  if (!user) {
+    return false;
+  }
+  return user;
+};
+const verifyShopId = async (shopId) => {
+  const shop = await ShopModel.findOne({ shopId });
+  if (!shop) {
+    return false;
+  }
+  return shop;
+};
+
+module.exports = {
+  deleteLocalFile,
+  numberWithCommas,
+  onlyUnique,
+  cryptoEncrypt,
+  cryptoDecrypt,
+  verifyUserId,
+  verifyShopId,
+};

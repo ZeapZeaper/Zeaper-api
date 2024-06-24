@@ -1,0 +1,36 @@
+"use strict";
+const mongoose = require("mongoose");
+const timestamp = require("mongoose-timestamp");
+
+const SocialSchema = new mongoose.Schema({
+  twitter: String,
+  facebook: String,
+  instagram: String,
+  website: String,
+  linkedin: String,
+});
+
+const ShopSchema = new mongoose.Schema({
+  shopId: { type: String, required: false },
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Users",
+    required: true,
+  },
+  userId: { type: String, required: true },
+  shopName: { type: String, required: true },
+  address: { type: String, required: false },
+  phoneNumber: { type: String, required: false },
+  region: { type: String, required: false },
+  postCode: { type: String, required: false },
+  country: { type: String, required: false },
+  isTailor: { type: Boolean, required: false, default: false },
+  isShoeMaker: { type: Boolean, required: false, default: false },
+  disabled: { type: Boolean, required: false, default: false },
+});
+
+ShopSchema.plugin(timestamp);
+
+const ShopModel = mongoose.model("Shops", ShopSchema, "Shops");
+
+module.exports = ShopModel;
