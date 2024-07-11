@@ -2,30 +2,38 @@
 
 const mongoose = require("mongoose");
 const timestamp = require("mongoose-timestamp");
+const {
+  genderEnums,
+  ageGroupEnums,
+  topEnums,
+  bottomEnums,
+} = require("../../../helpers/constants");
+const { type } = require("../../../config/firebaseServiceAcc");
 
-const ClothesSchema = new mongoose.Schema({
+const ReadyMadeClothesSchema = new mongoose.Schema({
   productId: { type: String, required: true },
+  disabled: { type: Boolean, required: false, default: false },
   shopId: { type: String, required: true },
   title: { type: String, required: true },
   subTitle: { type: String, required: true },
   status: { type: String, required: true, default: "under review" },
-  isReadyMade: { type: Boolean, required: true, default: true },
+  isReadyMadeCloth: { type: Boolean, required: true, default: true },
   categories: {
     gender: {
       type: String,
-      enum: ["male", "female", "unisex"],
+      enum: genderEnums,
     },
     ageGroup: {
       type: String,
-      enum: ["adult", "children", "infant"],
+      enum: ageGroupEnums,
     },
-    shirt: {
+    top: {
       type: String,
-      enum: ["shirt", "polo", "hoodie", "sweatshirt"],
+      enum: topEnums,
     },
-    trouser: {
+    bottom: {
       type: String,
-      enum: ["trouser", "short", "skirt"],
+      enum: bottomEnums,
     },
     isJeans: { type: Boolean, required: false },
     isSuit: { type: Boolean, required: false },
@@ -54,25 +62,26 @@ const ClothesSchema = new mongoose.Schema({
     isBridalShower: { type: Boolean, required: false },
     isBirthDay: { type: Boolean, required: false },
     isBurial: { type: Boolean, required: false },
+    brand: { type: String, required: false },
   },
 
   description: { type: String, required: true },
   sizes: [
     {
-      sizeId: { type: String, required: true },
-      value: { type: Number, required: true },
+      type: String,
+      required: true,
     },
   ],
   colors: [
     {
-      colorId: { type: String, required: true },
       value: { type: String, required: true },
-      images: [
-        {
-          link: { type: String, required: true },
-          name: { type: String, required: true },
-        },
-      ],
+      imageNames: [{ type: String, required: true }],
+    },
+  ],
+  images: [
+    {
+      link: { type: String, required: true },
+      name: { type: String, required: true },
     },
   ],
   variations: [
@@ -80,16 +89,23 @@ const ClothesSchema = new mongoose.Schema({
       sku: { type: String, required: true },
       price: { type: Number, required: true },
       discount: { type: Number, required: false },
-      colorId: { type: String, required: true },
-      sizeId: { type: String, required: true },
+      colorValue: { type: String, required: true },
+      size: { type: String, required: true },
       stock: { type: Number, required: true },
     },
   ],
-  postedBy: { type: mongoose.Schema.Types.ObjectId, ref: "Users" },
-  shop: { type: mongoose.Schema.Types.ObjectId, ref: "Shops" },
+  postedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Users",
+    required: true,
+  },
+  shop: { type: mongoose.Schema.Types.ObjectId, ref: "Shops", required: true },
 });
 
-ClothesSchema.plugin(timestamp);
-const Clothes = mongoose.model("Clothes", ClothesSchema);
+ReadyMadeClothesSchema.plugin(timestamp);
+const ReadyMadeClothes = mongoose.model(
+  "ReadyMadeClothes",
+  ReadyMadeClothesSchema
+);
 
-module.exports = Clothes;
+module.exports = ReadyMadeClothes;

@@ -13,6 +13,7 @@ const {
 const validator = require("email-validator");
 const { firebase } = require("../config/firebase");
 const { generateUniqueShopId } = require("./shop");
+const { getAuthUser } = require("../middleware/firebaseUserAuth");
 
 //saving image to firebase storage
 const addImage = async (req, filename) => {
@@ -58,6 +59,7 @@ const deleteImageFromFirebase = async (name) => {
       });
   }
 };
+
 function getRandomInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));
 }
@@ -67,7 +69,7 @@ const generateUniqueUserId = async () => {
   let found = true;
 
   do {
-    const randomVal = getRandomInt(10000, 99999);
+    const randomVal = getRandomInt(1000000, 9999999);
     userId = `${randomVal}`;
     const exist = await UserModel.findOne(
       {
@@ -107,17 +109,24 @@ const deleteUserFromFirebase = async (uid) => {
     return error;
   }
 };
-const addShop = async (userId) => {
+const addShop = async (user, shopName) => {
   const shopId = await generateUniqueShopId();
-  const shop = new ShopModel({ shopId, userId });
+  const shop = new ShopModel({
+    shopId,
+    userId: user?.userId,
+    user: user?._id,
+    shopName,
+  });
   const newShop = await shop.save();
   return newShop;
 };
 
 const createUser = async (req, res) => {
-  const { email, firstName, lastName, password, isVendor } = req.body;
+  const { email, firstName, lastName, password, isVendor, shopName } = req.body;
   let firebaseUser = {};
+  let newUser;
   let shopId;
+
   try {
     if (!email) {
       return res.status(400).send({ error: "email is required" });
@@ -132,6 +141,12 @@ const createUser = async (req, res) => {
     if (!lastName) {
       return res.status(400).send({ error: "lastName is required" });
     }
+    if (isVendor && !shopName) {
+      return res.status(400).send({
+        error:
+          "shopName is required as the user is registering as a vendor as well",
+      });
+    }
     if (email && !validator.validate(email)) {
       return res.status(400).send({ error: "email is invalid" });
     }
@@ -144,6 +159,7 @@ const createUser = async (req, res) => {
         });
       }
     }
+
     const displayName = `${firstName} ${lastName}`;
 
     req.body.displayName = displayName;
@@ -166,14 +182,6 @@ const createUser = async (req, res) => {
     }
 
     const userId = await generateUniqueUserId();
-    if (isVendor) {
-      const shop = await addShop(userId);
-      console.log("shop", shop);
-      shopId = shop.shopId;
-      if (!shopId) {
-        return res.status(500).send({ error: "Error creating shop" });
-      }
-    }
 
     const params = {
       firstName,
@@ -184,19 +192,50 @@ const createUser = async (req, res) => {
       userId,
       uid: firebaseUser.uid,
       emailVerified: firebaseUser.emailVerified,
-      ...(shopId && isVendor && { shopId }),
     };
     const user = new UserModel({ ...params });
-    const newUser = await user.save();
+    newUser = await user.save();
 
-    return res
-      .status(200)
-      .send({ data: newUser, message: "User created successfully" });
+    const data = {};
+
+    if (isVendor) {
+      const shop = await addShop(newUser, shopName);
+      console.log("shop", shop);
+      shopId = shop.shopId;
+      if (!shopId) {
+        return res.status(500).send({ error: "Error creating shop" });
+      }
+      const updatedUser = await UserModel.findByIdAndUpdate(
+        newUser._id,
+        {
+          shopId,
+          shopEnabled: true,
+        },
+        { new: true }
+      );
+      if (!updatedUser) {
+        return res.status(500).send({ error: "Error updating user shop" });
+      }
+      newUser = updatedUser;
+      data.shop = shop;
+      data.user = newUser;
+    }
+
+    return res.status(200).send({
+      data,
+      message: "User created successfully and email verification sent",
+    });
   } catch (error) {
     if (firebaseUser.uid) {
       const deleteFirebaseUser = await deleteUserFromFirebase(firebaseUser.uid);
       if (deleteFirebaseUser) {
         console.log("Error deleting user from firebase", firebaseUser);
+      }
+    }
+    if (newUser?._id) {
+      const deleteUser = await UserModel.findByIdAndDelete(newUser._id);
+      if (!deleteUser) {
+        console.log("Error deleting user", newUser._id);
       }
     }
     if (shopId) {
@@ -213,7 +252,8 @@ const createUser = async (req, res) => {
 
 const createUserWithGoogleOrApple = async (req, res) => {
   try {
-    const { email, firstName, lastName, imageUrl, uid } = req.body;
+    const { email, firstName, lastName, imageUrl } = req.body;
+
     if (!email) {
       return res.status(400).send({ error: "email is required" });
     }
@@ -223,6 +263,10 @@ const createUserWithGoogleOrApple = async (req, res) => {
     if (!lastName) {
       return res.status(400).send({ error: "lastName is required" });
     }
+    const authUser = getAuthUser(req);
+    if (!authUser) {
+      return res.status(400).send({ error: "User not found in firebase" });
+    }
     const alreadyUser = await UserModel.findOne({ email }).lean();
     if (alreadyUser) {
       const deleteFirebaseUser = await deleteUserFromFirebase(uid);
@@ -230,6 +274,7 @@ const createUserWithGoogleOrApple = async (req, res) => {
         error: "An account with same email address is already existing.",
       });
     }
+    const uid = authUser.uid;
     const displayName = `${firstName} ${lastName}`;
     const userId = await generateUniqueUserId();
     const user = new UserModel({
@@ -239,6 +284,7 @@ const createUserWithGoogleOrApple = async (req, res) => {
       displayName,
       imageUrl,
       userId,
+      uid,
     });
     const newUser = await user.save();
     return res
