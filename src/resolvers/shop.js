@@ -1,6 +1,7 @@
 const ShopModel = require("../models/shop");
 const UserModel = require("../models/user");
 const { verifyUserId, verifyShopId } = require("../helpers/utils");
+const { getAuthUser } = require("../middleware/firebaseUserAuth");
 
 function getRandomInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));
@@ -11,7 +12,7 @@ const generateUniqueShopId = async () => {
   let found = true;
 
   do {
-    const randomVal = getRandomInt(10000, 99999);
+    const randomVal = getRandomInt(1000000, 9999999);
     shopId = `${randomVal}`;
     const exist = await ShopModel.findOne(
       {
@@ -32,11 +33,15 @@ const generateUniqueShopId = async () => {
 
 const createShop = async (req, res) => {
   try {
-    const { userId, shopName } = req.body;
-    if (!userId) {
-      return res.status(400).json({ error: "userId is required" });
+    const { shopName } = req.body;
+
+    const authUser = await getAuthUser(req);
+    if (!authUser) {
+      return res.status(400).json({ error: "User not found" });
     }
-    const user = await verifyUserId(userId);
+    const user = authUser;
+
+    const userId = user.userId;
 
     if (!user) {
       return res.status(400).json({ error: "User not found" });
@@ -244,4 +249,5 @@ module.exports = {
   deleteShop,
   restoreShop,
   absoluteDeleteShop,
+  generateUniqueShopId,
 };

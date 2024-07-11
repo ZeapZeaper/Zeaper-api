@@ -1,7 +1,7 @@
 "use strict";
 const mongoose = require("mongoose");
 const timestamp = require("mongoose-timestamp");
-const { type } = require("../../config/firebaseServiceAcc");
+
 
 const SocialSchema = new mongoose.Schema({
   twitter: String,

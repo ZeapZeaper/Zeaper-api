@@ -66,6 +66,9 @@ const verifyShopId = async (shopId) => {
   }
   return shop;
 };
+const checkForDuplicates = (array) => {
+  return array.length !== new Set(array).size;
+};
 
 module.exports = {
   deleteLocalFile,
@@ -75,4 +78,5 @@ module.exports = {
   cryptoDecrypt,
   verifyUserId,
   verifyShopId,
+  checkForDuplicates,
 };
