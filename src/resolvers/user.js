@@ -531,6 +531,24 @@ const absoluteDeleteUser = async (req, res) => {
     return res.status(500).send({ error: error.message });
   }
 };
+const getUserByUid = async (req, res) => {
+  try {
+    const { uid } = req.query;
+    if (!uid) {
+      return res.status(400).send({ error: "uid is required" });
+    }
+    const user = await UserModel.findOne({
+      uid,
+    }).lean();
+    if (!user) {
+      return res.status(404).send({ error: "User not found" });
+    }
+    return res.status(200).send({ data: user });
+  }
+  catch (error) {
+    return res.status(500).send({ error: error.message });
+  }
+}
 module.exports = {
   createUser,
   createUserWithGoogleOrApple,
@@ -542,4 +560,5 @@ module.exports = {
   deleteUsers,
   restoreUser,
   absoluteDeleteUser,
+  getUserByUid,
 };

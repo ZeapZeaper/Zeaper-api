@@ -43,6 +43,7 @@ const authMiddleware = (request, response, next) => {
 const getAuthUser = async (request) => {
   const token = getToken(request);
   const authUser = await firebase.auth().verifyIdToken(token);
+ 
   if (!authUser) {
     return null;
   }
