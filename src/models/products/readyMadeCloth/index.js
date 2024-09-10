@@ -82,6 +82,7 @@ const ReadyMadeClothesSchema = new mongoose.Schema({
     {
       link: { type: String, required: true },
       name: { type: String, required: true },
+      originalname: { type: String, required: true },
     },
   ],
   variations: [

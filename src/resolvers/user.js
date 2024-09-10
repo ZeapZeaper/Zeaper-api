@@ -160,9 +160,7 @@ const createUser = async (req, res) => {
       }
     }
 
-    const displayName = `${firstName} ${lastName}`;
-
-    req.body.displayName = displayName;
+    
     //const encryptedPassword = cryptoEncrypt(password);
     //console.log("encryptedPassword", encryptedPassword);
     const decriptedPassword = cryptoDecrypt(password);
@@ -390,7 +388,9 @@ const getAdminUsers = async (req, res) => {
 };
 
 const updateUser = async (req, res) => {
+  
   try {
+    
     const { _id } = req.query;
     if (!_id) {
       return res.status(400).send({ error: "_id is required" });
@@ -542,6 +542,9 @@ const getUserByUid = async (req, res) => {
     }).lean();
     if (!user) {
       return res.status(404).send({ error: "User not found" });
+    }
+    if(user?.disabled){
+      return res.status(404).send({ error: "User is disabled" });
     }
     return res.status(200).send({ data: user });
   }

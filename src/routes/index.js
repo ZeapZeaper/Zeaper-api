@@ -34,6 +34,7 @@ let routes = (app) => {
   );
   router.get("/users", authMiddleware, userResolver.getUsers);
   router.get("/user", authMiddleware, userResolver.getUser);
+  router.get("/userByUid", authMiddleware, userResolver.getUserByUid);
   router.get("/userById", authMiddleware, userResolver.getUserById);
   router.get("/admin/users", authMiddleware, userResolver.getAdminUsers);
   router.put("/user/update", authMiddleware, userResolver.updateUser);
@@ -59,7 +60,12 @@ let routes = (app) => {
   router.put("/shop/restore", authMiddleware, shopResolver.restoreShop);
 
   //Product routes
-  router.post("/product/create", authMiddleware, productResolver.createProduct);
+  router.post(
+    "/product/create",
+    authMiddleware,
+    handleMoreFieldsUploads,
+    productResolver.createProduct
+  );
 
   return app.use("/", router);
 };

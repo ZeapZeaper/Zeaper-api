@@ -25,7 +25,6 @@ const storage = multer.diskStorage({
   },
 
   filename: function (req, file, cb) {
-  
     cb(
       null,
       new Date().toISOString().replace(/:/g, "-") + "-" + file.originalname
@@ -46,18 +45,19 @@ const uploadMultiple = multer({
     fileSize: 1024 * 1024 * 5,
   },
   fileFilter: (req, file, cb) => {
+   
     if (
       file.mimetype == "image/png" ||
       file.mimetype == "image/jpg" ||
-      file.mimetype == "image/jpeg"
+      file.mimetype == "image/jpeg" ||
+      file.mimetype == "image/webp"
     ) {
       cb(null, true);
     } else {
       cb(null, false);
-      return cb(new Error("Only .png, .jpg and .jpeg format allowed!"));
     }
   },
-})
+});
 
 // saving the image on uploads folder to fasten loaden of images
 
