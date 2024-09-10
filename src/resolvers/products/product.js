@@ -6,7 +6,7 @@ const {
   bottomEnums,
   productTypeEnums,
 } = require("../../helpers/constants");
-const {  checkForDuplicates } = require("../../helpers/utils");
+const { checkForDuplicates, deleteLocalFile } = require("../../helpers/utils");
 const ReadyMadeClothes = require("../../models/products/readyMadeCloth");
 const ReadyMadeShoes = require("../../models/products/readyMadeShoes");
 const ShopModel = require("../../models/shop");
@@ -21,18 +21,20 @@ const {
 } = require("./readyMadeClothes");
 const { storageRef } = require("../../config/firebase");
 const root = require("../../../root");
+const { getAuthUser } = require("../../middleware/firebaseUserAuth");
 
 //saving image to firebase storage
-const addImage = async (req, filename) => {
+const addImage = async (destination, filename, originalname) => {
+  
   let url = {};
   if (filename) {
     const source = path.join(root + "/uploads/" + filename);
     await sharp(source)
       .resize(1024, 1024)
       .jpeg({ quality: 90 })
-      .toFile(path.resolve(req.file.destination, "resized", filename));
+      .toFile(path.resolve(destination, "resized", filename));
     const storage = await storageRef.upload(
-      path.resolve(req.file.destination, "resized", filename),
+      path.resolve(destination, "resized", filename),
       {
         public: true,
         destination: `/product/${filename}`,
@@ -41,10 +43,14 @@ const addImage = async (req, filename) => {
         },
       }
     );
-    url = { link: storage[0].metadata.mediaLink, name: filename };
+    url = {
+      link: storage[0].metadata.mediaLink,
+      name: filename,
+      originalname,
+    };
     const deleteSourceFile = await deleteLocalFile(source);
     const deleteResizedFile = await deleteLocalFile(
-      path.resolve(req.file.destination, "resized", filename)
+      path.resolve(destination, "resized", filename)
     );
     await Promise.all([deleteSourceFile, deleteResizedFile]);
     return url;
@@ -75,8 +81,9 @@ const handleImageUpload = async (files) => {
 
       const filename = file.filename;
       const destination = file.destination;
+      const originalname = file.originalname;
 
-      const url = await addImage(destination, filename);
+      const url = await addImage(destination, filename, originalname);
 
       newPictures.push(url);
     }
@@ -89,7 +96,7 @@ const editProduct = async (req, res) => {
   try {
     let productType;
     const param = req.body;
-    const { productId,  variations, sizes, colors } = param;
+    const { productId, variations, sizes, colors } = param;
     if (variations) {
       return res.status(400).send({
         error: "editing variations through this endpoint is not allowed",
@@ -108,9 +115,6 @@ const editProduct = async (req, res) => {
     if (!productId) {
       return res.status(400).send({ error: "productId is required" });
     }
-    
-    
-
 
     const promises = [];
     promises.push(ReadyMadeClothes.findOne({ productId }).exec());
@@ -143,7 +147,6 @@ const deleteProducts = async (req, res) => {
       return res.status(400).send({ error: "productid is required" });
     }
 
-
     const promises = [];
     promises.push(
       deleteReadyMadeClothes(param)
@@ -163,7 +166,6 @@ const restoreProducts = async (req, res) => {
     if (!productIds || !productIds.length) {
       return res.status(400).send({ error: "productid is required" });
     }
-
 
     const promises = [];
     promises.push(
@@ -210,14 +212,15 @@ const generateProductId = async (shopId, productType) => {
 
 const validateColors = (colors, pictures) => {
   let valid = true;
-  const colorImages = colors.map((color) => color.imageNames).flat()
-  const imageNames = pictures.map((picture) => picture.filename);
-  colorImages.forEach((color) => {
-    color.forEach((image) => {
-      if (imageNames.indexOf(image) === -1) {
-        valid = false;
-      }
-    });
+  const colorImages = colors.map((color) => color.imageNames).flat();
+
+  const imageNames = pictures.map((picture) => picture?.originalname);
+
+  colorImages.forEach((colorImage) => {
+    const found = imageNames.find((imageName) => imageName === colorImage);
+    if (!found) {
+      valid = false;
+    }
   });
   return valid;
 };
@@ -234,7 +237,7 @@ const createProduct = async (req, res) => {
       colors,
       categories,
     } = param;
-    console.log("param");
+
     if (!productType) {
       return res.status(400).send({ error: "productType is required" });
     }
@@ -270,9 +273,11 @@ const createProduct = async (req, res) => {
         .status(400)
         .send({ error: "color value must be unique in the colors array" });
     }
+
     if (!categories || Object.keys(categories).length === 0) {
       return res.status(400).send({ error: "categories is required" });
     }
+
     const gender = categories?.gender;
     if (!gender) {
       return res.status(400).send({ error: "gender category is required" });
@@ -293,6 +298,7 @@ const createProduct = async (req, res) => {
       return res.status(400).send({ error: "invalid bottom category" });
     }
     if (productTypeEnums.indexOf(productType) === -1) {
+     
       return res.status(400).send({ error: "invalid productType" });
     }
 
@@ -305,8 +311,7 @@ const createProduct = async (req, res) => {
         return res.status(400).send({ error: "invalid shoeType category" });
       }
     }
-
-
+    const user = await getAuthUser(req);
 
     if (!user?.shopId) {
       return res.status(400).send({ error: "User does not have a shop" });
@@ -319,12 +324,13 @@ const createProduct = async (req, res) => {
       return res.status(400).send({ error: "shop not found" });
     }
     let images = [{}];
-    let 
-    if (req.files && req.files.length > 0) {
+
+    if (req.files && req.files.pictures.length > 0) {
+  
       const isColorValid = validateColors(colors, req.files?.pictures);
       if (!isColorValid) {
         return res.status(400).send({
-          error: "color images must be included in the uploaded images",
+          error: "color imageNames must be the same as the uploaded images",
         });
       }
       const upload = await handleImageUpload([...req.files?.pictures]);
@@ -332,7 +338,6 @@ const createProduct = async (req, res) => {
       const docs = await Promise.all(upload);
       images = docs;
     }
-   
 
     const productId = await generateProductId(user.shopId, productType);
 

@@ -36,6 +36,7 @@ const createShop = async (req, res) => {
     const { shopName } = req.body;
 
     const authUser = await getAuthUser(req);
+
     if (!authUser) {
       return res.status(400).json({ error: "User not found" });
     }
@@ -60,6 +61,7 @@ const createShop = async (req, res) => {
       shopId,
       ...req.body,
       user: user._id,
+      userId: user.userId,
     });
     await shop.save();
     if (!shop?._id) {
