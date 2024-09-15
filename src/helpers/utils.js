@@ -3,6 +3,7 @@ const fs = require("fs");
 const UserModel = require("../models/user");
 const ShopModel = require("../models/shop");
 const crypto = require("crypto");
+const CryptoJS = require("crypto-js");
 const algorithm = "aes-256-ctr";
 const ENCRYPTION_KEY = process.env.ZEAPCRYPTOKEY;
 //const ENCRYPTION_KEY = "emVhcCBmYXNoaW9uIGFwcCBpcyBvd25l==";
@@ -39,19 +40,27 @@ const cryptoEncrypt = (text) => {
   return result;
 };
 const cryptoDecrypt = (text) => {
-  let textParts = text.split(":");
-  let iv = Buffer.from(textParts.shift(), "hex");
-  let encryptedText = Buffer.from(textParts.join(":"), "hex");
-  let decipher = crypto.createDecipheriv(
-    algorithm,
-    Buffer.concat([Buffer.from(ENCRYPTION_KEY), Buffer.alloc(32)], 32),
-    iv
-  );
-  let decrypted = decipher.update(encryptedText);
-  decrypted = Buffer.concat([decrypted, decipher.final()]);
-
-  return decrypted.toString();
+  const bytes  = CryptoJS.AES.decrypt(text, ENCRYPTION_KEY);
+  const originalText = bytes.toString(CryptoJS.enc.Utf8);
+  return originalText;
 };
+// const cryptoDecrypt = (text) => {
+//   console.log("text", text);
+//   let textParts = text.split(":");
+//   let iv = Buffer.from(textParts.shift(), "hex");
+//   let encryptedText = Buffer.from(textParts.join(":"), "hex");
+//   console.log("iv", iv);
+//   let decipher = crypto.createDecipheriv(
+//     algorithm,
+//     Buffer.concat([Buffer.from(ENCRYPTION_KEY), Buffer.alloc(32)], 32),
+//     iv
+//   );
+//   console.log("decipher", decipher);
+//   let decrypted = decipher.update(encryptedText);
+//   decrypted = Buffer.concat([decrypted, decipher.final()]);
+
+//   return decrypted.toString();
+// };
 const verifyUserId = async (userId) => {
   const user = await UserModel.findOne({ userId });
   if (!user) {
