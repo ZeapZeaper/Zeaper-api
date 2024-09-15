@@ -159,11 +159,21 @@ const createUser = async (req, res) => {
         });
       }
     }
+    ;
+    const authUser = await getAuthUser(req);
+    if (authUser) {
+     
+      const isAdmin = authUser.isAdmin || authUser.superAdmin;
+      if(!isAdmin){
+        return res.status(400).send({ error: "You are not authorized to create user" });
+      }
+     
+      req.body.createdBy = authUser.userId;
+    }
 
-    
-    //const encryptedPassword = cryptoEncrypt(password);
-    //console.log("encryptedPassword", encryptedPassword);
-    const decriptedPassword = cryptoDecrypt(password);
+  
+    const decriptedPassword =  cryptoDecrypt(password);
+  
     req.body.password = decriptedPassword;
     firebaseUser = await addUserToFirebase(req.body);
     if (!firebaseUser.uid) {
@@ -261,7 +271,7 @@ const createUserWithGoogleOrApple = async (req, res) => {
     if (!lastName) {
       return res.status(400).send({ error: "lastName is required" });
     }
-    const authUser = getAuthUser(req);
+    const authUser = await getAuthUser(req);
     if (!authUser) {
       return res.status(400).send({ error: "User not found in firebase" });
     }
@@ -552,6 +562,42 @@ const getUserByUid = async (req, res) => {
     return res.status(500).send({ error: error.message });
   }
 }
+
+const uploadProfilePic = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).send({ error: "no file uploaded" });
+    }
+
+    const { _id } = req.body;
+
+    if (!_id) {
+      return res.status(400).send({ error: "no user id provided" });
+    }
+
+    const filename = req.file.filename;
+    const imageUrl = await addImage(req, filename);
+
+    const user = await OrganisationUserModel.findById(_id);
+    if (!user) {
+      return res.status(400).send({ error: "user does not exist" });
+    }
+    const update = await OrganisationUserModel.findByIdAndUpdate(
+      _id,
+      { imageUrl },
+      { new: true }
+    );
+
+    if (!update) return res.status(400).send({ error: "User not found" });
+    await deleteImageFromFirebase(
+      user?.imageUrl?.name
+    );
+    return res.status(200).send({ data: update });
+  } catch (error) {
+    return res.status(500).send({ error: error.message });
+  }
+};
+
 module.exports = {
   createUser,
   createUserWithGoogleOrApple,
@@ -564,4 +610,5 @@ module.exports = {
   restoreUser,
   absoluteDeleteUser,
   getUserByUid,
+  uploadProfilePic,
 };

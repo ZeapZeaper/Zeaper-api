@@ -37,6 +37,7 @@ const UserSchema = new mongoose.Schema({
   superAdmin: { type: Boolean, required: false, default: false },
   email: { type: String, required: false },
   creationTime: { type: String, required: false },
+  createdBy: { type: String, required: false , default:"self"},
   imageUrl: {
     link: { type: String, required: false },
     name: { type: String, required: false },
@@ -64,6 +65,7 @@ const UserSchema = new mongoose.Schema({
   },
   bestOutfit: {type: String, required: false},
   bestColor: {type: String, required: false},
+
 });
 
 UserSchema.plugin(timestamp);

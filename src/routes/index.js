@@ -38,6 +38,7 @@ let routes = (app) => {
   router.get("/userById", authMiddleware, userResolver.getUserById);
   router.get("/admin/users", authMiddleware, userResolver.getAdminUsers);
   router.put("/user/update", authMiddleware, userResolver.updateUser);
+  router.put("/user/update/profilePic", authMiddleware, userResolver.uploadProfilePic);
   router.put("/user/delete", authMiddleware, userResolver.deleteUsers);
   router.delete(
     "/user/delete/absolute",
