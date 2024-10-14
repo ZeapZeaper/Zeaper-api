@@ -6,10 +6,14 @@ const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
 const dbConfig = require("../src/config/db");
 const { ServerApiVersion } = require("mongodb");
+const { specs, swaggerUi } = require('./swagger');
 
 const url = dbConfig.url;
 
 const app = express();
+
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {explorer: true}));
+
 
 // app.use(
 //   express.urlencoded({

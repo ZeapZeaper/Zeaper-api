@@ -21,6 +21,10 @@
       <div class="row">
         <div class="col-sm-8 mt-3">
           <h1>Welcome to ZEAP api services</h1>
+          <p id="link">
+            
+
+          </p>
 
           
         </div>
@@ -34,6 +38,13 @@
     </div>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.bundle.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+
+    <script>
+      const host = window.location.host
+      const protocol = window.location.protocol
+      const url = `${protocol}//${host}/api-docs`
+      document.getElementById('link').innerHTML = `The api documentation is available at <a href="${url}">${url}</a>`
+    </script>
     
   </body>
 </html>

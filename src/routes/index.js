@@ -8,14 +8,23 @@ const homeResolver = require("../resolvers/home");
 const userResolver = require("../resolvers/user");
 const shopResolver = require("../resolvers/shop");
 const productResolver = require("../resolvers/products/product");
+const commentResolver = require("../resolvers/comment");
 
 const handleMoreFieldsUploads = uploadMultiple.fields([
   { name: "documents", maxCount: 5 },
   { name: "pictures", maxCount: 10 },
 ]);
 
+
+
+
+
 let routes = (app) => {
   router.get("/", homeResolver.getHome);
+
+  
+
+
 
   // router.post(
   //   "/user/create",
@@ -37,6 +46,8 @@ let routes = (app) => {
   router.get("/userByUid", authMiddleware, userResolver.getUserByUid);
   router.get("/userById", authMiddleware, userResolver.getUserById);
   router.get("/admin/users", authMiddleware, userResolver.getAdminUsers);
+  router.put("/user/verifyUserOTP", authMiddleware, userResolver.verifyUserOTP);
+  router.put("/user/sendOTPToUser", authMiddleware, userResolver.sendOTPToUser);
   router.put("/user/update", authMiddleware, userResolver.updateUser);
   router.put("/user/update/profilePic", authMiddleware, userResolver.uploadProfilePic);
   router.put("/user/delete", authMiddleware, userResolver.deleteUsers);
@@ -67,6 +78,12 @@ let routes = (app) => {
     handleMoreFieldsUploads,
     productResolver.createProduct
   );
+
+//comments routes
+  router.post("/comment/create", authMiddleware, commentResolver.createComment);
+  router.get("/comment/user", authMiddleware, commentResolver.getUserComments);
+  router.put("/comment/update", authMiddleware, commentResolver.updateComment);
+  router.put("/comment/delete", authMiddleware, commentResolver.deleteComment);
 
   return app.use("/", router);
 };

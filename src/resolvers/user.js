@@ -14,6 +14,10 @@ const validator = require("email-validator");
 const { firebase } = require("../config/firebase");
 const { generateUniqueShopId } = require("./shop");
 const { getAuthUser } = require("../middleware/firebaseUserAuth");
+const { sendOTP, verifyOTP } = require("../helpers/sms");
+
+
+  
 
 //saving image to firebase storage
 const addImage = async (req, filename) => {
@@ -54,7 +58,6 @@ const deleteImageFromFirebase = async (name) => {
         return true;
       })
       .catch((err) => {
-        console.log("err is", err);
         return false;
       });
   }
@@ -102,7 +105,7 @@ const addUserToFirebase = async (params) => {
 };
 const deleteUserFromFirebase = async (uid) => {
   try {
-    console.log("deleting user", uid);
+
     const user = await firebase.auth().deleteUser(uid);
     return user;
   } catch (error) {
@@ -128,13 +131,22 @@ const createUser = async (req, res) => {
   let shopId;
 
   try {
+    
+   
     if (!email) {
       return res.status(400).send({ error: "email is required" });
     }
     if (!password) {
       return res.status(400).send({ error: "password is required" });
     }
-
+// check if social is Json string
+if (req.body?.social) {
+  try {
+    JSON.parse(req.body.social);
+  } catch (e) {
+    return res.status(400).send({ error: "social must be a valid JSON string" });
+  }
+}
     if (!firstName) {
       return res.status(400).send({ error: "firstName is required" });
     }
@@ -189,7 +201,14 @@ const createUser = async (req, res) => {
       req.body.social = JSON.parse(req.body.social);
     }
 
+ 
+
+    
     const userId = await generateUniqueUserId();
+    let social = {};
+    if(req.body.social){
+      social = JSON.parse(req.body.social);
+    }
 
     const params = {
       firstName,
@@ -200,6 +219,8 @@ const createUser = async (req, res) => {
       userId,
       uid: firebaseUser.uid,
       emailVerified: firebaseUser.emailVerified,
+      social,
+      
     };
     const user = new UserModel({ ...params });
     newUser = await user.save();
@@ -208,7 +229,7 @@ const createUser = async (req, res) => {
 
     if (isVendor) {
       const shop = await addShop(newUser, shopName);
-      console.log("shop", shop);
+
       shopId = shop.shopId;
       if (!shopId) {
         return res.status(500).send({ error: "Error creating shop" });
@@ -228,10 +249,11 @@ const createUser = async (req, res) => {
       data.shop = shop;
       data.user = newUser;
     }
-
+ 
+   
     return res.status(200).send({
       data,
-      message: "User created successfully and email verification sent",
+      message: "User created successfully and phone number OTP verification sent",
     });
   } catch (error) {
     if (firebaseUser.uid) {
@@ -338,9 +360,45 @@ const getUser = async (req, res) => {
       return res.status(400).send({ error: "userId is required" });
     }
     const user = await UserModel.findOne({ userId }).lean();
+    
     if (!user) {
       return res.status(404).send({ error: "User not found" });
     }
+    const email = user?.email;
+    let userAccessRecord = {
+      adminAccess: user?.isAdmin || user?.superAdmin,
+    };
+    let createdBy = "Self"
+    if(user?.createdBy){
+    const  createdByUser = await UserModel.findOne({userId: user.createdBy}).lean()
+    createdBy = createdByUser?.firstName + " " + createdByUser?.lastName;
+    }
+
+    if (email) {
+      await firebase
+        .auth()
+        .getUserByEmail(email)
+        .then((userRecord) => {
+  
+          if (userRecord?.uid) {
+            userAccessRecord = {
+              email: userRecord?.email,
+              emailVerified: userRecord?.emailVerified,
+              creationTime: userRecord?.metadata?.creationTime,
+              lastSignInTime: userRecord?.metadata?.lastSignInTime,
+              lastRefreshTime: userRecord?.metadata?.lastRefreshTime,
+              providerId:userRecord?.providerData[0]?.providerId,  
+               createdBy 
+            };
+          }
+        })
+        .catch((error) => {
+          console.log("Error fetching user data:", error);
+        });
+    }
+    user.userAccessRecord = userAccessRecord;
+   
+
     return res.status(200).send({ data: user });
   } catch (error) {
     return res.status(500).send({ error: error.message });
@@ -401,14 +459,33 @@ const updateUser = async (req, res) => {
   
   try {
     
-    const { _id } = req.query;
+    const { _id, email, phoneNumber, social} = req.body;
     if (!_id) {
       return res.status(400).send({ error: "_id is required" });
+    }
+    if (email){
+      return res.status(400).send({ error: "email cannot be updated" });
     }
     const user = await UserModel.findById(_id);
     if (!user) {
       return res.status(404).send({ error: "User not found" });
     }
+    
+    if(phoneNumber !== user.phoneNumber){
+      req.body.phoneNumberVerified = false;
+    }
+    if (req.body?.social) {
+      try {
+        JSON.parse(req.body.social);
+      } catch (e) {
+        return res.status(400).send({ error: "social must be a valid JSON string" });
+      }
+    }
+    if(social){
+      req.body.social = JSON.parse(req.body.social);
+    }
+    
+
 
     const updatedUser = await UserModel.findByIdAndUpdate(_id, req.body);
 
@@ -437,7 +514,7 @@ const validateUsers = async (ids) => {
 const deleteUser = async (contacts) => {
   return contacts.reduce(async (acc, _id) => {
     const result = await acc;
-    const disabled = await OrganisationUserModel.findByIdAndUpdate(
+    const disabled = await UserModel.findByIdAndUpdate(
       _id,
       { disabled: true },
       { new: true }
@@ -454,9 +531,15 @@ const deleteUsers = async (req, res) => {
     const { ids } = req.body;
     if (!ids) {
       return res.status(400).send({ error: "ids are required" });
+    
+
+    }
+      // if ids is not an array
+    if (!Array.isArray(ids)) {
+      return res.status(400).send({ error: "ids must be an array" });
     }
     const invalidUsers = await validateUsers(ids);
-    if (invalidUsers.length > 0) {
+    if (invalidUsers?.length > 0) {
       return res.status(404).send({ error: "Invalid users" });
     }
     const deletedUsers = await deleteUser(ids);
@@ -471,7 +554,7 @@ const deleteUsers = async (req, res) => {
 const restoreUserIds = async (ids) => {
   return ids.reduce(async (acc, _id) => {
     const result = await acc;
-    const restored = await OrganisationUserModel.findByIdAndUpdate(
+    const restored = await UserModel.findByIdAndUpdate(
       _id,
       { disabled: false },
       { new: true }
@@ -490,7 +573,7 @@ const restoreUser = async (req, res) => {
       return res.status(400).send({ error: "ids are required" });
     }
     const invalidUsers = await validateUsers(ids);
-    if (invalidUsers.length > 0) {
+    if (invalidUsers?.length > 0) {
       return res.status(404).send({ error: "Invalid users" });
     }
     const restoredUsers = await restoreUserIds(ids);
@@ -556,6 +639,7 @@ const getUserByUid = async (req, res) => {
     if(user?.disabled){
       return res.status(404).send({ error: "User is disabled" });
     }
+    
     return res.status(200).send({ data: user });
   }
   catch (error) {
@@ -578,11 +662,11 @@ const uploadProfilePic = async (req, res) => {
     const filename = req.file.filename;
     const imageUrl = await addImage(req, filename);
 
-    const user = await OrganisationUserModel.findById(_id);
+    const user = await UserModel.findById(_id);
     if (!user) {
       return res.status(400).send({ error: "user does not exist" });
     }
-    const update = await OrganisationUserModel.findByIdAndUpdate(
+    const update = await UserModel.findByIdAndUpdate(
       _id,
       { imageUrl },
       { new: true }
@@ -598,6 +682,71 @@ const uploadProfilePic = async (req, res) => {
   }
 };
 
+const sendOTPToUser = async (req, res) => {
+  const {  userId } = req.body;
+  try {
+   
+    if (!userId) {
+      return res.status(400).send({ error: "userId is required" });
+    }
+    const user = await UserModel.findOne({ userId });
+    if (!user) {
+      return res.status(404).send({ error: "User not found" });
+    }
+    const phoneNumber = user?.phoneNumber;
+    if (!phoneNumber) {
+      return res.status(400).send({ error: "User has no phone number" });
+    }
+    const otp = await sendOTP({ to: phoneNumber, firstName: user.firstName });
+    if (otp?.status === "success") {
+      return res.status(200).send({ data: otp, message: "OTP sent successfully" });
+    }
+    return res.status(500).send({ error: "Error sending OTP. Ensure the phone number is correct. If issue continues, please contact admin" });
+  } catch (error) {
+    return res.status(500).send({ error: error.message });
+  }
+}
+
+const verifyUserOTP = async (req, res) => {
+  const { pin_id, pin, userId } = req.body;
+  try{
+
+    if (!pin_id) {
+      return res.status(400).send({ error: "pin_id is required" });
+    }
+    if (!pin) {
+      return res.status(400).send({ error: "pin is required" });
+    }
+    if (!userId) {
+      return res.status(400).send({ error: "userId is required" });
+    }
+    const user = await UserModel.findOne({ userId });
+    if (!user) {
+      return res.status(404).send({ error: "User not found" });
+    }
+    if(user?.phoneNumberVerified){
+      return res.status(400).send({ error: "Phone number already verified" });
+    }
+    const otp = await verifyOTP({ pin_id, pin });
+    if (otp?.status === "success") {
+      const updatedUser = await UserModel.findByIdAndUpdate(
+        user?._id,
+        { phoneNumberVerified: true },
+        { new: true }
+      );
+      return res.status(200).send({ data: updatedUser, message: "Phone number verified successfully" });
+
+    }
+    return res.status(500).send({ error: "Error verifying OTP. Ensure the pin is correct. If issue continues, please contact admin" });
+
+
+  }
+  catch(error){
+    return res.status(500).send({ error: error.message });
+  }
+}
+
+
 module.exports = {
   createUser,
   createUserWithGoogleOrApple,
@@ -611,4 +760,7 @@ module.exports = {
   absoluteDeleteUser,
   getUserByUid,
   uploadProfilePic,
+  verifyUserOTP,
+  sendOTPToUser,
+
 };

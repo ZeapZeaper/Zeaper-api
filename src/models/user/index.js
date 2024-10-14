@@ -44,6 +44,7 @@ const UserSchema = new mongoose.Schema({
   },
   social: SocialSchema,
   emailVerified: { type: Boolean, required: true, default: false },
+  phoneNumberVerified: { type: Boolean, required: true, default: false },
   dateOfBirth: { type: String, required: false },
   country: { type: String, required: false },
   region: { type: String, required: false },
@@ -65,6 +66,7 @@ const UserSchema = new mongoose.Schema({
   },
   bestOutfit: {type: String, required: false},
   bestColor: {type: String, required: false},
+  
 
 });
 

@@ -17,6 +17,7 @@
   "author": "Foster Ogwudu",
   "license": "ISC",
   "dependencies": {
+    "axios": "^1.7.7",
     "body-parser": "^1.20.0",
     "connect-busboy": "^1.0.0",
     "cors": "^2.8.5",
@@ -40,6 +41,8 @@
     "sharp": "^0.30.4",
     "short-unique-id": "^4.4.4",
     "socket.io": "^4.6.1",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
     "uuid": "^8.3.2"
   },
   "devDependencies": {
