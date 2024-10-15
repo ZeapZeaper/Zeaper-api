@@ -112,20 +112,20 @@ const deleteUserFromFirebase = async (uid) => {
     return error;
   }
 };
-const addShop = async (user, shopName) => {
+const addShop = async (user) => {
   const shopId = await generateUniqueShopId();
   const shop = new ShopModel({
     shopId,
     userId: user?.userId,
-    user: user?._id,
-    shopName,
+    user: user?._id
+ 
   });
   const newShop = await shop.save();
   return newShop;
 };
 
 const createUser = async (req, res) => {
-  const { email, firstName, lastName, password, isVendor, shopName } = req.body;
+  const { email,  password, isVendor } = req.body;
   let firebaseUser = {};
   let newUser;
   let shopId;
@@ -147,18 +147,8 @@ if (req.body?.social) {
     return res.status(400).send({ error: "social must be a valid JSON string" });
   }
 }
-    if (!firstName) {
-      return res.status(400).send({ error: "firstName is required" });
-    }
-    if (!lastName) {
-      return res.status(400).send({ error: "lastName is required" });
-    }
-    if (isVendor && !shopName) {
-      return res.status(400).send({
-        error:
-          "shopName is required as the user is registering as a vendor as well",
-      });
-    }
+
+  
     if (email && !validator.validate(email)) {
       return res.status(400).send({ error: "email is invalid" });
     }
@@ -211,8 +201,7 @@ if (req.body?.social) {
     }
 
     const params = {
-      firstName,
-      lastName,
+      
       ...req.body,
       imageUrl,
       email,
@@ -228,7 +217,7 @@ if (req.body?.social) {
     const data = {};
 
     if (isVendor) {
-      const shop = await addShop(newUser, shopName);
+      const shop = await addShop(newUser);
 
       shopId = shop.shopId;
       if (!shopId) {
@@ -368,8 +357,9 @@ const getUser = async (req, res) => {
     let userAccessRecord = {
       adminAccess: user?.isAdmin || user?.superAdmin,
     };
-    let createdBy = "Self"
-    if(user?.createdBy){
+    let createdBy = "Self";
+    if(user?.createdBy && user?.createdBy.toLowerCase() !== "self"){
+  
     const  createdByUser = await UserModel.findOne({userId: user.createdBy}).lean()
     createdBy = createdByUser?.firstName + " " + createdByUser?.lastName;
     }
@@ -388,7 +378,7 @@ const getUser = async (req, res) => {
               lastSignInTime: userRecord?.metadata?.lastSignInTime,
               lastRefreshTime: userRecord?.metadata?.lastRefreshTime,
               providerId:userRecord?.providerData[0]?.providerId,  
-               createdBy 
+               createdBy  : createdBy || "Self"
             };
           }
         })
