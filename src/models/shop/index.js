@@ -23,7 +23,7 @@ const ShopSchema = new mongoose.Schema({
     required: true,
   },
   userId: { type: String, required: true },
-  shopName: { type: String, required: true },
+  shopName: { type: String, required: false },
   businessName: { type: String, required: false },
   address: { type: String, required: false },
   phoneNumber: { type: String, required: false },
