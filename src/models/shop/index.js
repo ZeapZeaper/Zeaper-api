@@ -24,7 +24,7 @@ const ShopSchema = new mongoose.Schema({
   },
   userId: { type: String, required: true },
   shopName: { type: String, required: false },
-  businessName: { type: String, required: false },
+  email: { type: String, required: false },
   address: { type: String, required: false },
   phoneNumber: { type: String, required: false },
   region: { type: String, required: false },
@@ -32,6 +32,7 @@ const ShopSchema = new mongoose.Schema({
   country: { type: String, required: false },
   isTailor: { type: Boolean, required: false, default: false },
   isShoeMaker: { type: Boolean, required: false, default: false },
+  isMakeUpArtist: { type: Boolean, required: false, default: false },
   disabled: { type: Boolean, required: false, default: false },
   sellerType: {
     type: String,
@@ -50,6 +51,10 @@ const ShopSchema = new mongoose.Schema({
     },
   },
   bankDetails: BankDetailSchema,
+  imageUrl: {
+    link: { type: String, required: false },
+    name: { type: String, required: false },
+  },
 });
 
 ShopSchema.plugin(timestamp);

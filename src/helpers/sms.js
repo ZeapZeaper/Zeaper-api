@@ -20,12 +20,12 @@ const sendOTP = async (param) => {
   const { to, firstName } = param;  
 
   const pinPlaceholder = '< 1234 >';
-  const message = `Hello ${firstName}, your OTP is ${pinPlaceholder}. This pin will expire in 15 minute.`;
+  const message = `Hello ${firstName}, your OTP is ${pinPlaceholder}. This pin will expire in 15 minutes.`;
   const data = {
     api_key: api_key,
     to: to,
     from: sender_id,
-    // channel: "dnd",
+    channel: "generic",
     message: message,
     message_type : "NUMERIC",
        pin_attempts: 10,
@@ -39,19 +39,19 @@ const sendOTP = async (param) => {
   
     try{
      
-       return await axios.post (sendURL, data).then((res) => {
-          console.log("res", res.data);
-          return res.data;
-        }
-        ).catch((err) => {
-          console.log("err", err);
-          throw err;
-        });
+       const response = await axios.post (sendURL, data)
+        return response.data
+        
+        
   }
 
     catch(err){
-      console.log("err", err);
-        throw err;
+
+       const error = err.response.data?.message
+       console.log("error", error);
+        if(error){
+          throw new Error(error.substring(error.indexOf(":") + 3).trim().replace(/['"]+/g, ''));
+        }
     }
 
 };
@@ -65,12 +65,12 @@ const verifyOTP = async (param) => {
     pin: pin,
   };
   try {
-    return await axios.post(verifyURL, data).then((res) => {
-      console.log("res", res.data);
-      return res.data;
-    });
+    const response = await axios.post(verifyURL, data)
+    console.log("response", response.data);
+    return response.data;
   } catch (err) {
-    console.log("err", err);
+   
+
     throw err;
   }
 };
@@ -79,3 +79,8 @@ module.exports = {
   sendOTP,
   verifyOTP,
 };
+
+
+
+
+

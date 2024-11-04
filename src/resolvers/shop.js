@@ -38,23 +38,44 @@ const createShop = async (req, res) => {
     const authUser = await getAuthUser(req);
 
     if (!authUser) {
-      return res.status(400).json({ error: "User not found" });
+      return res.status(400).send({ error: "User not found" });
     }
-    const user = authUser;
+   
+    if(req.body?.userId && !authUser.isAdmin && !authUser.isSuperAdmin && authUser.userId !== req.body?.userId){
+      return res.status(400).send({ error: "You are not authorized to perform this operation" });
+    }
 
-    const userId = user.userId;
+    let userId
+    let user
+    if(req.body?.userId){
+      user = await UserModel.findOne({ userId: req.body?.userId }).lean();
+      if (!user) {
+        return res.status(400).send({ error: "User not found" });
+      }
+    }
+    else{
+       user = authUser;
+     
+    }
+    
+
+    userId = req.body?.userId|| user.userId;
+    const alreadyHasShop = await ShopModel.findOne({ userId });
+  
+    if (alreadyHasShop) {
+     
+      return res.status(400).send({ error: "User already has a shop" });
+    }
 
     if (!user) {
-      return res.status(400).json({ error: "User not found" });
+      return res.status(400).send({ error: "User not found" });
     }
-    if (user.shopEnabled && user.shopId) {
-      return res.status(400).json({ error: "User already has a shop" });
-    }
+    
     const shopExist = await ShopModel.findOne({
       shopName,
     });
     if (shopExist) {
-      return res.status(400).json({ error: "Shop name already exist" });
+      return res.status(400).send({ error: "Shop name already exist" });
     }
     const shopId = await generateUniqueShopId();
     const shop = new ShopModel({
@@ -65,7 +86,7 @@ const createShop = async (req, res) => {
     });
     await shop.save();
     if (!shop?._id) {
-      return res.status(400).json({ error: "Shop not created" });
+      return res.status(400).send({ error: "Shop not created" });
     }
     const updatedUser = await UserModel.findOneAndUpdate(
       {
@@ -77,13 +98,13 @@ const createShop = async (req, res) => {
     if (!updatedUser) {
       return res
         .status(400)
-        .json({ error: "Shop created but User not updated" });
+        .send({ error: "Shop created but User not updated" });
     }
     return res
       .status(200)
-      .json({ data: shop, message: "Shop created successfully" });
+      .send({ data: shop, message: "Shop created successfully" });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    return res.status(500).send({ error: err.message });
   }
 };
 
@@ -110,23 +131,37 @@ const getShops = async (req, res) => {
       .skip(skip)
       .limit(limit)
       .lean();
-    return res.status(200).json({ data: shops });
+    return res.status(200).send({ data: shops });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    return res.status(500).send({ error: err.message });
+  }
+};
+const getAuthUserShops = async (req, res) => {
+  try {
+    const authUser = await getAuthUser(req);
+    if (!authUser) {
+      return res.status(400).send({ error: "User not found" });
+    }
+    const shops = await ShopModel.find({
+      user: authUser._id,
+    }).populate("user");
+    return res.status(200).send({ data: shops });
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
   }
 };
 const getShop = async (req, res) => {
   try {
-    const { shopId } = req.query;
+  
     const shop = await ShopModel.findOne({
-      shopId,
+      ...req.query,
     }).populate("user");
     if (!shop) {
-      return res.status(400).json({ error: "Shop not found" });
+      return res.status(400).send({ error: "Shop not found" });
     }
-    return res.status(200).json({ data: shop });
+    return res.status(200).send({ data: shop });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    return res.status(500).send({ error: err.message });
   }
 };
 
@@ -137,7 +172,7 @@ const updateShop = async (req, res) => {
       shopId,
     });
     if (!shop) {
-      return res.status(400).json({ error: "Shop not found" });
+      return res.status(400).send({ error: "Shop not found" });
     }
     const updatedShop = await ShopModel.findOneAndUpdate(
       {
@@ -147,9 +182,9 @@ const updateShop = async (req, res) => {
       { new: true }
     ).lean();
 
-    return res.status(200).json({ data: updatedShop });
+    return res.status(200).send({ data: updatedShop });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    return res.status(500).send({ error: err.message });
   }
 };
 
@@ -157,13 +192,13 @@ const absoluteDeleteShop = async (req, res) => {
   try {
     const { shopId } = req.body;
     if (!shopId) {
-      return res.status(400).json({ error: "shopId is required" });
+      return res.status(400).send({ error: "shopId is required" });
     }
     const shop = await ShopModel.findOne({
       shopId,
     });
     if (!shop) {
-      return res.status(400).json({ error: "Shop not found" });
+      return res.status(400).send({ error: "Shop not found" });
     }
     await ShopModel.findOneAndDelete({
       shopId,
@@ -175,22 +210,23 @@ const absoluteDeleteShop = async (req, res) => {
       { shopId: "", shopEnabled: false },
       { new: true }
     ).lean();
-    return res.status(200).json({ message: "Shop deleted successfully" });
+    return res.status(200).send({ message: "Shop deleted successfully" });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    return res.status(500).send({ error: err.message });
   }
 };
 const deleteShop = async (req, res) => {
   try {
     const { shopId } = req.body;
+    console.log(req.body);
     if (!shopId) {
-      return res.status(400).json({ error: "shopId is required" });
+      return res.status(400).send({ error: "shopId is required" });
     }
     const shop = await ShopModel.findOne({
       shopId,
     });
     if (!shop) {
-      return res.status(400).json({ error: "Shop not found" });
+      return res.status(400).send({ error: "Shop not found" });
     }
     await ShopModel.findOneAndUpdate(
       {
@@ -206,22 +242,23 @@ const deleteShop = async (req, res) => {
       { shopEnabled: false },
       { new: true }
     ).lean();
-    return res.status(200).json({ message: "Shop disabled successfully" });
+    return res.status(200).send({ message: "Shop disabled successfully" });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    return res.status(500).send({ error: err.message });
   }
 };
 const restoreShop = async (req, res) => {
   try {
     const { shopId } = req.body;
+  
     if (!shopId) {
-      return res.status(400).json({ error: "shopId is required" });
+      return res.status(400).send({ error: "shopId is required" });
     }
     const shop = await ShopModel.findOne({
       shopId,
     });
     if (!shop) {
-      return res.status(400).json({ error: "Shop not found" });
+      return res.status(400).send({ error: "Shop not found" });
     }
     await ShopModel.findOneAndUpdate(
       {
@@ -237,9 +274,9 @@ const restoreShop = async (req, res) => {
       { shopEnabled: true },
       { new: true }
     ).lean();
-    return res.status(200).json({ message: "Shop restored successfully" });
+    return res.status(200).send({ message: "Shop restored successfully" });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    return res.status(500).send({ error: err.message });
   }
 };
 
@@ -247,6 +284,7 @@ module.exports = {
   createShop,
   getShops,
   getShop,
+  getAuthUserShops ,
   updateShop,
   deleteShop,
   restoreShop,

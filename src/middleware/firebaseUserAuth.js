@@ -55,7 +55,26 @@ const getAuthUser = async (request) => {
   return user;
 };
 
+const authUserAdminMiddleware = async (request, response, next) => {
+  const token = getToken(request);
+  const authUser = await firebase.auth().verifyIdToken(token);
+  if (!authUser) {
+    return response.send({ message: "Could not authorize", error }).status(400);
+  }
+  const uid = authUser.uid;
+  const user = await UserModel.findOne({ uid });
+  if (!user) {
+    return response.send({ message: "User not found" }).status(400);
+  }
+  if (!user.isAdmin && !user.isSuperAdmin) {
+    return response.status(400).json({ error: "You are not authorized to perform this operation" });
+  }
+  request.reqUser = user;
+  next();
+}
+
 module.exports = {
   authMiddleware,
   getAuthUser,
+  authUserAdminMiddleware,
 };

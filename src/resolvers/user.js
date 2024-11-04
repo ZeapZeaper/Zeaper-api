@@ -639,16 +639,16 @@ const getUserByUid = async (req, res) => {
 
 const uploadProfilePic = async (req, res) => {
   try {
+   
     if (!req.file) {
       return res.status(400).send({ error: "no file uploaded" });
     }
 
-    const { _id } = req.body;
-
-    if (!_id) {
-      return res.status(400).send({ error: "no user id provided" });
+ const authUser = await getAuthUser(req);
+    if (!authUser) {
+      return res.status(400).send({ error: "User not found" });
     }
-
+    const _id = authUser._id;
     const filename = req.file.filename;
     const imageUrl = await addImage(req, filename);
 
@@ -687,8 +687,10 @@ const sendOTPToUser = async (req, res) => {
     if (!phoneNumber) {
       return res.status(400).send({ error: "User has no phone number" });
     }
+  
     const otp = await sendOTP({ to: phoneNumber, firstName: user.firstName });
-    if (otp?.status === "success") {
+    console.log("otp", otp);
+    if (otp?.status === "200") {
       return res.status(200).send({ data: otp, message: "OTP sent successfully" });
     }
     return res.status(500).send({ error: "Error sending OTP. Ensure the phone number is correct. If issue continues, please contact admin" });
@@ -700,6 +702,7 @@ const sendOTPToUser = async (req, res) => {
 const verifyUserOTP = async (req, res) => {
   const { pin_id, pin, userId } = req.body;
   try{
+    console.log("req.body", req.body);
 
     if (!pin_id) {
       return res.status(400).send({ error: "pin_id is required" });
@@ -718,7 +721,8 @@ const verifyUserOTP = async (req, res) => {
       return res.status(400).send({ error: "Phone number already verified" });
     }
     const otp = await verifyOTP({ pin_id, pin });
-    if (otp?.status === "success") {
+    console.log("otp", otp);
+    if (otp?.status === "200") {
       const updatedUser = await UserModel.findByIdAndUpdate(
         user?._id,
         { phoneNumberVerified: true },
@@ -727,7 +731,7 @@ const verifyUserOTP = async (req, res) => {
       return res.status(200).send({ data: updatedUser, message: "Phone number verified successfully" });
 
     }
-    return res.status(500).send({ error: "Error verifying OTP. Ensure the pin is correct. If issue continues, please contact admin" });
+    return res.status(500).send({ error: "Error verifying OTP. Ensure the pin is correct and not expired. Note that it expires after 15 mins. If issue continues, please contact admin" });
 
 
   }

@@ -42,20 +42,28 @@ const upload = multer({
 const uploadMultiple = multer({
   storage: storage,
   limits: {
-    fileSize: 1024 * 1024 * 5,
+    fileSize: 1024 * 1024 * 1,
   },
   fileFilter: (req, file, cb) => {
-   
+    
     if (
       file.mimetype == "image/png" ||
       file.mimetype == "image/jpg" ||
       file.mimetype == "image/jpeg" ||
-      file.mimetype == "image/webp"
+      file.mimetype == "image/webp" ||
+      file.mimetype == "image/avif"
+
     ) {
       cb(null, true);
     } else {
-      cb(null, false);
+       
+     req.fileValidationError = "Only .png, .jpg, .jpeg, .webp and .avif format allowed!";
+      return cb(null, false, req.fileValidationError);
+
+ 
+
     }
+   
   },
 });
 

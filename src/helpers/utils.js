@@ -10,6 +10,7 @@ const ENCRYPTION_KEY = process.env.ZEAPCRYPTOKEY;
 const IV_LENGTH = 16;
 
 const deleteLocalFile = async (path) => {
+
   return new Promise((resolve) => {
     fs.unlink(path, (error) => {
       error && console.log("WARNING:: Delete local file", error);
