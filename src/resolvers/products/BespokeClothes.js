@@ -15,14 +15,14 @@ const ProductModel = require("../../models/products");
 const { validateVariations, verifyColorsHasImages } = require("./productHelpers");
 
 
-const editReadyMadeClothes = async (req) => {
+const editBescopeClothes = async (req) => {
   try {
    
     const params = req.body;
     const { productId ,categories, sizes, colors, variations} = params;
     
-    if(sizes && (!Array.isArray(sizes) || sizes.length === 0 || checkForDuplicates(sizes))){
-      return { error: "sizes is required and must be unique" };
+    if(sizes){
+      return { error: "you can not add size for this product type" };
     }
     if(categories &&  Object.keys(categories).length === 0){
       return { error: "categories is required" }
@@ -36,22 +36,10 @@ const editReadyMadeClothes = async (req) => {
         occasion,
         fit,
         brand,
-        main,
-        heelHeight,
-        heelType,
-        accessoryType
+        main
 
       } = categories;
-
-      if(heelHeight){
-                return { error: "you can not add heelHeight to this product type" };
-              }
-        if(heelType){
-                return { error: "you can not add heelType to this product type" };
-              }
-        if(accessoryType){
-                return { error: "you can not add accessoryType to this product type" };
-              }
+     
       if(!gender || !Array.isArray(gender) || gender.length === 0){
         return { error: "gender category is required when updating category and must be array" };
       }
@@ -125,14 +113,14 @@ const editReadyMadeClothes = async (req) => {
     delete params.productId;
   
   
-    const readyMadeCloth = await ProductModel.findOneAndUpdate(
+    const bescopeCloth = await ProductModel.findOneAndUpdate(
       {productId},
       {
         ...params,
       },
       { new: true }
     );
-    return readyMadeCloth;
+    return bescopeCloth;
   } catch (err) {
     return  { error: err.message };
   }
@@ -142,7 +130,7 @@ const editReadyMadeClothes = async (req) => {
 
 
 
-const validateReadyMadeClothes = async (product) => {
+const validateBescopeClothes = async (product) => {
   const {categories, sizes, colors, images, variations  } = product;
   if (!categories || Object.keys(categories).length === 0) {
     return { error: "categories is required" }
@@ -263,7 +251,7 @@ const validateReadyMadeClothes = async (product) => {
 
 
 };
-const addVariationToReadyMadeClothes = async (product, variation) => {
+const addVariationToBescopeClothes = async (product, variation) => {
 
     
     const {price, colorValue, size, quantity} = variation;
@@ -326,7 +314,7 @@ const addVariationToReadyMadeClothes = async (product, variation) => {
 
 module.exports = {
 
-  editReadyMadeClothes,
-  validateReadyMadeClothes,
-  addVariationToReadyMadeClothes
+  editBescopeClothes,
+  validateBescopeClothes,
+  addVariationToBescopeClothes
 };

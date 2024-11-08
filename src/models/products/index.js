@@ -19,7 +19,10 @@ const {
   shoeStyleEnums,
   heelHightEnums,
   heelTypeEnums,
-  shoeSizeEnums
+  shoeSizeEnums,
+  accessoryTypeEnums,
+  accessoryStyleEnums,
+  accessorySizeEnums
 } = require("../../helpers/constants");
 
 
@@ -46,7 +49,7 @@ const ReadyMadeClothesSchema = new mongoose.Schema({
     style:[
       {
         type: String,
-        enum: [...clothStyleEnums, ...shoeStyleEnums],
+        enum: [...clothStyleEnums, ...shoeStyleEnums, ...accessoryStyleEnums],
       }
     ],
     main:[
@@ -59,6 +62,9 @@ const ReadyMadeClothesSchema = new mongoose.Schema({
     sleeveLength: { type: String, enum: sleeveLengthEnums, required: false },
     heelHeight: { type: String, enum: heelHightEnums, required: false },
     heelType: { type: String, enum: heelTypeEnums, required: false },
+    accessoryType: { type: String, enum: accessoryTypeEnums, required: false },
+
+   
     design:[
       {
         type: String,
@@ -94,7 +100,7 @@ const ReadyMadeClothesSchema = new mongoose.Schema({
   sizes: [
     {
       type: String,
-      enum: [...clothSizeEnums, ...shoeSizeEnums],
+      enum: [...clothSizeEnums, ...shoeSizeEnums, ...accessorySizeEnums],
       required: true,
     },
   ],

@@ -3,19 +3,19 @@ const { ageGroupEnums,ageRangeEnums, genderEnums,
   
     fasteningEnums,
     occasionEnums,
-    brandEnums, 
-    
-    designEnums,
    
-    shoeStyleEnums,
-    heelHightEnums,
-    heelTypeEnums,
-    shoeSizeEnums
+    brandEnums, 
+    designEnums,
+    accessoryTypeEnums,
+    accessoryStyleEnums,
+    accessorySizeEnums
+   
+    
    } = require("../../helpers/constants");
   const ProductModel = require("../../models/products");
 const { validateVariations, verifyColorsHasImages } = require("./productHelpers");
 
-const editReadyMadeShoes = async (req) => {
+const editAccessories = async (req) => {
     try {
      
       const params = req.body;
@@ -25,7 +25,7 @@ const editReadyMadeShoes = async (req) => {
       if(sizes && (!Array.isArray(sizes) || sizes.length === 0 || checkForDuplicates(sizes))){
         return { error: "sizes is required and must be unique" };
       }
-      if(sizes?.some((s) => shoeSizeEnums.indexOf(s) === -1)){
+      if(sizes?.some((s) => accessorySizeEnums.indexOf(s) === -1)){
         return { error: "invalid size category" };
       }
       if(categories &&  Object.keys(categories).length === 0){
@@ -35,28 +35,31 @@ const editReadyMadeShoes = async (req) => {
       if(categories){
         const {gender, age,
           style,
-          heelHeight,
-            heelType,
+         accessoryType,
+
           design,
           fastening,
           occasion,
-          fit,
-          sleeveLength,
-          accessoryType,
           brand,
-          
+          fit,
+          heelHeight,
+          heelType,
+          sleeveLength,
   
         } = categories;
+        if(fit){
+          return { error: "you can not add fit to this product type" };
+         }
+        if(sleeveLength){
+              return { error: "you can not add sleeveLength to this product type" };
+              }
+        if(heelHeight){
+                return { error: "you can not add heelHeight to this product type" };
+              }
+        if(heelType){
+                return { error: "you can not add heelType to this product type" };
+              }
        
-       if(fit){
-        return { error: "you can not add fit to this product type" };
-       }
-         if(sleeveLength){
-            return { error: "you can not add sleeveLength to this product type" };
-            }
-        if(accessoryType){
-            return { error: "you can not add accessoryType to this product type" };
-            }
         if(!gender || !Array.isArray(gender) || gender.length === 0){
           return { error: "gender category is required when updating category and must be array" };
         }
@@ -84,22 +87,14 @@ const editReadyMadeShoes = async (req) => {
       }
   
    
-      if (style && style?.some((s) => shoeStyleEnums.indexOf(s) === -1)) {
+      if (style && style?.some((s) => accessoryStyleEnums.indexOf(s) === -1)) {
         return { error: "invalid style category when updating category" };
       }
      
-      if (!heelHeight || typeof heelHeight!== "string") {
-        return { error: "heelHeight category is required and must be a string" };
+      if(!accessoryType || accessoryTypeEnums.indexOf(accessoryType) === -1){
+        return { error: "no or invalid accessoryType category" };
       }
-      if (heelHeight && heelHightEnums.indexOf(heelHeight) === -1) {
-        return { error: "invalid heelHeight category" };
-      }
-        if (!heelType || typeof heelType!== "string") {
-            return { error: "heelType category is required and must be a string" };
-        }
-        if (heelType && heelTypeEnums.indexOf(heelType) === -1) {
-            return { error: "invalid heelType category" };
-        }
+
       if (design && design?.some((s) => designEnums.indexOf(s) === -1)) {
         return { error: "invalid design category" };
       }
@@ -109,12 +104,12 @@ const editReadyMadeShoes = async (req) => {
       if (occasion && occasion?.some((s) => occasionEnums.indexOf(s) === -1)) {
         return { error: "invalid occasion category" };
       }
-     
+      
       if (brand && brandEnums.indexOf(brand) === -1) {
         return { error: "invalid brand category" };
       }
   
-      categories.main = ["Footwear"];
+      categories.main = ["Accessories"];
       }
      
       if(colors){
@@ -128,20 +123,20 @@ const editReadyMadeShoes = async (req) => {
       delete params.productId;
     
     
-      const readyMadeShoe = await ProductModel.findOneAndUpdate(
+      const accessory = await ProductModel.findOneAndUpdate(
         {productId},
         {
           ...params,
         },
         { new: true }
       );
-      return readyMadeShoe;
+      return accessory;
     } catch (err) {
       return  { error: err.message };
     }
   };
 
-  const validateReadyMadeShoes = async (product) => {
+  const validateAccessories = async (product) => {
     const {categories, sizes, colors, images, variations  } = product;
     if (!categories || Object.keys(categories).length === 0) {
       return { error: "categories is required" }
@@ -176,24 +171,15 @@ const editReadyMadeShoes = async (req) => {
     if (!style || !Array.isArray(style) || style.length === 0) {
       return { error: "style under category is required and must be an array" };
     }
-    if (style.some((s) => shoeStyleEnums.indexOf(s) === -1)) {
+    if (style.some((s) => accessoryStyleEnums.indexOf(s) === -1)) {
       return { error: "invalid style category" };
     }
    
-    const heelHeight = categories?.heelHeight;
-    if (!heelHeight || typeof heelHeight !== "string") {
-        return { error: "heelHeight category must be a string" };
+    const accessoryType = categories?.accessoryType;
+    if (!accessoryType || accessoryTypeEnums.indexOf(accessoryType) === -1) {
+      return { error: "no or invalid accessoryType category" };
     }
-    if (heelHeight && heelHightEnums.indexOf(heelHeight) === -1) {
-        return { error: "invalid or no heelHeight category" };
-    }
-    const heelType = categories?.heelType;
-    if (!heelType || typeof heelType !== "string") {
-        return { error: "heelType category must be a string" };
-    }
-    if (heelType && heelTypeEnums.indexOf(heelType) === -1) {
-        return { error: "invalid heelType category" };
-    }
+    
     const design = categories?.design;
     if (design && !Array.isArray(design)) {
       return { error: "design under category must be an array" };
@@ -228,7 +214,7 @@ const editReadyMadeShoes = async (req) => {
     ) {
       return { error: "sizes is required and must be unique" };
     }
-    if(sizes.some((s) => shoeSizeEnums.indexOf(s) === -1)){
+    if(sizes.some((s) => accessorySizeEnums.indexOf(s) === -1)){
       return { error: "invalid size category" };
     }
      // check for duplicates in color.value in colors array
@@ -259,7 +245,7 @@ const editReadyMadeShoes = async (req) => {
   
   };
   
-  const addVariationToReadyMadeShoes = async (product, variation) => {
+  const addVariationToAccesories= async (product, variation) => {
 
     
     const {price, colorValue, size, quantity} = variation;
@@ -281,7 +267,7 @@ const editReadyMadeShoes = async (req) => {
     if (!quantity || typeof quantity !== "number" || quantity < 0) {
       return { error: "quantity is required and must be a number greater than 0" };
     }
-    if (!sizes.includes(size)) {
+    if (!accessorySizeEnums.includes(size)) {
       return { error: "size is not valid" };
     }
     if (!colors.map((color) => color.value).includes(colorValue)) {
@@ -325,7 +311,7 @@ const editReadyMadeShoes = async (req) => {
   }
 
   module.exports = {
-    editReadyMadeShoes,
-    validateReadyMadeShoes,
-    addVariationToReadyMadeShoes
+    editAccessories,
+    validateAccessories,
+    addVariationToAccesories
     }

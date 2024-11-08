@@ -49,6 +49,9 @@ const getDynamicFilters = (products) => {
      const allFastening = allCategories.map((product) => product.fastening).flat();
      const allOccasion = allCategories.map((product) => product.occasion).flat();
      const allSleeveLength = allCategories.map((product) => product?.sleeveLength)
+     const allHeelHeight = allCategories.map((product) => product?.heelHeight);
+    const allHeelType = allCategories.map((product) => product?.heelType);
+    const allAccessoryTypes = allCategories.map((product) => product.accessoryType);
      const allMains = allCategories.map((product) => product.main).flat();
      const allGenders = allCategories.map((product) => product.gender).flat();
      const allAgeGroups = allCategories.map((product) => product?.age?.ageGroup);
@@ -255,6 +258,75 @@ const getDynamicFilters = (products) => {
     if (sleeveLengthObj.options.length > 0) {
         filters.push(sleeveLengthObj);
     }
+    const heelHeightObj = {
+        name: "Heel Height",
+        options: [],
+    }
+    allHeelHeight.forEach((heelHeight) => {
+        if(!heelHeight){
+            return;
+        }
+        const heelHeightIndex = heelHeightObj.options.findIndex((option) => option.value === heelHeight);
+        if (heelHeightIndex === -1) {
+            heelHeightObj.options.push({
+                value: heelHeight,
+                count: 1,
+            });
+        } else {
+            heelHeightObj.options[heelHeightIndex].count += 1;
+        }
+    }
+    );
+    if (heelHeightObj.options.length > 0) {
+        filters.push(heelHeightObj);
+    }
+    const heelTypeObj = {
+        name: "Heel Type",
+        options: [],
+    }
+    allHeelType.forEach((heelType) => {
+        if(!heelType){
+            return;
+        }
+        const heelTypeIndex = heelTypeObj.options.findIndex((option) => option.value === heelType);
+        if (heelTypeIndex === -1) {
+            heelTypeObj.options.push({
+                value: heelType,
+                count: 1,
+            });
+        } else {
+            heelTypeObj.options[heelTypeIndex].count += 1;
+        }
+    }
+    );
+    if (heelTypeObj.options.length > 0) {
+        filters.push(heelTypeObj);
+    }
+
+    const accessoryTypeObj = {
+        name: "Accessory Type",
+        options: [],
+    }
+    allAccessoryTypes.forEach((accessoryType) => {
+        if(!accessoryType){
+            return;
+        }
+        const accessoryTypeIndex = accessoryTypeObj.options.findIndex((option) => option.value === accessoryType);
+        if (accessoryTypeIndex === -1) {
+            accessoryTypeObj.options.push({
+                value: accessoryType,
+                count: 1,
+            });
+        } else {
+            accessoryTypeObj.options[accessoryTypeIndex].count += 1;
+        }
+    }
+    );
+    if (accessoryTypeObj.options.length > 0) {
+        filters.push(accessoryTypeObj);
+    }
+    
+
     const mainObj = {
         name: "Main",
         options: [],

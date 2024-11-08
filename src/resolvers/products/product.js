@@ -16,7 +16,10 @@ const {
   mainEnums, shoeStyleEnums,
   heelHightEnums,
   heelTypeEnums,
-  shoeSizeEnums
+  shoeSizeEnums,
+  accessoryTypeEnums,
+  accessoryStyleEnums,
+  accessorySizeEnums
 } = require("../../helpers/constants");
 const { checkForDuplicates, deleteLocalFile } = require("../../helpers/utils");
 const ShopModel = require("../../models/shop");
@@ -35,6 +38,7 @@ const { getDynamicFilters, deleteProductsById, restoreProductsById, getQuery } =
 const ProductModel = require("../../models/products");
 const { get } = require("http");
 const { editReadyMadeShoes, validateReadyMadeShoes, addVariationToReadyMadeShoes } = require("./readyMadeShoes");
+const { editAccessories,validateAccessories,addVariationToAccesories } = require("./Accessories");
 
 
 //saving image to firebase storage
@@ -534,6 +538,9 @@ const editProduct = async (req, res) => {
       
        updatedProduct = await editReadyMadeShoes(req);
     }
+    if (productType === "accessory") {
+      updatedProduct = await editAccessories(req);
+    }
     if (updatedProduct?.error) {
       return res.status(400).send({ error: updatedProduct.error });
     }
@@ -590,6 +597,9 @@ const getProuctTypePrefix = (productType) => {
   }
   if (productType === "readyMadeShoe") {
     return "RMS";
+  }
+  if (productType === "accessory") {
+    return "ACC";
   }
   return "";
 };
@@ -706,6 +716,12 @@ const setProductStatus = async (req, res) => {
         return res.status(400).send({ error: verify.error });
       }
     }
+    if(status === "under review" &&  productType === "accessory"){
+      const verify = await validateAccessories(product);
+      if(verify){
+        return res.status(400).send({ error: verify.error });
+      }
+    }
 
     const updatedProduct = await ProductModel.findOneAndUpdate( { productId }, { status }, { new: true }).exec();
       return res.status(200).send({ data: updatedProduct, message: "product status updated successfully" });
@@ -738,6 +754,12 @@ const submitProduct = async (req, res) => {
     }
     if(productType === "readyMadeShoe"){
       const verify = await validateReadyMadeShoes(product);
+      if(verify?.error){
+        return res.status(400).send({ error: verify.error });
+      }
+    }
+    if(productType === "accessory"){
+      const verify = await validateAccessories(product);
       if(verify?.error){
         return res.status(400).send({ error: verify.error });
       }
@@ -1025,7 +1047,7 @@ const getShopDraftProducts = async (req, res) => {
 }
 const getProductOptions = async (req, res) => {
   try {
-    const nonClothMainEnums = ["FootWear", "Bag", "Accessories"];
+    const nonClothMainEnums = ["FootWear", "Accessories"];
     const readyMadeClothesParams = {
       mainEnums: mainEnums.filter((m) => !nonClothMainEnums.includes(m)).sort(),
       genderEnums: genderEnums.sort(),
@@ -1061,10 +1083,27 @@ const getProductOptions = async (req, res) => {
 
 
     }
+    const accessoriesParams = {
+        
+        genderEnums: genderEnums.sort(),
+        ageGroupEnums: ageGroupEnums.sort(),
+        ageRangeEnums: ageRangeEnums.sort(),
+        statusEnums: statusEnums.sort(),
+        accessoryTypeEnums: accessoryTypeEnums.sort(),
+        accessoryStyleEnums: accessoryStyleEnums.sort(),
+        accessorySizeEnums: accessorySizeEnums.sort(),
+        designEnums: designEnums.sort(),
+        fasteningEnums: fasteningEnums.sort(),
+        occasionEnums: occasionEnums.sort(),
+        brandEnums: brandEnums.sort(),
+        colorEnums: colorEnums.sort((a, b) => a.name.localeCompare(b.name)),
+    }
     res.status(200).send({ data: {
       readyMadeClothes: readyMadeClothesParams,
       readyMadeShoes: readyMadeShoeParams,
-      productTypeEnums: productTypeEnums,
+      accessories: accessoriesParams,
+      productTypeEnums: productTypeEnums
+  
     } });
   }
   catch (err) {
@@ -1098,6 +1137,9 @@ const addProductVariation = async (req, res) => {
     if(productType === "readyMadeShoe"){
     
       updatedProduct = await addVariationToReadyMadeShoes(product, variation);
+    }
+    if(productType === "accessory"){
+      updatedProduct = await addVariationToAccesories(product, variation);
     }
     if (!updatedProduct) {
       return res.status(400).send({ error: "product not found" });
@@ -1138,6 +1180,9 @@ const editProductVariation = async (req, res) => {
     }
     if(productType === "readyMadeShoe"){
       updatedProduct = await addVariationToReadyMadeShoes(product, variation);
+    }
+    if(productType === "accessory"){
+      updatedProduct = await addVariationToAccesories(product, variation);
     }
     if (!updatedProduct) {
       return res.status(400).send({ error: "product not found" });
