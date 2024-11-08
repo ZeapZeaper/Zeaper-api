@@ -1,57 +1,19 @@
-const ReadyMadeClothes = require("../../models/products/readyMadeCloth");
+
 const { checkForDuplicates } = require("../../helpers/utils");
-const { ageGroupEnums,ageRangeEnums, genderEnums,  sizeEnums,
-  styleEnums,
+const { ageGroupEnums,ageRangeEnums, genderEnums,
   sleeveLengthEnums,
-  designEnums,
   fasteningEnums,
   occasionEnums,
   fitEnums,colorEnums,
-  brandEnums, mainEnums } = require("../../helpers/constants");
+  brandEnums, 
+  clothStyleEnums,
+  designEnums,
+  clothSizeEnums,
+  mainEnums
+ } = require("../../helpers/constants");
+const ProductModel = require("../../models/products");
+const { validateVariations, verifyColorsHasImages } = require("./productHelpers");
 
-const getReadyMadeClothes = async (req, res) => {
-  try {
-    const skip = parseInt(req.query.skip) || 0;
-    const limit = parseInt(req.query.limit) || 60;
-    const sort = req.query.sort || "desc";
-    const search = req.query.search || "";
-    const price = req.query.price || "";
-    const disabled = req.query.disabled || false;
-    const status = req.query.status || "live";
-    const match = {
-      disabled,
-      status,
-    };
-    const categories = send.parse(req.query.categories);
-    Object.entries(categories).forEach(([key, value]) => {
-      if (value) {
-        match[`categories.${key}`] = value;
-      }
-    });
-    // search
-    if (search) {
-      match.$or = [
-        { name: { $regex: search, $options: "i" } },
-        { description: { $regex: search, $options: "i" } },
-      ];
-    }
-    const query = { ...match };
-
-    if (price) {
-      query.price = { $lte: parseInt(price) };
-    }
-
-    const readyMadeClothes = await ReadyMadeClothes.find(query)
-      .sort({ createdAt: sort })
-      .skip(skip)
-      .limit(limit)
-      .lean();
-
-    return res.status(200).send({ readyMadeClothes });
-  } catch (err) {
-    return res.status(500).send({ error: err.message });
-  }
-};
 
 const editReadyMadeClothes = async (req) => {
   try {
@@ -109,10 +71,10 @@ const editReadyMadeClothes = async (req) => {
     }
    
     if(main.some((s) => mainEnums.indexOf(s) === -1)){
-      console.log("main",main)
+     
       return { error: "invalid main category" };
     }
-    if (style && style.some((s) => styleEnums.indexOf(s) === -1)) {
+    if (style && style.some((s) => clothStyleEnums.indexOf(s) === -1)) {
       return { error: "invalid style category when updating category" };
     }
    
@@ -147,128 +109,27 @@ const editReadyMadeClothes = async (req) => {
       return { error: "you can not update variations with this endpoint" };
     }
   
+    // remove productId from params
+    delete params.productId;
   
   
-    const readyMadeClothes = await ReadyMadeClothes.findOneAndUpdate(
+    const readyMadeCloth = await ProductModel.findOneAndUpdate(
       {productId},
       {
         ...params,
       },
       { new: true }
     );
-    return readyMadeClothes;
+    return readyMadeCloth;
   } catch (err) {
     return  { error: err.message };
   }
 };
 
 
-const deleteRestoreReadyMadeClothes = async (
-  productIds,
-  userId,
-  disabledValue
-) => {
-  return productIds.reduce(async (acc, _id) => {
-    const result = await acc;
 
-    const disabled = await ReadyMadeClothes.findByIdAndUpdate(
-      _id,
-      { disabled: disabledValue },
-      { new: true }
-    );
 
-    if (disabled) {
-      result.push(_id);
-    }
 
-    return result;
-  }, []);
-};
-const deleteReadyMadeClothes = async (param) => {
-  try {
-    const { productIds, userId } = param;
-    const deletedProducts = await deleteRestoreReadyMadeClothes(
-      productIds,
-      userId,
-      true
-    );
-    return deletedProducts;
-  } catch (err) {
-    return res.status(500).send({ error: err.message });
-  }
-};
-const restoreReadyMadeClothes = async (param) => {
-  try {
-    const { productIds, userId } = param;
-    const restoredProducts = await deleteRestoreReadyMadeClothes(
-      productIds,
-      userId,
-      false
-    );
-    return restoredProducts;
-  } catch (err) {
-    return res.status(500).send({ error: err.message });
-  }
-};
-const createReadyMadeClothes = async (param) => {
-  try {
-
-    const readyMadeClothes = new ReadyMadeClothes(param);
-
-    const savedReadyMadeClothes = await readyMadeClothes.save();
-
-    return savedReadyMadeClothes;
-  } catch (err) {
-    throw new Error(err.message);
-  }
-};
-const verifyColorsHasImages = (colors) => {
-  return colors.every((color) => {
-    const { value,images } = color;
-    if (!images || images.length === 0) {
-      return false;
-    }
-    if (!value  || colorEnums.indexOf(value) === -1) {
-      return false;
-    }
-  
-  images.every((image) => {
-      if (!image.link || !image.name) {
-        console.log("image", image);
-        return false;
-      }
-    
-    }
-    
-    
-    
-    );
-    return true;
-   
-  });
-}
-const validateVariations = (variations, sizes, colors) => {
-  if (!variations || variations.length === 0) {
-    return false;
-  }
-  return variations.every((variation) => {
-    const { size, colorValue, price, quantity } = variation;
-    if (!sizes.includes(size)) {
-      return false;
-    }
-    if (!colors.map((color) => color.value).includes(colorValue)) {
-      return false;
-    }
-    if (typeof price !== "number" || price < 0) {
-      return false;
-    }
-    if (typeof quantity !== "number" || quantity < 0) {
-      return false;
-    }
-    return true;
-  });
-
-}
 const validateReadyMadeClothes = async (product) => {
   const {categories, sizes, colors, images, variations  } = product;
   if (!categories || Object.keys(categories).length === 0) {
@@ -288,7 +149,7 @@ const validateReadyMadeClothes = async (product) => {
   if (!main || !Array.isArray(main|| main.length === 0)) {
     return { error: "main category is required" };
   }
-  if(main.some((s) => mainEnums.indexOf(s) === -1)){
+  if(main?.some((s) => mainEnums.indexOf(s) === -1)){
     return { error: "invalid main category" };
   }
   const age = categories?.age
@@ -310,7 +171,7 @@ const validateReadyMadeClothes = async (product) => {
   if (!style || !Array.isArray(style) || style.length === 0) {
     return { error: "style under category is required and must be an array" };
   }
-  if (style.some((s) => styleEnums.indexOf(s) === -1)) {
+  if (style?.some((s) => clothStyleEnums.indexOf(s) === -1)) {
     return { error: "invalid style category" };
   }
   const sleeveLength = categories?.sleeveLength;
@@ -360,7 +221,7 @@ const validateReadyMadeClothes = async (product) => {
   ) {
     return { error: "sizes is required and must be unique" };
   }
-  if(sizes.some((s) => sizeEnums.indexOf(s) === -1)){
+  if(sizes.some((s) => clothSizeEnums.indexOf(s) === -1)){
     return { error: "invalid size category" };
   }
    // check for duplicates in color.value in colors array
@@ -452,10 +313,7 @@ const addVariationToReadyMadeClothes = async (product, variation) => {
    
 
 module.exports = {
-  getReadyMadeClothes,
-  deleteReadyMadeClothes,
-  restoreReadyMadeClothes,
-  createReadyMadeClothes,
+
   editReadyMadeClothes,
   validateReadyMadeClothes,
   addVariationToReadyMadeClothes

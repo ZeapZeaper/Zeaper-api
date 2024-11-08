@@ -7,17 +7,21 @@ const {
   ageGroupEnums,
   ageRangeEnums,
   productTypeEnums,
-  sizeEnums,
-  styleEnums,
   sleeveLengthEnums,
-  designEnums,
   fasteningEnums,
   occasionEnums,
   fitEnums,
   brandEnums,
-  mainEnums
-} = require("../../../helpers/constants");
-const { type } = require("../../../config/firebaseServiceAcc");
+  clothStyleEnums,
+  designEnums,
+  clothSizeEnums,
+  mainEnums,
+  shoeStyleEnums,
+  heelHightEnums,
+  heelTypeEnums,
+  shoeSizeEnums
+} = require("../../helpers/constants");
+
 
 const ReadyMadeClothesSchema = new mongoose.Schema({
   productId: { type: String, required: true },
@@ -28,7 +32,6 @@ const ReadyMadeClothesSchema = new mongoose.Schema({
   subTitle: { type: String, required: false },
   status: { type: String, required: true, default: "draft" },
   currentStep:{type:Number,required:true,default:1},
-  isReadyMadeCloth: { type: Boolean, required: true, default: true },
   categories: {
     gender: [{
       type: String,
@@ -43,7 +46,7 @@ const ReadyMadeClothesSchema = new mongoose.Schema({
     style:[
       {
         type: String,
-        enum: styleEnums,
+        enum: [...clothStyleEnums, ...shoeStyleEnums],
       }
     ],
     main:[
@@ -54,6 +57,8 @@ const ReadyMadeClothesSchema = new mongoose.Schema({
     ],
     
     sleeveLength: { type: String, enum: sleeveLengthEnums, required: false },
+    heelHeight: { type: String, enum: heelHightEnums, required: false },
+    heelType: { type: String, enum: heelTypeEnums, required: false },
     design:[
       {
         type: String,
@@ -89,7 +94,7 @@ const ReadyMadeClothesSchema = new mongoose.Schema({
   sizes: [
     {
       type: String,
-      enum: sizeEnums,
+      enum: [...clothSizeEnums, ...shoeSizeEnums],
       required: true,
     },
   ],
@@ -124,9 +129,9 @@ const ReadyMadeClothesSchema = new mongoose.Schema({
 });
 
 ReadyMadeClothesSchema.plugin(timestamp);
-const ReadyMadeClothes = mongoose.model(
-  "ReadyMadeClothes",
+const ProductModel = mongoose.model(
+  "Product",
   ReadyMadeClothesSchema
 );
 
-module.exports = ReadyMadeClothes;
+module.exports = ProductModel;

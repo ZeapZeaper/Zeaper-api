@@ -5,33 +5,36 @@ const {
   shoeTypeEnums,
   productTypeEnums,
   statusEnums,
-  sizeEnums,
-  styleEnums,
   sleeveLengthEnums,
-  designEnums,
   fasteningEnums,
   occasionEnums,
   fitEnums,
-  brandEnums,mainEnums, colorEnums
+  brandEnums, colorEnums,
+  clothStyleEnums,
+  designEnums,
+  clothSizeEnums,
+  mainEnums, shoeStyleEnums,
+  heelHightEnums,
+  heelTypeEnums,
+  shoeSizeEnums
 } = require("../../helpers/constants");
 const { checkForDuplicates, deleteLocalFile } = require("../../helpers/utils");
-const ReadyMadeClothes = require("../../models/products/readyMadeCloth");
-const ReadyMadeShoes = require("../../models/products/readyMadeShoes");
 const ShopModel = require("../../models/shop");
 const { v4: uuidv4 } = require("uuid");
 const sharp = require("sharp");
 const path = require("path");
 const {
   editReadyMadeClothes,
-  deleteReadyMadeClothes,
-  restoreReadyMadeClothes,
-  createReadyMadeClothes,
   validateReadyMadeClothes,
   addVariationToReadyMadeClothes,
 } = require("./readyMadeClothes");
 const { storageRef } = require("../../config/firebase");
 const root = require("../../../root");
 const { getAuthUser } = require("../../middleware/firebaseUserAuth");
+const { getDynamicFilters, deleteProductsById, restoreProductsById, getQuery } = require("./productHelpers");
+const ProductModel = require("../../models/products");
+const { get } = require("http");
+const { editReadyMadeShoes, validateReadyMadeShoes, addVariationToReadyMadeShoes } = require("./readyMadeShoes");
 
 
 //saving image to firebase storage
@@ -128,20 +131,26 @@ const deleLocalImages = async (files) => {
 };
 const addProductColorAndImages = async (req, res) => {
   try{
-    const files = req.files.images
+   
+    
+    const files = req.files?.images
     if (req.fileValidationError) {
       await deleLocalImages(files);
      
       return res.status(400).send({ error: req.fileValidationError });
     }
+    if(!files || files.length === 0){
+      await deleLocalImages(files);
+      return res.status(400).send({ error: "pictures are required for each color" });
+    }
     //if files is more than 5
-    if (files.length > 5) {
+    if (files?.length > 5) {
       await deleLocalImages(files);
       return res.status(400).send({ error: "You can only upload a maximum of 5 images for each color" });
     }
     
     const {productId, color} = req.body;
-    console.log("req.body", req.body);
+   
     if (!productId) {
       await deleLocalImages(files);
       return res.status(400).send({ error: "productId is required" });
@@ -152,12 +161,12 @@ const addProductColorAndImages = async (req, res) => {
       return res.status(400).send({ error: "color is required" });
     }
     
-    if(colorEnums.indexOf(color) === -1){
+    if(colorEnums.findIndex((c) => c?.name === color) === -1){
       await deleLocalImages(files);
       return res.status(400).send({ error: "invalid color value" });
     }
    
-    const product = await getProductByProductId(productId);
+    const product = await ProductModel.findOne ({ productId }).exec();
     if (!product) {
       await deleLocalImages(files);
       return res.status(400).send({ error: "product not found" });
@@ -209,13 +218,10 @@ const addProductColorAndImages = async (req, res) => {
     };
 
     
-    const productType = product.productType;
-    let updatedProduct;
-    if (productType === "readyMadeCloth") {
-      updatedProduct = await ReadyMadeClothes.findOneAndUpdate
-        ({ productId }, { $push: { colors: newColor } }, { new: true }).exec();
    
-  }
+    const updatedProduct = await ProductModel.findOneAndUpdate
+    ({ productId }, { $push: { colors: newColor } }, { new: true }).exec();
+   
   if(!updatedProduct){
     await handleImageDelete(images);
     return res.status(400).send({ error: "product not found" });
@@ -230,14 +236,17 @@ const addProductColorAndImages = async (req, res) => {
 const addImagesToProductColor = async (req, res) => {
   try{
   
-    const files = req.files.images
+    const files = req.files?.images
     if (req.fileValidationError) {
       
       await deleLocalImages(files);
      
       return res.status(400).send({ error: req.fileValidationError });
     }   
-    
+    if(!files || files.length === 0){
+      await deleLocalImages(files);
+      return res.status(400).send({ error: "pictures are required for each color" });
+    }
 
     //if files is more than 5
     if (files.length > 5) {
@@ -257,12 +266,12 @@ const addImagesToProductColor = async (req, res) => {
       return res.status(400).send({ error: "color is required" });
     }
     
-    if(colorEnums.indexOf(color) === -1){
+    if(colorEnums.findIndex((c) => c?.name === color) === -1){
       await deleLocalImages(files);
       return res.status(400).send({ error: "invalid color value" });
     }
    
-    const product = await getProductByProductId(productId);
+    const product = await ProductModel  .findOne ({ productId }).exec();
     if (!product) {
       await deleLocalImages(files);
       return res.status(400).send({ error: "product not found" });
@@ -305,11 +314,9 @@ const addImagesToProductColor = async (req, res) => {
     }
    
     
-    let updatedProduct;
-    if (product.productType === "readyMadeCloth") {
-     updatedProduct = await ReadyMadeClothes.findOneAndUpdate
-      ({ productId, "colors.value": color }, { $push: { "colors.$.images": images } }, { new: true }).exec();
-    }
+    const updatedProduct = await ProductModel.findOneAndUpdate
+    ({ productId, "colors.value": color }, { $push: { "colors.$.images": images } }, { new: true }).exec();
+    
     if (!updatedProduct) {
       await handleImageDelete(images);
       return res.status(400).send({ error: "product not found" });
@@ -331,7 +338,7 @@ const deleteProductColor = async (req, res) => {
     if (!color) {
       return res.status(400).send({ error: "color is required" });
     }
-    const product = await getProductByProductId(productId);
+    const product = await ProductModel.findOne({ productId }).exec();
     if (!product) {
       return res.status(400).send({ error: "product not found" });
     }
@@ -350,11 +357,9 @@ const deleteProductColor = async (req, res) => {
     if(isDefault && colors.length > 1){
       return res.status(400).send({ error: "There is a default image for this color. set another image as default before deleting this color" });
     }
-    let updatedProduct;
-    if (product.productType === "readyMadeCloth") {
-     updatedProduct = await ReadyMadeClothes.findOneAndUpdate
-      ({ productId }, { $pull: { colors: { value: color } } }, { new: true }).exec();
-    }
+    const updatedProduct = await ProductModel.findOneAndUpdate
+    ({ productId }, { $pull: { colors: { value: color } } }, { new: true }).exec();
+    
     if (!updatedProduct) {
       return res.status(400).send({ error: "product not found" });
     }
@@ -377,7 +382,7 @@ const deleteProductImage = async (req, res) => {
     if (!imageName) {
       return res.status(400).send({ error: "name of the image you want to delete is required" });
     }
-    const product = await getProductByProductId(productId);
+    const product = await ProductModel.findOne({ productId }).exec();
     if (!product) {
       return res.status(400).send({ error: "product not found" });
     }
@@ -399,11 +404,9 @@ const deleteProductImage = async (req, res) => {
     if(isDefault && (colorImages.length > 1 || colors.length > 1)){
       return res.status(400).send({ error: "This is a default image for this product. set another image as default before deleting this image" });
     }
-    let updatedProduct;
-    if (product.productType === "readyMadeCloth") {
-     updatedProduct = await ReadyMadeClothes.findOneAndUpdate
-      ({ productId, "colors.value": color }, { $pull: { "colors.$.images": { name: imageName } } }, { new: true }).exec();
-    }
+    const updatedProduct = await ProductModel.findOneAndUpdate
+    ({ productId, "colors.value": color }, { $pull: { "colors.$.images": { name: imageName } } }, { new: true }).exec();
+    
     if (!updatedProduct) {
       return res.status(400).send({ error: "product not found" });
     }
@@ -426,7 +429,7 @@ const setProductImageAsDefault = async (req, res) => {
     if (!imageName) {
       return res.status(400).send({ error: "name of the image you want to set as default is required" });
     }
-    const product = await getProductByProductId(productId);
+    const product = await ProductModel.findOne({ productId  }).exec();
     if (!product) {
       return res.status(400).send({ error: "product not found" });
     }
@@ -463,11 +466,9 @@ const setProductImageAsDefault = async (req, res) => {
       return c;
     }
     );
-    let updatedProduct;
-    if (product.productType === "readyMadeCloth") {
-     updatedProduct = await ReadyMadeClothes.findOneAndUpdate 
-      ({ productId }, { colors: newColors }, { new: true }).exec();
-    }
+    const updatedProduct = await ProductModel.findOneAndUpdate 
+    ({ productId }, { colors: newColors }, { new: true }).exec();
+    
     if (!updatedProduct) {
       return res.status(400).send({ error: "product not found" });
     }
@@ -481,13 +482,14 @@ const setProductImageAsDefault = async (req, res) => {
 
 const editProduct = async (req, res) => {
   try {
-    const{productId, title, description} = req.body;
+    
+    const{productId, title, description, status} = req.body;
    
    
     if (!productId) {
       return res.status(400).send({ error: "productId is required" });
     }
-    const product = await getProductByProductId(productId);
+    const product = await ProductModel.findOne({ productId }).exec();
     if (!product) {
       return res.status(400).send({ error: "product not found" });
     }
@@ -511,13 +513,26 @@ const editProduct = async (req, res) => {
     if(product?.status !== "draft" && !user?.isAdmin && !user?.isSuperAdmin){
       return res.status(400).send({ error: "You are not authorized to edit this product" });
     }
+    if(status ){
+      return res.status(400).send({ error: "You are not authorized to directly change the status here" });
+    }
+    
+    
+    if(req.body?.postedBy){ 
+      return res.status(400).send({ error: "You are not authorized to change the postedBy" });
+    }
+    if(req.body?.shop){ 
+      return res.status(400).send({ error: "You are not authorized to change the shop" });
+    }
+   
     const productType = product.productType;
     let updatedProduct;
     if (productType === "readyMadeCloth") {
       updatedProduct = await editReadyMadeClothes(req);
     }
     if (productType === "readyMadeShoe") {
-      // updatedProduct = await editReadyMadeShoes(req.body);
+      
+       updatedProduct = await editReadyMadeShoes(req);
     }
     if (updatedProduct?.error) {
       return res.status(400).send({ error: updatedProduct.error });
@@ -537,7 +552,7 @@ const deleteProducts = async (req, res) => {
 
     const promises = [];
     promises.push(
-      deleteReadyMadeClothes(param)
+      deleteProductsById(param)
       //   deleteReadyMadeShoes(param)
     );
     await Promise.all(promises);
@@ -557,7 +572,7 @@ const restoreProducts = async (req, res) => {
 
     const promises = [];
     promises.push(
-      restoreReadyMadeClothes(param)
+      restoreProductsById(param)
       //   deleteReadyMadeShoes(param)
     );
     await Promise.all(promises);
@@ -581,17 +596,17 @@ const getProuctTypePrefix = (productType) => {
 const generateProductId = async (shopId, productType) => {
   let productId = "";
   let found = true;
-  const promises = [];
+  
 
   do {
     productId = `${shopId}/${getProuctTypePrefix(productType)}/${getRandomInt(
       1000000,
       9999999
     )}`;
-    promises.push(ReadyMadeClothes.findOne({ productId }).exec());
-    promises.push(ReadyMadeShoes.findOne({ productId }).exec());
-    const [readyMadeCloth, readyMadeShoe] = await Promise.all(promises);
-    if (!readyMadeCloth && !readyMadeShoe) {
+    const exist = await ProductModel.findOne( { productId }, { lean: true });
+    if (exist) {
+      found = true;
+    } else {
       found = false;
     }
   } while (found);
@@ -656,19 +671,9 @@ const createProduct = async (req, res) => {
 
     }
 
-   
-    // param.images = images;
-    let createdProduct;
-    if (productType === "readyMadeCloth") {
-      createdProduct = await createReadyMadeClothes(param);
-    }
-    if (productType === "readyMadeShoe") {
-      // createdProduct = await createReadyMadeShoes(param);
-    }
-
-    return res
-      .status(200)
-      .send({ data: createdProduct, message: "product created successfully" });
+    const product = new ProductModel(param);
+    const savedProduct = await product.save();
+    return res.status(200).send({ data: savedProduct, message: "product created successfully" });
   } catch (err) {
     return res.status(500).send({ error: err.message });
   }
@@ -683,7 +688,7 @@ const setProductStatus = async (req, res) => {
     if (statusEnums.indexOf(status) === -1) {
       return res.status(400).send({ error: "invalid status" });
     }
-    const product = await getProductByProductId(productId);
+    const product = await ProductModel.findOne({ productId }).exec();
     if (!product) {
       return res.status(400).send({ error: "product not found" });
     }
@@ -693,9 +698,17 @@ const setProductStatus = async (req, res) => {
       if(verify){
         return res.status(400).send({ error: verify.error });
       }
-      const updatedProduct = await ReadyMadeClothes.findOneAndUpdate( { productId }, { status }, { new: true }).exec();
-      return res.status(200).send({ data: updatedProduct, message: "product status updated successfully" });
+      
     }
+    if(status === "under review" &&  productType === "readyMadeShoe"){
+      const verify = await validateReadyMadeShoes(product);
+      if(verify){
+        return res.status(400).send({ error: verify.error });
+      }
+    }
+
+    const updatedProduct = await ProductModel.findOneAndUpdate( { productId }, { status }, { new: true }).exec();
+      return res.status(200).send({ data: updatedProduct, message: "product status updated successfully" });
 
   }
   catch(err){
@@ -710,22 +723,26 @@ const submitProduct = async (req, res) => {
     if (!productId) {
       return res.status(400).send({ error: "productId is required" });
     }
-    const product = await getProductByProductId(productId);
+    const product = await ProductModel.findOne({ productId }).exec();
     if (!product) {
       return res.status(400).send({ error: "product not found" });
     }
     const productType = product.productType;
-    let updatedProduct;
+
   
     if(productType === "readyMadeCloth"){
       const verify = await validateReadyMadeClothes(product);
       if(verify?.error){
         return res.status(400).send({ error: verify.error });
-      }
-
-      updatedProduct = await ReadyMadeClothes.findOneAndUpdate( { productId }, { status: "under review" }, { new: true }).exec();
+      } 
     }
-     
+    if(productType === "readyMadeShoe"){
+      const verify = await validateReadyMadeShoes(product);
+      if(verify?.error){
+        return res.status(400).send({ error: verify.error });
+      }
+    }
+  const updatedProduct = await ProductModel.findOneAndUpdate( { productId }, { status: "under review" }, { new: true }).exec();
    if(!updatedProduct){
     return res.status(400).send({ error: "product not found" });
   }
@@ -736,69 +753,16 @@ const submitProduct = async (req, res) => {
   }
 }
 
-const getProductByProductId = async (productId) => {
-  const promises = [];
-  promises.push(ReadyMadeClothes.findOne({
-    productId,
-  }).exec());
-  promises.push(ReadyMadeShoes.findOne
-    ({
-      productId,
-    }).exec());
-  const [readyMadeCloth, readyMadeShoe] = await Promise.all(promises);
-  if (readyMadeCloth) {
-    return readyMadeCloth;
-  }
-  if (readyMadeShoe) {
-    return readyMadeShoe;
-  }
-  return null;
-}
-const getProductByShopId = async (shopId) => {
-  const promises = [];
-  promises.push(ReadyMadeClothes.find
-    ({
-      shopId,
-    }).exec());
-  promises.push(ReadyMadeShoes.find
-    ({
-      shopId,
-    }).exec());
-  const [readyMadeCloth, readyMadeShoe] = await Promise.all(promises);
-  if (readyMadeCloth) {
-    return readyMadeCloth;
-  }
-  if (readyMadeShoe) {
-    return readyMadeShoe;
-  }
-  return null;
-}
-const getProductByCategory = async (category) => {
-  const promises = [];
-  promises.push(ReadyMadeClothes.find
-    ({
-      category,
-    }).exec());
-  promises.push(ReadyMadeShoes.find
-    ({
-      category,
-    }).exec());
-  const [readyMadeCloth, readyMadeShoe] = await Promise.all(promises);
-  if (readyMadeCloth) {
-    return readyMadeCloth;
-  }
-  if (readyMadeShoe) {
-    return readyMadeShoe;
-  }
-  return null;
-}
+
+
+
 const getProduct = async (req, res) => {
   try {
     const { productId } = req.query;
     if (!productId) {
       return res.status(400).send({ error: "productId is required" });
     }
-    const product = await getProductByProductId(productId);
+    const product = await ProductModel.findOne({ productId }).populate("shop").populate("postedBy").exec();
     if (!product) {
       return res.status(400).send({ error: "product not found" });
     }
@@ -816,26 +780,15 @@ const getProductById = async (req, res) => {
     if (!_id) {
       return res.status(400).send({ error: "_id is required" });
     }
-    const promises = [];
-    promises.push(ReadyMadeClothes.findById(_id).exec());
-    promises.push(ReadyMadeShoes.findById (_id).exec());
-    const [readyMadeCloth, readyMadeShoe] = await Promise.all(promises);
-    if (readyMadeCloth) {
-      const shop = await ShopModel.findById(readyMadeCloth.shop).exec();
-      const currency = shop?.currency;
-     
-      readyMadeCloth._doc.currency = currency;
+    const product = await ProductModel.findById(_id).populate("shop").populate("postedBy").exec();
+    if (!product) {
+      return res.status(400).send({ error: "product not found" });
+    }
+    const shop = await ShopModel.findById(product.shop).exec();
+    const currency = shop?.currency;
+    product._doc.currency = currency;
+    return res.status(200).send({ data: product });
 
-      
-      return res.status(200).send({ data: readyMadeCloth });
-    }
-    if (readyMadeShoe) {
-      const shop = await ShopModel.findById(readyMadeShoe.shop).exec();
-      const currency = shop?.currency;
-      readyMadeShoe._doc.currency = currency;
-      return res.status(200).send({ data: readyMadeShoe });
-    }
-    return res.status(400).send({ error: "product not found" });
     
 
 
@@ -853,7 +806,7 @@ const getShopProducts = async (req, res) => {
     if (!shopId) {
       return res.status(400).send({ error: "shopId is required" });
     }
-    const products = await getProductByShopId(shopId);
+    const products = await ProductModel.find({ shopId }).populate("shop").populate("postedBy").exec();
     if (!products) {
       return res.status(400).send({ error: "products not found" });
     }
@@ -868,65 +821,249 @@ const getCategoryProducts = async (req, res) => {
     if (!category) {
       return res.status(400).send({ error: "category is required" });
     }
-    const products = await getProductByCategory(category);
+    const products = await  ProductModel.find({  category,
+      status: "live" }).populate("shop").populate("postedBy").exec();
     if (!products) {
       return res.status(400).send({ error: "products not found" });
     }
-    return res.status(200).send({ data: products });
+    const dynamicFilters = getDynamicFilters(products);
+    const data = {
+      products,
+      dynamicFilters
+    }
+    return res.status(200).send({ data: data});
   } catch (err) {
     return res.status(500).send({ error: err.message });
   }
 };
 const getProducts = async (req, res) => {
   try {
-    const pomises = [];
-    pomises.push(ReadyMadeClothes.find().populate("shop").populate("postedBy").exec());
-    pomises.push(ReadyMadeShoes.find().exec());
-    const [readyMadeClothes, readyMadeShoes] = await Promise.all(pomises);
-    return res.status(200).send({ data: { readyMadeClothes, readyMadeShoes } });
+    const skip = parseInt(req.query.skip) || 0;
+    const limit = parseInt(req.query.limit) 
+    const sort = req.query.sort || "desc";
+  const query = getQuery(req.query);
+   const products = await ProductModel.find(query).populate("shop").populate("postedBy").sort({ createdAt: sort }).skip(skip).limit(limit).exec()
+    const dynamicFilters = getDynamicFilters(products);
+    const data = {
+      products,
+      dynamicFilters
+    }
+    return res.status(200).send({ data: data });
 
   } catch (err) {
     return res.status(500).send({ error: err.message });
   }
 };
+const getLiveProducts = async (req, res) => {
+  try {
+    const skip = parseInt(req.query.skip) || 0;
+    const limit = parseInt(req.query.limit) 
+    const sort = req.query.sort || "desc";
+  
+    const query = getQuery(req.query);
+    query.status = "live";
+    const products = await ProductModel.find(query).populate("shop").populate("postedBy").sort({ createdAt: sort }).skip(skip).limit(limit).exec()
+    const dynamicFilters = getDynamicFilters(products);
+    const data ={
+      products,
+      dynamicFilters
+    }
+    return res.status(200).send({ data: data });
+
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
+};
+const getNewestArrivals = async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 50
+    
+    const query = getQuery(req.query);
+    query.status = "live";
+    const products = await ProductModel.find(query).populate("shop").populate("postedBy").sort({ createdAt: "desc" }).limit(limit).exec();
+    const dynamicFilters = getDynamicFilters(products);
+    const data ={
+      products,
+      dynamicFilters
+    }
+    return res.status(200).send({ data: data });
+
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
+}
+const getMostPopular = async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 50
+    
+    const query = getQuery(req.query);
+    query.status = "live";
+    const products = await ProductModel.find(query).populate("shop").populate("postedBy").sort({ createdAt: "desc" }).limit(limit).exec();
+    const dynamicFilters = getDynamicFilters(products);
+    const data ={
+      products,
+      dynamicFilters
+    }
+    return res.status(200).send({ data: data });
+
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
+}
+const searchProducts = async (req, res) => {
+  try {
+    const { search } = req.query;
+
+    const limit = parseInt(req.query.limit) || 50
+    
+    if (!search) {
+      return res.status(400).send({ error: "search is required" });
+    }
+    const query = getQuery(req.query);
+    const aggregate = [
+      {
+        $search: {
+          index:"products",
+          text: {
+            query: search ,
+            path:{
+              wildcard: "*"
+            }
+          }
+        }
+      },
+      {
+        $match: {...query}
+      },
+      
+      {
+        $sort: {score : {$meta: "textScore"}}
+      },
+      {
+        $limit: limit
+      }
+    ];
+    const products = await ProductModel.aggregate(aggregate).exec();
+    const dynamicFilters = getDynamicFilters(products);
+    const data = {
+      products,
+      dynamicFilters
+    }
+    return res.status(200).send({ data: data });
+
+
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
+}
+const searchLiveProducts = async (req, res) => {
+  try {
+    const { search } = req.query;
+    const limit = parseInt(req.query.limit) || 50
+    const match = {
+      disabled: req.query.disabled ? req.query.disabled : false,
+      status: "live"
+    };
+    
+    if (!search) {
+      return res.status(400).send({ error: "search is required" });
+    }
+    const query = getQuery(req.query);
+    const aggregate = [
+      {
+        $search: {
+          index:"products",
+          text: {
+            query: search ,
+            path:{
+              wildcard: "*"
+            }
+          }
+        }
+       
+      },
+      {
+        $match: {...query}
+      },
+      {
+        $sort: {score : {$meta: "textScore"}}
+      },
+      {
+        $limit: limit
+      }
+    ];
+    const products = await ProductModel.aggregate(aggregate).exec();
+    const dynamicFilters = getDynamicFilters(products);
+    const data = {
+      products,
+      dynamicFilters
+    }
+    return res.status(200).send({ data: data });
+
+
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
+}
+
+
+
+
+
 const getShopDraftProducts = async (req, res) => {
   try {
     const { shopId } = req.query;
     if (!shopId) {
       return res.status(400).send({ error: "shopId is required" });
     }
-    const promises = [];
-    promises.push(ReadyMadeClothes.find({ shopId, status: "draft" }).exec());
-    promises.push(ReadyMadeShoes.find({ shopId, status: "draft" }).exec());
-    const [readyMadeClothes, readyMadeShoes] = await Promise.all(promises);
-    const data = [...readyMadeClothes, ...readyMadeShoes];
+   const draftProducts = await ProductModel.find({ shopId, status: "draft" }).populate("shop").populate("postedBy").exec();
     
-    return res.status(200).send({ data: data, message: "Draft products fetched successfully" });
+    return res.status(200).send({ data: draftProducts, message: "Draft products fetched successfully" });
   } catch (err) {
     return res.status(500).send({ error: err.message });
   }
 }
 const getProductOptions = async (req, res) => {
   try {
-    
+    const nonClothMainEnums = ["FootWear", "Bag", "Accessories"];
     const readyMadeClothesParams = {
-      mainEnums: mainEnums.sort(),
+      mainEnums: mainEnums.filter((m) => !nonClothMainEnums.includes(m)).sort(),
       genderEnums: genderEnums.sort(),
       ageGroupEnums: ageGroupEnums.sort(),
       ageRangeEnums: ageRangeEnums.sort(),
       statusEnums: statusEnums.sort(),
-      styleEnums: styleEnums.sort(),
+      clothStyleEnums: clothStyleEnums.sort(),
       sleeveLengthEnums: sleeveLengthEnums.sort(),
       designEnums: designEnums.sort(),
       fasteningEnums: fasteningEnums.sort(),
       occasionEnums: occasionEnums.sort(),
       fitEnums: fitEnums.sort(),
       brandEnums: brandEnums.sort(),
-      sizeEnums: sizeEnums.sort(),
-      colorEnums: colorEnums.sort(),
+      clothSizeEnums: clothSizeEnums.sort(),
+      colorEnums: colorEnums.sort((a, b) => a.name.localeCompare(b.name)),
+    }
+    const readyMadeShoeParams = {
+      
+      genderEnums: genderEnums.sort(),
+      ageGroupEnums: ageGroupEnums.sort(),
+      ageRangeEnums: ageRangeEnums.sort(),
+      statusEnums: statusEnums.sort(),
+      shoeStyleEnums: shoeStyleEnums.sort(),
+      shoeTypeEnums: shoeTypeEnums.sort(),
+      shoeSizeEnums: shoeSizeEnums.sort(),
+      designEnums: designEnums.sort(),
+      fasteningEnums: fasteningEnums.sort(),
+      occasionEnums: occasionEnums.sort(),
+      brandEnums: brandEnums.sort(),
+      colorEnums: colorEnums.sort((a, b) => a.name.localeCompare(b.name)),
+      heelHeightEnums: heelHightEnums.sort(),
+      heelTypeEnums: heelTypeEnums.sort(),
+
+
     }
     res.status(200).send({ data: {
       readyMadeClothes: readyMadeClothesParams,
+      readyMadeShoes: readyMadeShoeParams,
       productTypeEnums: productTypeEnums,
     } });
   }
@@ -943,7 +1080,8 @@ const addProductVariation = async (req, res) => {
     if (!variation) {
       return res.status(400).send({ error: "variation is required" });
     }
-    const product = await getProductByProductId(productId);
+    const product = await ProductModel.findOne ({ productId }).exec();
+ 
     if (!product) {
       return res.status(400).send({ error: "product not found" });
     }
@@ -953,8 +1091,13 @@ const addProductVariation = async (req, res) => {
     }
     const productType = product.productType;
     let updatedProduct;
+    
     if (productType === "readyMadeCloth") {
       updatedProduct = await addVariationToReadyMadeClothes(product, variation);
+    }
+    if(productType === "readyMadeShoe"){
+    
+      updatedProduct = await addVariationToReadyMadeShoes(product, variation);
     }
     if (!updatedProduct) {
       return res.status(400).send({ error: "product not found" });
@@ -977,7 +1120,7 @@ const editProductVariation = async (req, res) => {
     if (!variation) {
       return res.status(400).send({ error: "variation is required" });
     }
-    const product = await getProductByProductId(productId);
+    const product = await ProductModel.findOne ({ productId }).exec();
     if (!product) {
       return res.status(400).send({ error: "product not found" });
     }
@@ -985,10 +1128,16 @@ const editProductVariation = async (req, res) => {
     if(user.shopId !== product.shopId && !user?.isAdmin && !user?.isSuperAdmin){
       return res.status(400).send({ error: "You are not authorized to edit this product" });
     }
+    if(!variation?.sku){
+      return res.status(400).send({ error: "sku is required" });
+    }
     const productType = product.productType;
     let updatedProduct;
     if (productType === "readyMadeCloth") {
       updatedProduct = await addVariationToReadyMadeClothes(product, variation);
+    }
+    if(productType === "readyMadeShoe"){
+      updatedProduct = await addVariationToReadyMadeShoes(product, variation);
     }
     if (!updatedProduct) {
       return res.status(400).send({ error: "product not found" });
@@ -1011,7 +1160,7 @@ const deleteProductVariation = async (req, res) => {
     if (!sku) {
       return res.status(400).send({ error: "sku is required" });
     }
-    const product = await getProductByProductId(productId);
+    const product = await ProductModel.findOne ({ productId }).exec();
     if (!product) {
       return res.status(400).send({ error: "product not found" });
     }
@@ -1019,7 +1168,6 @@ const deleteProductVariation = async (req, res) => {
     if(user.shopId !== product.shopId && !user?.isAdmin && !user?.isSuperAdmin){
       return res.status(400).send({ error: "You are not authorized to edit this product" });
     }
-    const productType = product.productType;
     const variations = product.variations;
     const variationExist = variations.find((v) => v.sku === sku);
     if (!variationExist) {
@@ -1027,11 +1175,9 @@ const deleteProductVariation = async (req, res) => {
     }
     updatedVariations = variations.filter((v) => v.sku !== sku);
 
-    let updatedProduct;
-    if (productType === "readyMadeCloth") {
-      updatedProduct = await ReadyMadeClothes.findOneAndUpdate
-        ({ productId }, { variations: updatedVariations }, { new: true }).exec();
-    }
+    const updatedProduct = await ProductModel.findOneAndUpdate
+    ({ productId }, { variations: updatedVariations }, { new: true }).exec();
+    
     if (!updatedProduct) {
       return res.status(400).send({ error: "product not found" });
     }
@@ -1051,6 +1197,11 @@ module.exports = {
   getShopProducts,
   getCategoryProducts,
   getProducts,
+  getLiveProducts,
+  getNewestArrivals,
+  getMostPopular,
+  searchProducts,
+  searchLiveProducts,
   getShopDraftProducts,
   setProductStatus,
   getProductOptions,

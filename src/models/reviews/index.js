@@ -9,6 +9,8 @@ const ReviewSchema = new mongoose.Schema({
   disabled: { type: Boolean, required: false, default: false },
   likes: { type: Number, required: false, default: 0 },
   dislikes: { type: Number, required: false, default: 0 },
+
+  
 });
 ReviewSchema.plugin(timestamp);
 

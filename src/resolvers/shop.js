@@ -92,7 +92,9 @@ const createShop = async (req, res) => {
       {
         userId,
       },
-      { shopId, shopEnabled: true },
+      { shopId, shopEnabled: true,
+        isVendor: true
+       },
       { new: true }
     ).lean();
     if (!updatedUser) {
@@ -152,7 +154,10 @@ const getAuthUserShops = async (req, res) => {
 };
 const getShop = async (req, res) => {
   try {
-  
+  const shopId = req.query.shopId;
+    if (!shopId) {
+      return res.status(400).send({ error: "shopId is required" });
+    }
     const shop = await ShopModel.findOne({
       ...req.query,
     }).populate("user");

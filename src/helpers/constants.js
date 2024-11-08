@@ -1,14 +1,50 @@
 
-const styleEnums = ["T-Shirt","Trousers","Midaxi Skirt","Chinos","Jumper","Bicker Jacket","Pyjama","Pant", "Baby Tee","Tracksuit", "Corset","Tights", "Trunks", "PullOver","Vintage", "Tank-Top" , "Shirt","Skirt","Mini Skirt","Maxi Skirt","Waistcoat", "BodySuit", "Jeans","Crop-Top", "Tube-Top", "Peplum", "Tunic", "Blouse", "Sweater", "Cardigan","Vest", "Jacket", "Coat", "Poncho", "Cape", "Kimono", "Kaftan","Work","Street", "Sweatshirt", "Pullover", "Polo", "Turtleneck", "Halter", "Jean", "Bralet", "Hoodie", "Oversized T-shirt", "Top & Skirt", "Top & Trouser","2-in-1 Shorts", "Top & Shorts", "Top & Jacket","Hot Pant", "Jumper Dress", "Jumpsuit", "Gilet","Playsuit", "Romper", "Dungaree", "Overalls", "Coveralls","Thong", "Nightie", "Knicker", "Boiler Suit", "Catsuit", "Unitard", "Leotard", "Bodysuit", "Swimsuit", "Bikini", "Monokini", "Tankini", "Trikini", "Burkini", "Wetsuit", "Rash Guard", "Surf Suit", "Drysuit", "leggings","Bodycon Dress","Flares", "Shift Dress", "Corset Dress","Shirt Dress", "Blazer Dress","A-line Dress","Slip Dress","Jumper Dress", "Dress", "Oversized Jumper Dress", "Lingerie","Two Piece", "Three Piece", "Wide Leg Trousers","Other"]
+const clothStyleEnums = ["T-Shirt","Trousers","Midaxi Skirt","Chinos","Jumper","Bicker Jacket","Pyjama","Pant", "Baby Tee","Tracksuit", "Corset","Tights", "Trunks", "PullOver","Vintage", "Tank-Top" , "Shirt","Skirt","Mini Skirt","Maxi Skirt","Waistcoat", "BodySuit", "Jeans","Crop-Top", "Tube-Top", "Peplum", "Tunic", "Blouse", "Sweater", "Cardigan","Vest", "Jacket", "Coat", "Poncho", "Cape", "Kimono", "Kaftan","Work","Street", "Sweatshirt", "Pullover", "Polo", "Turtleneck", "Halter", "Jean", "Bralet", "Hoodie", "Oversized T-shirt", "Top & Skirt", "Top & Trouser","2-in-1 Shorts", "Top & Shorts", "Top & Jacket","Hot Pant", "Jumper Dress", "Jumpsuit", "Gilet","Playsuit", "Romper", "Dungaree", "Overalls", "Coveralls","Thong", "Nightie", "Knicker", "Boiler Suit", "Catsuit", "Unitard", "Leotard", "Bodysuit", "Swimsuit", "Bikini", "Monokini", "Tankini", "Trikini", "Burkini", "Wetsuit", "Rash Guard", "Surf Suit", "Drysuit", "leggings","Bodycon Dress","Flares", "Shift Dress", "Corset Dress","Shirt Dress", "Blazer Dress","A-line Dress","Slip Dress","Jumper Dress", "Dress", "Oversized Jumper Dress", "Lingerie","Two Piece", "Three Piece", "Wide Leg Trousers","Other"]
 const sleeveLengthEnums = ["Long Sleeve", "Short Sleeve", "Sleeveless", "Off Shoulder", "Strapless", "Spaghetti", "Cap Sleeve", "Puff Sleeve", "Bishop Sleeve", "Bell Sleeve", "Kimono Sleeve", "Dolman Sleeve", "Raglan Sleeve", "Batwing Sleeve", "Butterfly Sleeve", "Cold Shoulder", "One Shoulder", "Asymmetric", "Cape Sleeve", "Flounce Sleeve", "Ruffle Sleeve", "Tiered Sleeve"]
-const designEnums = ["Plain", "Faux Fur","Ripped","Leather","Patterned", "Printed", "Embroidered", "Sequined", "Lace", "Mesh", "Sheer", "Cut-Out", "Ruched", "Ruffled", "Tiered", "Pleated", "Frill", "Flounce", "Tie-Dye", "Tie-Front", "Wrap", "Twist", "Knot", "Bow", "Belted", "Buckle", "Buttoned", "Zipper", "Lace-Up", "Corset", "Peplum", "Puff", "Balloon", "Bubble", "Bishop", "Kimono"]
-const fasteningEnums = ["Button", "Zipper", "Hook", "Tie", "Buckle", "Lace-Up", "Corset","Cord", "Snap", "Velcro", "Elastic", "Drawstring", "Belt", "Sash", "Buckle", "Clasp", "Magnet", "Press-Stud", "Toggle", "D-Ring", "Buckle", "Braid", "Frog", "Grommet", "Knot", "Loop", "Pleat", "Ribbon", "Rope", "Ruffle", "Tassel", "Twist", "Wrap"]
-const colorEnums=["Black", "White", "Red","Burgundy", "Blue", "Green", "Yellow", "Pink", "Purple", "Orange", "Brown", "Grey", "Beige", "Navy", "Teal", "Turquoise", "Mint", "Lime", "Olive", "Khaki", "Gold", "Silver", "Bronze", "Copper", "Rose Gold", "Metallic", "Neon", "Pastel", "Rainbow", "Multicolor","Lilac", "Tan", "Wine"]
-const mainEnums=["Top", "Bottom", "Dress", "Matching Set", "Overalls", "Two Piece" ]
+const designEnums = ["Plain", "Faux Fur","Ripped","Leather","Patterned", "Printed", "Embroidered", "Sequined", "Lace", "Mesh", "Sheer", "Cut-Out", "Ruched", "Ruffled", "Tiered", "Pleated", "Frill", "Flounce", "Tie-Dye", "Tie-Front", "Wrap", "Twist", "Knot", "Bow", "Belted", "Buckle", "Buttoned", "Zipper", "Lace-Up", "Corset", "Peplum", "Puff", "Balloon", "Bubble", "Animal", "Leopard", "Check", "Plaid", "Tartan", "Striped", "Floral", "Tropical", "Paisley", "Geometric", "Abstract", "Aztec", "Tribal","Camouflage"]
+const fasteningEnums = ["Button", "Zipper", "Hook", "Tie", "Buckle", "Lace-Up", "Corset","Cord", "Snap", "Velcro", "Elastic", "Drawstring", "Belt", "Sash", "Buckle", "Clasp", "Magnet", "Press-Stud", "Toggle", "D-Ring", "Buckle", "Braid", "Frog", "Grommet", "Knot", "Loop", "Pleat", "Ribbon", "Rope", "Ruffle", "Tassel", "Twist", "Wrap", "None"]
+const colorEnums=[
+  {name:"Black",hex:"#000000"},
+  {name:"White",hex:"#FFFFFF"},
+  {name:"Red",hex:"#FF0000"},
+  {name:"Burgundy",hex:"#800020"},
+  {name:"Blue",hex:"#0000FF"},
+  {name:"Green",hex:"#008000"},
+  {name:"Yellow",hex:"#FFFF00"},
+  {name:"Pink",hex:"#FFC0CB"},
+  {name:"Purple",hex:"#800080"},
+  {name:"Orange",hex:"#FFA500"},
+  {name:"Brown",hex:"#A52A2A"},
+  {name:"Grey",hex:"#808080"},
+  {name:"Beige",hex:"#F5F5DC"},
+  {name:"Navy",hex:"#000080"},
+  {name:"Teal",hex:"#008080"},
+  {name:"Turquoise",hex:"#40E0D0"},
+  {name:"Mint",hex:"#98FF98"},
+  {name:"Lime",hex:"#00FF00"},
+  {name:"Olive",hex:"#808000"},
+  {name:"Khaki",hex:"#F0E68C"},
+  {name:"Gold",hex:"#FFD700"},
+  {name:"Silver",hex:"#C0C0C0"},
+  {name:"Bronze",hex:"#CD7F32"},
+  {name:"Copper",hex:"#B87333"},
+  {name:"Rose Gold",hex:"#B76E79"},
+  {name:"Metallic",hex:"#D3AF37"},
+  {name:"Neon",hex:"#39FF14"},
+  {name:"Pastel",hex:"#FF6961"},
+  {name:"Rainbow",hex:"#FF0000"},
+  {name:"Multicolor",background:"radial-gradient(circle, hsla(41, 83%, 70%, 1) 23%, hsla(321, 90%, 70%, 1) 100%)"},
+  {name:"Lilac",hex:"#C8A2C8"},
+  {name:"Tan",hex:"#D2B48C"},
+  {name:"Wine",hex:"#722F37"},
+  {name:"Chocolate",hex:"#D2691E"},
+  {name:"Milk",hex:"#F5F5DC"},
+]
+const mainEnums=["Top", "Bottom", "Dress","Footwear", "Matching Set","FootWear", "Overall", "Two Piece", "Three Piece","Accessories","Bag","Other" ]
 const occasionEnums = ["Casual", "Formal", "Wedding", "Bridal", "Bridesmaid", "Maternity", "Cocktail", "Beach", "Summer", "Winter", "Spring", "Autumn", "Fall",  "Retro", "Boho", "Chic", "Sexy", "Party", "Evening", "Work", "Office", "Business", "Corporate",  "Smart Casual", "Dressy", "Festive", "Holiday", "Vacation", "Date","Funeral","Travel", "Resort", "Cruise", "Camping", "Hiking", "Outdoor", "Gym", "Athletic", "Sports", "Fitness", "Yoga", "Pilates", "Dance", "Ballet", "Gymnastics", "Running", "Jogging", "Walking", "Cycling", "Swimming", "Surfing", "Skiing", "Snowboarding", "Skating",  "Skateboarding", "Scootering", "Horse Riding","Sports"]
 const fitEnums = ["Regular", "Slim", "Skinny", "Straight", "Bootcut", "Flare", "Wide-Leg", "Cropped", "Culotte", "Palazzo", "Paperbag", "Pegged", "Tapered", "Carrot", "Boyfriend", "Mom", "Dad", "High-Waist", "Low-Waist", "Mid-Waist", "Drop-Waist","Plus-Size", "Petite", "Maternity", "Tall", "Short", "Long", "Regular", "Oversized", "Fitted", "Relaxed", "Baggy", "Slouchy", "Boxy", "Flowy", "Draped", "Tailored","Maternity"]
 const brandEnums=["Adidas", "Nike", "Puma", "Reebok", "Under Armour", "New Balance", "Asics", "Converse", "Vans", "Fila", "Skechers", "Salomon", "Merrell", "Brooks", "Hoka One One", "Altra", "On", "Saucony", "Mizuno", "Karhu", "La Sportiva", "Inov-8", "Topo Athletic", "Arc'teryx", "Icebug", "Scarpa", "Dynafit", "Salming", "Vibram", "Lems", "Xero Shoes", "Luna Sandals", "Bedrock Sandals", "Earth Runners", "Shamma Sandals", "Unshoes", "Vivobarefoot", "Zeap", "Other"]
-const sizeEnums = [
+const clothSizeEnums = [
   "XS",
   "S",
   "M",
@@ -32,7 +68,10 @@ const sizeEnums = [
   "28",
   "30"
 ]
-
+const shoeStyleEnums = ["Sneakers", "Boots", "Sandals", "Slippers", "Shoes", "Heels", "Flats", "Loafers", "Sliders", "Brogues"];
+const heelHightEnums = [`Ultra High Heel (4"+)`, `High Heel (3-4")`, `Mid Heel (2-3")`, `Low Heel (1-2")`, `Flat (0-1")`];
+const heelTypeEnums = ["Block", "Cone", "Kitten", "Platform", "Stiletto", "Wedge", "Sport","Novelty", "Other"];
+const shoeSizeEnums = ["2","3","4","5","6","7","8","9","10","11","12","13","14","35","36","37","38","39","40","41","42","43","44","45","46","47","48","49","50"];
 
 const genderEnums = ["Male", "Female"];
 const ageGroupEnums = ["Adults", "Kids"];
@@ -60,14 +99,18 @@ module.exports = {
   shoeTypeEnums,
   productTypeEnums,
   statusEnums,
-  sizeEnums,
-  styleEnums,
   sleeveLengthEnums,
-  designEnums,
   fasteningEnums,
   occasionEnums,
   fitEnums,
   brandEnums,
+  colorEnums,
+  clothStyleEnums,
+  designEnums,
+  clothSizeEnums,
   mainEnums,
-  colorEnums
+  shoeStyleEnums,
+  heelHightEnums,
+  heelTypeEnums,
+  shoeSizeEnums
 };

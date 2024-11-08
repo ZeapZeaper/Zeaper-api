@@ -271,7 +271,7 @@ if (req.body?.social) {
 
 const createUserWithGoogleOrApple = async (req, res) => {
   try {
-    const { email, firstName, lastName, imageUrl } = req.body;
+    const { email, firstName, lastName } = req.body;
 
     if (!email) {
       return res.status(400).send({ error: "email is required" });
@@ -306,6 +306,10 @@ const createUserWithGoogleOrApple = async (req, res) => {
       uid,
     });
     const newUser = await user.save();
+    if (!newUser) {
+      return res.status(500).send({ error: "Error creating user" });
+    }
+    
     return res
       .status(200)
       .send({ data: newUser, message: "User created successfully" });
@@ -686,6 +690,10 @@ const sendOTPToUser = async (req, res) => {
     const phoneNumber = user?.phoneNumber;
     if (!phoneNumber) {
       return res.status(400).send({ error: "User has no phone number" });
+    }
+    const isAlreadyVerified = user?.phoneNumberVerified;
+    if (isAlreadyVerified) {
+      return res.status(400).send({ error: "Phone number already verified" });
     }
   
     const otp = await sendOTP({ to: phoneNumber, firstName: user.firstName });

@@ -81,7 +81,13 @@ let routes = (app) => {
     handleMoreFieldsUploads,
     productResolver.createProduct
   );
-  router.get("/products", authMiddleware, productResolver.getProducts);
+  router.get("/products", authMiddleware,authUserAdminMiddleware, productResolver.getProducts);
+  router.get("/products/getCategoryProducts", authMiddleware, productResolver.getCategoryProducts);
+  router.get("/products/live", authMiddleware, productResolver.getLiveProducts);
+  router.get("/products/live/newest", authMiddleware, productResolver.getNewestArrivals);
+  router.get("/products/live/mostPopular", authMiddleware, productResolver.getMostPopular);
+  router.get("/products/searchProducts", authMiddleware,authUserAdminMiddleware, productResolver.searchProducts);
+  router.get("/products/live/searchProducts", authMiddleware, productResolver.searchLiveProducts);
   router.get("/products/options", authMiddleware, productResolver.getProductOptions);
   router.get("/products/shop/draft", authMiddleware, productResolver.getShopDraftProducts);
   router.get("/product", authMiddleware, productResolver.getProduct);
