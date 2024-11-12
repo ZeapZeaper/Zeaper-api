@@ -79,7 +79,9 @@ const verifyShopId = async (shopId) => {
 const checkForDuplicates = (array) => {
   return array.length !== new Set(array).size;
 };
-
+const lowerFirstChar = (str) => {
+  return str.charAt(0).toLowerCase() + str.slice(1);
+}
 module.exports = {
   deleteLocalFile,
   numberWithCommas,
@@ -89,4 +91,5 @@ module.exports = {
   verifyUserId,
   verifyShopId,
   checkForDuplicates,
+  lowerFirstChar
 };

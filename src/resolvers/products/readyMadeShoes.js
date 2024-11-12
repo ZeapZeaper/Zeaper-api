@@ -114,9 +114,10 @@ const editReadyMadeShoes = async (req) => {
         return { error: "invalid brand category" };
       }
   
-      categories.main = ["Footwear"];
-      }
      
+      }
+      categories.main = ["Footwear"];
+     categories.productGroup = "Ready-Made";
       if(colors){
         return { error: "you can not update colors with this endpoint" };
       }
@@ -315,9 +316,10 @@ const editReadyMadeShoes = async (req) => {
     };
     
     variations.push(newVariation);
-    console.log("here1")
+  
+   
     await product.save();
-    console.log("here2")
+  
     return newVariation;
 
 

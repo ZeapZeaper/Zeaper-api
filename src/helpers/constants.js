@@ -3,6 +3,7 @@ const clothStyleEnums = ["T-Shirt","Trousers","African Traditional","Midaxi Skir
 const sleeveLengthEnums = ["Long Sleeve", "Short Sleeve", "Sleeveless", "Off Shoulder", "Strapless", "Spaghetti", "Cap Sleeve", "Puff Sleeve", "Bishop Sleeve", "Bell Sleeve", "Kimono Sleeve", "Dolman Sleeve", "Raglan Sleeve", "Batwing Sleeve", "Butterfly Sleeve", "Cold Shoulder", "One Shoulder", "Asymmetric", "Cape Sleeve", "Flounce Sleeve", "Ruffle Sleeve", "Tiered Sleeve"]
 const designEnums = ["Plain", "Faux Fur","Ripped","Leather","Patterned", "Printed", "Embroidered", "Sequined", "Lace", "Mesh", "Sheer", "Cut-Out", "Ruched", "Ruffled", "Tiered", "Pleated", "Frill", "Flounce", "Tie-Dye", "Tie-Front", "Wrap", "Twist", "Knot", "Bow", "Belted", "Buckle", "Buttoned", "Zipper", "Lace-Up", "Corset", "Peplum", "Puff", "Balloon", "Bubble", "Animal", "Leopard", "Check", "Plaid", "Tartan", "Striped", "Floral", "Tropical", "Paisley", "Geometric", "Abstract", "Aztec", "Tribal","Camouflage", "Marble"]
 const fasteningEnums = ["Button", "Zipper", "Hook", "Tie", "Buckle", "Lace-Up", "Corset","Cord", "Snap", "Velcro", "Elastic", "Drawstring", "Belt", "Sash", "Buckle", "Clasp", "Magnet", "Press-Stud", "Toggle", "D-Ring", "Buckle", "Braid", "Frog", "Grommet", "Knot", "Loop", "Pleat", "Ribbon", "Rope", "Ruffle", "Tassel", "Twist", "Wrap", "None"]
+const fabricEnums = ["Cotton", "Polyester", "Nylon", "Spandex", "Rayon", "Linen", "Silk", "Wool", "Cashmere", "Leather", "Fur", "Faux Fur", "Denim", "Velvet", "Satin", "Chiffon", "Lace", "Mesh", "Sheer", "Tulle", "Knit", "Jersey", "Terry", "Fleece", "Flannel", "Tweed", "Corduroy", "Suede", "Sequin", "Glitter", "Metallic", "Lurex", "Lamé", "Brocade", "Jacquard", "Damask", "Taffeta"]
 const colorEnums=[
   {name:"Black",hex:"#000000"},
   {name:"White",hex:"#FFFFFF"},
@@ -40,7 +41,7 @@ const colorEnums=[
   {name:"Chocolate",hex:"#D2691E"},
   {name:"Milk",hex:"#F5F5DC"},
 ]
-const mainEnums=["Top", "Bottom", "Dress","Footwear", "Matching Set","FootWear", "Overall", "Two Piece", "Three Piece","Accessories","Other" ]
+const mainEnums=["Top", "Bottom", "Dress", "Matching Set","FootWear", "Overall", "Two Piece", "Three Piece","Accessories","Other" ]
 const occasionEnums = ["Casual", "Formal", "Wedding", "Bridal", "Bridesmaid", "Maternity", "Cocktail", "Beach", "Summer", "Winter", "Spring", "Autumn", "Fall",  "Retro", "Boho", "Chic", "Sexy", "Party", "Evening","Day", "Work", "Office", "Business", "Corporate",  "Smart Casual", "Dressy", "Festive", "Holiday", "Vacation", "Date","Funeral","Travel", "Resort", "Cruise", "Camping", "Hiking", "Outdoor", "Gym", "Athletic", "Sports", "Fitness", "Yoga", "Pilates", "Dance", "Ballet", "Gymnastics", "Running", "Jogging", "Walking", "Cycling", "Swimming", "Surfing", "Skiing", "Snowboarding", "Skating",  "Skateboarding", "Scootering", "Horse Riding","Sports"]
 const fitEnums = ["Regular", "Slim", "Skinny", "Straight", "Bootcut", "Flare", "Wide-Leg", "Cropped", "Culotte", "Palazzo", "Paperbag", "Pegged", "Tapered", "Carrot", "Boyfriend", "Mom", "Dad", "High-Waist", "Low-Waist", "Mid-Waist", "Drop-Waist","Plus-Size", "Petite", "Maternity", "Tall", "Short", "Long", "Regular", "Oversized", "Fitted", "Relaxed", "Baggy", "Slouchy", "Boxy", "Flowy", "Draped", "Tailored","Maternity"]
 const brandEnums=["Adidas", "Nike", "Puma", "Reebok", "Under Armour",
@@ -99,7 +100,7 @@ const shoeTypeEnums = [
 ];
 const productTypeEnums = ["readyMadeCloth", "readyMadeShoe", "accessory"];
 
-const statusEnums = ["draft","live", "under review", "disabled"];
+const statusEnums = ["draft","live", "under review", "disabled","rejected"];
 
 module.exports = {
   genderEnums,

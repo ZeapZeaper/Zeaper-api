@@ -27,6 +27,7 @@ const editReadyMadeClothes = async (req) => {
     if(categories &&  Object.keys(categories).length === 0){
       return { error: "categories is required" }
     }
+    
     if(categories){
       const {gender, age,
         style,
@@ -111,7 +112,7 @@ const editReadyMadeClothes = async (req) => {
     if (brand && brandEnums.indexOf(brand) === -1) {
       return { error: "invalid brand category" };
     }
-
+    categories.productGroup = "Ready-Made";
     
     }
     if(colors){
@@ -120,7 +121,9 @@ const editReadyMadeClothes = async (req) => {
     if(variations){
       return { error: "you can not update variations with this endpoint" };
     }
+    
   
+    console.log("here");
     // remove productId from params
     delete params.productId;
   
@@ -316,6 +319,7 @@ const addVariationToReadyMadeClothes = async (product, variation) => {
       quantity,
     };
     variations.push(newVariation);
+   
     await product.save();
     return newVariation;
 

@@ -4,18 +4,18 @@ const { ageGroupEnums,ageRangeEnums, genderEnums,
   sleeveLengthEnums,
   fasteningEnums,
   occasionEnums,
-  fitEnums,colorEnums,
-  brandEnums, 
+  fitEnums,
+
   clothStyleEnums,
   designEnums,
-  clothSizeEnums,
+
   mainEnums
  } = require("../../helpers/constants");
 const ProductModel = require("../../models/products");
 const { validateVariations, verifyColorsHasImages } = require("./productHelpers");
 
 
-const editBescopeClothes = async (req) => {
+const editBespokeClothes = async (req) => {
   try {
    
     const params = req.body;
@@ -35,11 +35,26 @@ const editBescopeClothes = async (req) => {
         fastening,
         occasion,
         fit,
+        heelHeight,
+          heelType,
+          accessoryType,
         brand,
+      
         main
 
       } = categories;
-     
+      if(heelHeight){
+        return { error: "you can not add heelHeight to this product type" };
+      }
+if(heelType){
+        return { error: "you can not add heelType to this product type" };
+      }
+      if(accessoryType){
+        return { error: "you can not add accessoryType to this product type" };
+      }
+      if(brand){
+        return { error: "you can not add brand to this product type" };
+      }
       if(!gender || !Array.isArray(gender) || gender.length === 0){
         return { error: "gender category is required when updating category and must be array" };
       }
@@ -96,9 +111,7 @@ const editBescopeClothes = async (req) => {
     if (fit && fit.some((s) => fitEnums.indexOf(s) === -1)) {
       return { error: "invalid fit category" };
     }
-    if (brand && brandEnums.indexOf(brand) === -1) {
-      return { error: "invalid brand category" };
-    }
+   
 
     
     }
@@ -106,14 +119,14 @@ const editBescopeClothes = async (req) => {
       return { error: "you can not update colors with this endpoint" };
     }
     if(variations){
-      return { error: "you can not update variations with this endpoint" };
+      return { error: "bespoke products do not have variations" };
     }
-  
+    categories.productGroup = "Bespoke";
     // remove productId from params
     delete params.productId;
   
   
-    const bescopeCloth = await ProductModel.findOneAndUpdate(
+    const bespokeCloth = await ProductModel.findOneAndUpdate(
       {productId},
       {
         ...params,
@@ -130,7 +143,7 @@ const editBescopeClothes = async (req) => {
 
 
 
-const validateBescopeClothes = async (product) => {
+const validateBespokeClothes = async (product) => {
   const {categories, sizes, colors, images, variations  } = product;
   if (!categories || Object.keys(categories).length === 0) {
     return { error: "categories is required" }
@@ -210,20 +223,16 @@ const validateBescopeClothes = async (product) => {
     return { error: "invalid fit category" };
   }
   const brand = categories?.brand;
-  if (brand && brandEnums.indexOf(brand) === -1) {
-    return { error: "invalid brand category" };
+  if (brand ) {
+    return { error: "you can not add brand to this product type" };
   }
   if (
-    !sizes ||
-    !Array.isArray(sizes) ||
-    sizes.length === 0 ||
-    checkForDuplicates(sizes)
+    sizes
+    
   ) {
-    return { error: "sizes is required and must be unique" };
+    return { error: "you can not add size for this product type" };
   }
-  if(sizes.some((s) => clothSizeEnums.indexOf(s) === -1)){
-    return { error: "invalid size category" };
-  }
+  
    // check for duplicates in color.value in colors array
    const colorValues = colors.map((color) => color.value);
    if (checkForDuplicates(colorValues)) {
@@ -234,87 +243,18 @@ const validateBescopeClothes = async (product) => {
       return { error: "colors must have images and must be in right format" };
     }
     
-    
-    // check for duplicates in variations array
-    const variationValues = variations.map((variation) => variation.sku);
-    if (checkForDuplicates(variationValues)) {
-      return { error: "sku must be unique in the variations array" };
-    }
-    
-    // check variations has correct size, colorValue, price, quantity
-    const isValidVariations = validateVariations(variations, sizes, colors);
-    if (!isValidVariations) {
-      return { error: "invalid variations array" };
-    }
+if(variations){
+  return { error: "bespoke products do not have variations" };
+}
     return true;
 
 
 
 };
-const addVariationToBescopeClothes = async (product, variation) => {
 
-    
-    const {price, colorValue, size, quantity} = variation;
-    const { colors, sizes, variations } = product;
- let sku;
-    if (!variation) {
-      return { error: "variation is required" };
-    }
-    if (!price || typeof price !== "number" || price < 0) {
-      return { error: "price is required and must be a number greater than 0" };
-    }
-    if (!colorValue) {
-      return { error: "colorValue is required" };
-    }
-    if (!size) {
-      return { error: "size is required" };
-    }
-    if (!quantity || typeof quantity !== "number" || quantity < 0) {
-      return { error: "quantity is required and must be a number greater than 0" };
-    }
-    if (!sizes.includes(size)) {
-      return { error: "size is not valid" };
-    }
-    if (!colors.map((color) => color.value).includes(colorValue)) {
-      return { error: "colorValue is not valid" };
-    }
-    if(variation?.sku){
-      // edit variation
-      sku = variation.sku;
-      const isExist = variations.some((v) => v.sku === sku);
-      if (!isExist) {
-        return { error: "variation does not exist" };
-      }
-      const index = variations.findIndex((v) => v.sku === sku);
-      variations[index] = { ...variation };
-      await product.save();
-      return variations[index];
-
-    }
-    sku =  `${product.productId}-${size}-${colorValue}`;
-    const isExist = variations.some((v) => v.sku === sku);
-    if (isExist) {
-      return { error: "variation of same color and size already exists" };
-    }
-    const newVariation = {
-      sku,
-      price,
-      colorValue,
-      size,
-      quantity,
-    };
-    variations.push(newVariation);
-    await product.save();
-    return newVariation;
-
-
-
-  }
    
 
 module.exports = {
-
-  editBescopeClothes,
-  validateBescopeClothes,
-  addVariationToBescopeClothes
+  validateBespokeClothes,
+  editBespokeClothes
 };

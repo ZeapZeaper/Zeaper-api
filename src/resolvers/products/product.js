@@ -36,7 +36,6 @@ const root = require("../../../root");
 const { getAuthUser } = require("../../middleware/firebaseUserAuth");
 const { getDynamicFilters, deleteProductsById, restoreProductsById, getQuery } = require("./productHelpers");
 const ProductModel = require("../../models/products");
-const { get } = require("http");
 const { editReadyMadeShoes, validateReadyMadeShoes, addVariationToReadyMadeShoes } = require("./readyMadeShoes");
 const { editAccessories,validateAccessories,addVariationToAccesories } = require("./Accessories");
 
@@ -514,8 +513,8 @@ const editProduct = async (req, res) => {
     if(user.shopId !== product.shopId && !user?.isAdmin && !user?.isSuperAdmin){
       return res.status(400).send({ error: "You are not authorized to edit this product" });
     }
-    if(product?.status !== "draft" && !user?.isAdmin && !user?.isSuperAdmin){
-      return res.status(400).send({ error: "You are not authorized to edit this product" });
+    if(product?.status !== "draft" && product?.status !== "rejected"){
+      return res.status(400).send({ error: "You can only edit a product that is in draft or rejected status" });
     }
     if(status ){
       return res.status(400).send({ error: "You are not authorized to directly change the status here" });
@@ -669,6 +668,11 @@ const createProduct = async (req, res) => {
     
 
     const productId = await generateProductId(user.shopId, productType);
+    const timeLine = [{
+      date: new Date(),
+      description: "product created and status set to draft",
+      actionBy: user._id,
+    }]
     const param = {
       title,
       subTitle,
@@ -678,6 +682,8 @@ const createProduct = async (req, res) => {
       productId,
       postedBy: user._id,
       shop: shop._id,
+      status: "draft",
+      timeLine,
 
     }
 
@@ -764,7 +770,16 @@ const submitProduct = async (req, res) => {
         return res.status(400).send({ error: verify.error });
       }
     }
-  const updatedProduct = await ProductModel.findOneAndUpdate( { productId }, { status: "under review" }, { new: true }).exec();
+    const user = await getAuthUser(req);
+    const newTimeLine = {
+      date: new Date(),
+      description: "product submitted for review",
+      actionBy: user._id,
+    }
+  const updatedProduct = await ProductModel.findOneAndUpdate( { productId }, { status: "under review",
+  $push: { timeLine: newTimeLine }
+
+   }, { new: true }).exec();
    if(!updatedProduct){
     return res.status(400).send({ error: "product not found" });
   }
@@ -860,14 +875,60 @@ const getCategoryProducts = async (req, res) => {
 };
 const getProducts = async (req, res) => {
   try {
-    const skip = parseInt(req.query.skip) || 0;
+    
+   
+    const sort = req.query.sort || -1;
     const limit = parseInt(req.query.limit) 
-    const sort = req.query.sort || "desc";
+    const pageNumber = parseInt(req.query.pageNumber)
+    if (!limit) {
+      return res.status(400).send({ error: "limit is required. This is maximum number you want per page" });
+    }
+    
+    if (!pageNumber) {
+      return res.status(400).send({ error: "pageNumber is required. This is the current page number in the pagination" });
+    }
+    if(sort !== -1 && sort !== 1){
+      return res.status(400).send({ error: "sort value can only be 1 or -1" });
+    }
+    const user = await getAuthUser(req);
+    if(!user?.isAdmin && !user?.isSuperAdmin){
+      return res.status(400).send({ error: "You are not authorized to view all products" });
+    }
   const query = getQuery(req.query);
-   const products = await ProductModel.find(query).populate("shop").populate("postedBy").sort({ createdAt: sort }).skip(skip).limit(limit).exec()
+  const aggregate = [
+    {
+      $facet: {
+        products: [
+          { $match: {...query} },
+          { $sort: { createdAt: sort } },
+          { $skip: limit * (pageNumber - 1) },
+          { $limit: limit }
+        ],
+        totalCount: [
+          { $match: {...query} },
+          { $count: "count" }
+        ]
+        
+      }
+    }
+  ]
+  const productQuery = await ProductModel.aggregate(aggregate).exec();
+  const products = productQuery[0].products;
+  const totalCount = productQuery[0].totalCount[0]?.count || 0;
+
+  // const updateProducts = products.map((product) => {
+  //   const update =  ProductModel.findOneAndUpdate({ _id: product._id }, { 
+  //     "categories.productGroup" : "Ready-Made"
+  //    }, { new: true }).exec();
+  //   return update;
+  // });
+  // await Promise.all(updateProducts);
+  
     const dynamicFilters = getDynamicFilters(products);
+   
     const data = {
       products,
+      totalCount,
       dynamicFilters
     }
     return res.status(200).send({ data: data });
@@ -878,17 +939,48 @@ const getProducts = async (req, res) => {
 };
 const getLiveProducts = async (req, res) => {
   try {
-    const skip = parseInt(req.query.skip) || 0;
+   
     const limit = parseInt(req.query.limit) 
-    const sort = req.query.sort || "desc";
-  
+    const pageNumber = parseInt(req.query.pageNumber)
+    if (!limit) {
+      return res.status(400).send({ error: "limit is required. This is maximum number you want per page" });
+    }
+    
+    if (!pageNumber) {
+      return res.status(400).send({ error: "pageNumber is required. This is the current page number in the pagination" });
+    }
+    const sort = req.query.sort || -1;
+    if(sort !== -1 && sort !== 1){
+      return res.status(400).send({ error: "sort value can only be 1 or -1" });
+    }
     const query = getQuery(req.query);
     query.status = "live";
-    const products = await ProductModel.find(query).populate("shop").populate("postedBy").sort({ createdAt: sort }).skip(skip).limit(limit).exec()
+    const aggregate = [
+      {
+        $facet: {
+          products: [
+            { $match: {...query} },
+            { $sort: { createdAt: sort } },
+            { $skip: limit * (pageNumber - 1) },
+            { $limit: limit }
+          ],
+          totalCount: [
+            { $match: {...query} },
+            { $count: "count" }
+          ]
+          
+        }
+      }
+    ]
+    const productQuery = await ProductModel.aggregate(aggregate).exec();
+    const products = productQuery[0].products;
+    const totalCount = productQuery[0].totalCount[0]?.count || 0;
     const dynamicFilters = getDynamicFilters(products);
     const data ={
       products,
+      totalCount,
       dynamicFilters
+
     }
     return res.status(200).send({ data: data });
 
@@ -898,14 +990,42 @@ const getLiveProducts = async (req, res) => {
 };
 const getNewestArrivals = async (req, res) => {
   try {
-    const limit = parseInt(req.query.limit) || 50
+    const limit = parseInt(req.query.limit) 
+    const pageNumber = parseInt(req.query.pageNumber)
+    if (!limit) {
+      return res.status(400).send({ error: "limit is required. This is maximum number you want per page" });
+    }
+    
+    if (!pageNumber) {
+      return res.status(400).send({ error: "pageNumber is required. This is the current page number in the pagination" });
+    }
     
     const query = getQuery(req.query);
     query.status = "live";
-    const products = await ProductModel.find(query).populate("shop").populate("postedBy").sort({ createdAt: "desc" }).limit(limit).exec();
+    const aggregate = [
+      {
+        $facet: {
+          products: [
+            { $match: {...query} },
+            { $sort: { createdAt: -1 } },
+            { $skip: limit * (pageNumber - 1) },
+            { $limit: limit }
+          ],
+          totalCount: [
+            { $match: {...query} },
+            { $count: "count" }
+          ]
+          
+        }
+      }
+    ]
+    const productQuery = await ProductModel.aggregate(aggregate).exec();
+    const products = productQuery[0].products;
+    const totalCount = productQuery[0].totalCount[0]?.count || 0;
     const dynamicFilters = getDynamicFilters(products);
     const data ={
       products,
+      totalCount,
       dynamicFilters
     }
     return res.status(200).send({ data: data });
@@ -916,14 +1036,42 @@ const getNewestArrivals = async (req, res) => {
 }
 const getMostPopular = async (req, res) => {
   try {
-    const limit = parseInt(req.query.limit) || 50
+    const limit = parseInt(req.query.limit) 
+    const pageNumber = parseInt(req.query.pageNumber)
+    if (!limit) {
+      return res.status(400).send({ error: "limit is required. This is maximum number you want per page" });
+    }
+    
+    if (!pageNumber) {
+      return res.status(400).send({ error: "pageNumber is required. This is the current page number in the pagination" });
+    }
     
     const query = getQuery(req.query);
     query.status = "live";
-    const products = await ProductModel.find(query).populate("shop").populate("postedBy").sort({ createdAt: "desc" }).limit(limit).exec();
+    const aggregate = [
+      {
+        $facet: {
+          products: [
+            { $match: {...query} },
+            { $sort: { createdAt: -1 } },
+            { $skip: limit * (pageNumber - 1) },
+            { $limit: limit }
+          ],
+          totalCount: [
+            { $match: {...query} },
+            { $count: "count" }
+          ]
+          
+        }
+      }
+    ]
+    const productQuery = await ProductModel.aggregate(aggregate).exec();
+    const products = productQuery[0].products;
+    const totalCount = productQuery[0].totalCount[0]?.count || 0;
     const dynamicFilters = getDynamicFilters(products);
     const data ={
       products,
+      totalCount,
       dynamicFilters
     }
     return res.status(200).send({ data: data });
@@ -932,16 +1080,17 @@ const getMostPopular = async (req, res) => {
     return res.status(500).send({ error: err.message });
   }
 }
+
 const searchProducts = async (req, res) => {
   try {
     const { search } = req.query;
 
-    const limit = parseInt(req.query.limit) || 50
     
     if (!search) {
       return res.status(400).send({ error: "search is required" });
     }
     const query = getQuery(req.query);
+    
     const aggregate = [
       {
         $search: {
@@ -960,13 +1109,11 @@ const searchProducts = async (req, res) => {
       
       {
         $sort: {score : {$meta: "textScore"}}
-      },
-      {
-        $limit: limit
       }
     ];
     const products = await ProductModel.aggregate(aggregate).exec();
     const dynamicFilters = getDynamicFilters(products);
+  
     const data = {
       products,
       dynamicFilters
@@ -981,16 +1128,14 @@ const searchProducts = async (req, res) => {
 const searchLiveProducts = async (req, res) => {
   try {
     const { search } = req.query;
-    const limit = parseInt(req.query.limit) || 50
-    const match = {
-      disabled: req.query.disabled ? req.query.disabled : false,
-      status: "live"
-    };
+   
+    
     
     if (!search) {
       return res.status(400).send({ error: "search is required" });
     }
     const query = getQuery(req.query);
+    query.status = "live";
     const aggregate = [
       {
         $search: {
@@ -1009,9 +1154,6 @@ const searchLiveProducts = async (req, res) => {
       },
       {
         $sort: {score : {$meta: "textScore"}}
-      },
-      {
-        $limit: limit
       }
     ];
     const products = await ProductModel.aggregate(aggregate).exec();
@@ -1129,25 +1271,32 @@ const addProductVariation = async (req, res) => {
       return res.status(400).send({ error: "You are not authorized to edit this product" });
     }
     const productType = product.productType;
-    let updatedProduct;
+    let updatedVariation;
     
     if (productType === "readyMadeCloth") {
-      updatedProduct = await addVariationToReadyMadeClothes(product, variation);
+      updatedVariation = await addVariationToReadyMadeClothes(product, variation, user);
     }
     if(productType === "readyMadeShoe"){
     
-      updatedProduct = await addVariationToReadyMadeShoes(product, variation);
+      updatedVariation = await addVariationToReadyMadeShoes(product, variation,user);
     }
     if(productType === "accessory"){
-      updatedProduct = await addVariationToAccesories(product, variation);
+      updatedVariation = await addVariationToAccesories(product, variation, user);
     }
-    if (!updatedProduct) {
+    if (!updatedVariation) {
       return res.status(400).send({ error: "product not found" });
     }
-    if (updatedProduct.error) {
-      return res.status(400).send({ error: updatedProduct.error });
+    if (updatedVariation.error) {
+      return res.status(400).send({ error: updatedVariation.error });
     }
-    return res.status(200).send({ data: updatedProduct, message: "product updated successfully" });
+    const timeLine = {
+      date: new Date(),
+      description: `variation with sku ${updatedVariation.sku} added`,
+      actionBy: user._id,
+    }
+    await ProductModel.findOneAndUpdate ({ productId }, { $push: { timeLine } }, { new: true }).exec();
+    
+    return res.status(200).send({ data: updatedVariation, message: "variation added successfully" });
   }
   catch (err) {
     return res.status(500).send({ error: err.message });
@@ -1173,6 +1322,17 @@ const editProductVariation = async (req, res) => {
     if(!variation?.sku){
       return res.status(400).send({ error: "sku is required" });
     }
+    const originalVariation = product.variations.find((v) => v.sku === variation.sku);
+    if (!originalVariation) {
+      return res.status(400).send({ error: "variation not found" });
+    }
+    if(originalVariation?.colorValue !== variation.colorValue){
+      return res.status(400).send({ error: "color of variation cannot be edited. delete and create a new variation with correct color instead" });
+    }
+    if(originalVariation?.size !== variation.size){
+      return res.status(400).send({ error: "size of variation cannot be edited. delete and create a new variation with correct size instead" });
+    }
+
     const productType = product.productType;
     let updatedProduct;
     if (productType === "readyMadeCloth") {
@@ -1190,6 +1350,25 @@ const editProductVariation = async (req, res) => {
     if (updatedProduct.error) {
       return res.status(400).send({ error: updatedProduct.error });
     }
+   const descriptionBase = `varation with sku ${variation.sku} updated`;
+   let description = descriptionBase;
+    if(originalVariation?.price !== variation.price){
+      description  = `${descriptionBase}. price updated from ${originalVariation.price} to ${variation.price}`;
+    }
+    if(originalVariation?.quantity !== variation.quantity){
+      description  = `${descriptionBase}. quantity updated from ${originalVariation.quantity} to ${variation.quantity}`;
+    }
+    if(originalVariation?.price !== variation.price && originalVariation?.quantity !== variation.quantity){
+      description  = `${descriptionBase}. price updated from ${originalVariation.price} to ${variation.price} and quantity updated from ${originalVariation.quantity} to ${variation.quantity}`;
+    }
+    const newTimeLine = {
+      date: new Date(),
+      description,
+      actionBy: user._id,
+    }
+
+    await ProductModel.findOneAndUpdate ({ productId }, { $push: { timeLine: newTimeLine } }, { new: true }).exec();
+
     return res.status(200).send({ data: updatedProduct, message: "product updated successfully" });
   }
   catch (err) {
@@ -1214,14 +1393,26 @@ const deleteProductVariation = async (req, res) => {
       return res.status(400).send({ error: "You are not authorized to edit this product" });
     }
     const variations = product.variations;
+    
     const variationExist = variations.find((v) => v.sku === sku);
     if (!variationExist) {
       return res.status(400).send({ error: "variation not found" });
     }
     updatedVariations = variations.filter((v) => v.sku !== sku);
+    const timeLines = product.timeLine;
+const timeLine = {
+  date: new Date(),
+  description: `variation with sku ${sku} deleted`,
+  actionBy: user._id,
+}
+timeLines.push(timeLine);
+    
 
     const updatedProduct = await ProductModel.findOneAndUpdate
-    ({ productId }, { variations: updatedVariations }, { new: true }).exec();
+    ({ productId }, { variations: updatedVariations,timeLine: timeLines }, { new: true }).exec();
+
+      
+     
     
     if (!updatedProduct) {
       return res.status(400).send({ error: "product not found" });

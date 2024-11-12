@@ -1,23 +1,47 @@
+const { type } = require("../../config/firebaseServiceAcc");
 const { colorEnums } = require("../../helpers/constants");
+const { lowerFirstChar } = require("../../helpers/utils");
 const ProductModel = require("../../models/products");
 
 const getDynamicFilters = (products) => {
     const filters = [];
-    const allProductTypes = products.map((product) => product.productType);
+    const allProductTypes = products.map((product) => product.productType).sort();
  
     const productTypeObj = {
         name: "Product Type",
+        type: "checkbox",
         options: [],
     }
     allProductTypes.forEach((productType) => {
-        const productTypeIndex = productTypeObj.options.findIndex((option) => option.value === productType);
+        
+        let value
+        if(productType === "readyMadeCloth"){
+            value = "Ready Made Cloth";
+        }
+        if(productType === "bespokeCloth"){
+            value = "Bespoke Cloth";
+        }
+        if(productType === "accessory"){
+            value = "Accessory";
+        }
+        if(productType === "readyMadeShoe"){
+            value = "Ready Made Shoe";
+        }
+        if(productType === "bespokeShoe"){
+            value = "Bespoke Shoe";
+        }
+        const productTypeIndex = productTypeObj.options.findIndex((option) => option.value === value);
+      
+
         if (productTypeIndex === -1) {
-            
+          
             productTypeObj.options.push({
-                value: productType,
+                value: value,
+               
                 count: 1,
             });
         } else {
+         
             productTypeObj.options[productTypeIndex].count += 1;
         }
     }
@@ -27,308 +51,32 @@ const getDynamicFilters = (products) => {
     }
     const allPrices = products.map((product) => product.variations).flat().map((variation) => variation.price);
   
-    const priceObj = {
-        name: "Price",
-        options: {
-            min: Math.min(...allPrices),
-            max: Math.max(...allPrices),
-        }
-    }
-    filters.push(priceObj);
+    
     
 
     const allCategories = products.map((product) => product.categories);
 
-    const allDesigns = allCategories.map((product) => product.design).flat()
-    const allStyles = allCategories.map((product) => product.style).flat();
 
-     const allColors = products.map((product) => product.colors).flat().map((color) => color.value);
-     const allSizes = products.map((product) => product.sizes).flat();
-     const allBrands = allCategories.map((product) => product.brand);
-     const allFits = allCategories.map((product) => product.fit).flat();
-     const allFastening = allCategories.map((product) => product.fastening).flat();
-     const allOccasion = allCategories.map((product) => product.occasion).flat();
-     const allSleeveLength = allCategories.map((product) => product?.sleeveLength)
-     const allHeelHeight = allCategories.map((product) => product?.heelHeight);
-    const allHeelType = allCategories.map((product) => product?.heelType);
-    const allAccessoryTypes = allCategories.map((product) => product.accessoryType);
-     const allMains = allCategories.map((product) => product.main).flat();
-     const allGenders = allCategories.map((product) => product.gender).flat();
-     const allAgeGroups = allCategories.map((product) => product?.age?.ageGroup);
-    const allAgeRanges = allCategories.map((product) => product?.age?.ageRange);
+    const allDesigns = allCategories.map((product) => product.design).flat().sort()
+    const allStyles = allCategories.map((product) => product.style).flat().sort()
 
-     const designObj = {
-        name: "Design",
-        options: [],
-    }
-    allDesigns.forEach((design) => {  
-        if(!design){
-            return;
-        }  
-        const designIndex = designObj.options.findIndex((option) => option.value === design);
-        if (designIndex === -1) {
-            designObj.options.push({
-                value: design,
-                count: 1,
-            });
-        } else {
-            designObj.options[designIndex].count += 1;
-        }
-    }
-    );
-    if (designObj.options.length > 0) {
-        filters.push(designObj);
-    }
-    const styleObj = {
-        name: "Style",
-        options: [],
-    }
-    allStyles.forEach((style) => {
-        if(!style){
-            return;
-        }
-        const styleIndex = styleObj.options.findIndex((option) => option.value === style);
-        if (styleIndex === -1) {
-            styleObj.options.push({
-                value: style,
-                count: 1,
-            });
-        } else {
-            styleObj.options[styleIndex].count += 1;
-        }
-    }
-    );
-    if (styleObj.options.length > 0) {
-        filters.push(styleObj);
-    }
-    const colorObj = {
-        name: "Color",
-        options: [],
-    }
-    allColors.forEach((color) => {
-        if(!color){
-            return;
-        }
-        const colorIndex = colorObj.options.findIndex((option) => option.value === color);
-        if (colorIndex === -1) {
-            colorObj.options.push({
-                value: color,
-                count: 1,
-            });
-        } else {
-            colorObj.options[colorIndex].count += 1;
-        }
-    }
-    );
-    if (colorObj.options.length > 0) {
-        filters.push(colorObj);
-    }
-    const sizeObj = {
-        name: "Size",
-        options: [],
-    }
-    allSizes.forEach((size) => {
-        if(!size){
-            return;
-        }
-        const sizeIndex = sizeObj.options.findIndex((option) => option.value === size);
-        if (sizeIndex === -1) {
-            sizeObj.options.push({
-                value: size,
-                count: 1,
-            });
-        } else {
-            sizeObj.options[sizeIndex].count += 1;
-        }
-    }
-    );
-    if (sizeObj.options.length > 0) {
-        filters.push(sizeObj);
-    }
-    const brandObj = {
-        name: "Brand",
-        options: [],
-    }
-    allBrands.forEach((brand) => {
-        if(!brand){
-            return;
-        }
-        const brandIndex = brandObj.options.findIndex((option) => option.value === brand);
-        if (brandIndex === -1) {
-            brandObj.options.push({
-                value: brand,
-                count: 1,
-            });
-        } else {
-            brandObj.options[brandIndex].count += 1;
-        }
-    }
-    );
-    if (brandObj.options.length > 0) {
-        filters.push(brandObj);
-    }
-    const fitObj = {
-        name: "Fit",
-        options: [],
-    }
-    allFits.forEach((fit) => {
-        if(!fit){
-            return;
-        }
-        const fitIndex = fitObj.options.findIndex((option) => option.value === fit);
-        if (fitIndex === -1) {
-            fitObj.options.push({
-                value: fit,
-                count: 1,
-            });
-        } else {
-            fitObj.options[fitIndex].count += 1;
-        }
-    }
-    );
-    if (fitObj.options.length > 0) {
-        filters.push(fitObj);
-    }
-    const fasteningObj = {
-        name: "Fastening",
-        options: [],
-    }
-    allFastening.forEach((fastening) => {
-        if(!fastening){
-            return;
-        }
-        const fasteningIndex = fasteningObj.options.findIndex((option) => option.value === fastening);
-        if (fasteningIndex === -1) {
-            fasteningObj.options.push({
-                value: fastening,
-                count: 1,
-            });
-        } else {
-            fasteningObj.options[fasteningIndex].count += 1;
-        }
-    }
-    );
-    if (fasteningObj.options.length > 0) {
-        filters.push(fasteningObj);
-    }
-    const occasionObj = {
-        name: "Occasion",
-        options: [],
-    }
-    allOccasion.forEach((occasion) => {
-        if(!occasion){
-            return;
-        }
-        const occasionIndex = occasionObj.options.findIndex((option) => option.value === occasion);
-        if (occasionIndex === -1) {
-            occasionObj.options.push({
-                value: occasion,
-                count: 1,
-            });
-        } else {
-            occasionObj.options[occasionIndex].count += 1;
-        }
-    }
-    );
-    if (occasionObj.options.length > 0) {
-        filters.push(occasionObj);
-    }
-    const sleeveLengthObj = {
-        name: "Sleeve Length",
-        options: [],
-    }
-    allSleeveLength.forEach((sleeveLength) => {
-        if(!sleeveLength){
-            return;
-        }
-        const sleeveLengthIndex = sleeveLengthObj.options.findIndex((option) => option.value === sleeveLength);
-        if(!sleeveLength){
-            return;
-        }
-        if (sleeveLengthIndex === -1) {
-            sleeveLengthObj.options.push({
-                value: sleeveLength,
-                count: 1,
-            });
-        } else {
-            sleeveLengthObj.options[sleeveLengthIndex].count += 1;
-        }
-    }
-    );
-    if (sleeveLengthObj.options.length > 0) {
-        filters.push(sleeveLengthObj);
-    }
-    const heelHeightObj = {
-        name: "Heel Height",
-        options: [],
-    }
-    allHeelHeight.forEach((heelHeight) => {
-        if(!heelHeight){
-            return;
-        }
-        const heelHeightIndex = heelHeightObj.options.findIndex((option) => option.value === heelHeight);
-        if (heelHeightIndex === -1) {
-            heelHeightObj.options.push({
-                value: heelHeight,
-                count: 1,
-            });
-        } else {
-            heelHeightObj.options[heelHeightIndex].count += 1;
-        }
-    }
-    );
-    if (heelHeightObj.options.length > 0) {
-        filters.push(heelHeightObj);
-    }
-    const heelTypeObj = {
-        name: "Heel Type",
-        options: [],
-    }
-    allHeelType.forEach((heelType) => {
-        if(!heelType){
-            return;
-        }
-        const heelTypeIndex = heelTypeObj.options.findIndex((option) => option.value === heelType);
-        if (heelTypeIndex === -1) {
-            heelTypeObj.options.push({
-                value: heelType,
-                count: 1,
-            });
-        } else {
-            heelTypeObj.options[heelTypeIndex].count += 1;
-        }
-    }
-    );
-    if (heelTypeObj.options.length > 0) {
-        filters.push(heelTypeObj);
-    }
-
-    const accessoryTypeObj = {
-        name: "Accessory Type",
-        options: [],
-    }
-    allAccessoryTypes.forEach((accessoryType) => {
-        if(!accessoryType){
-            return;
-        }
-        const accessoryTypeIndex = accessoryTypeObj.options.findIndex((option) => option.value === accessoryType);
-        if (accessoryTypeIndex === -1) {
-            accessoryTypeObj.options.push({
-                value: accessoryType,
-                count: 1,
-            });
-        } else {
-            accessoryTypeObj.options[accessoryTypeIndex].count += 1;
-        }
-    }
-    );
-    if (accessoryTypeObj.options.length > 0) {
-        filters.push(accessoryTypeObj);
-    }
-    
-
+     const allColors = products.map((product) => product.colors).flat().map((color) => color.value).sort();
+     const allSizes = products.map((product) => product.sizes).flat().sort();
+     const allBrands = allCategories.map((product) => product.brand).flat().sort();
+     const allFits = allCategories.map((product) => product.fit).flat().sort();
+     const allFastening = allCategories.map((product) => product.fastening).flat().sort();
+     const allOccasion = allCategories.map((product) => product.occasion).flat().sort();
+     const allSleeveLength = allCategories.map((product) => product?.sleeveLength).sort();
+     const allHeelHeight = allCategories.map((product) => product?.heelHeight).sort();
+    const allHeelType = allCategories.map((product) => product?.heelType).sort();
+    const allAccessoryTypes = allCategories.map((product) => product.accessoryType).sort();
+     const allMains = allCategories.map((product) => product.main).flat().sort();
+     const allGenders = allCategories.map((product) => product.gender).flat().sort();
+     const allAgeGroups = allCategories.map((product) => product?.age?.ageGroup).sort();
+    const allAgeRanges = allCategories.map((product) => product?.age?.ageRange).sort();
     const mainObj = {
         name: "Main",
+        type: "checkbox",
         options: [],
     }
     allMains.forEach((main) => {
@@ -350,9 +98,36 @@ const getDynamicFilters = (products) => {
     if (mainObj.options.length > 0) {
         filters.push(mainObj);
     }
+    const accessoryTypeObj = {
+        name: "Accessory Type",
+        type: "checkbox",
+        options: [],
+    }
+    allAccessoryTypes.forEach((accessoryType) => {
+        if(!accessoryType){
+            return;
+        }
+        const accessoryTypeIndex = accessoryTypeObj.options.findIndex((option) => option.value === accessoryType);
+        if (accessoryTypeIndex === -1) {
+            accessoryTypeObj.options.push({
+                value: accessoryType,
+                count: 1,
+            });
+        } else {
+            accessoryTypeObj.options[accessoryTypeIndex].count += 1;
+        }
+    }
+    );
+    if (accessoryTypeObj.options.length > 0) {
+        filters.push(accessoryTypeObj);
+    }
+
+
+    
 
     const genderObj = {
         name: "Gender",
+        type: "checkbox",
         options: [],
     }
     allGenders.forEach((gender) => {
@@ -379,6 +154,7 @@ const getDynamicFilters = (products) => {
     }
     const ageGroupObj = {
         name: "Age Group",
+        type: "checkbox",
         options: [],
     }
     allAgeGroups.forEach((ageGroup) => {
@@ -401,6 +177,7 @@ const getDynamicFilters = (products) => {
     }
     const ageRangeObj = {
         name: "Age Range",
+        type: "checkbox",
         options: [],
     }
     allAgeRanges.forEach((ageRange) => {
@@ -423,6 +200,277 @@ const getDynamicFilters = (products) => {
     }
 
 
+
+    const colorObj = {
+        name: "Color",
+        type: "checkbox",
+        options: [],
+    }
+    allColors.forEach((color) => {
+        if(!color){
+            return;
+        }
+        const colorIndex = colorObj.options.findIndex((option) => option.value === color);
+        if (colorIndex === -1) {
+            colorObj.options.push({
+                value: color,
+                count: 1,
+            });
+        } else {
+            colorObj.options[colorIndex].count += 1;
+        }
+    }
+    );
+    if (colorObj.options.length > 0) {
+        filters.push(colorObj);
+    }
+    const styleObj = {
+        name: "Style",
+        type: "checkbox",
+        options: [],
+    }
+    allStyles.forEach((style) => {
+        if(!style){
+            return;
+        }
+        const styleIndex = styleObj.options.findIndex((option) => option.value === style);
+        if (styleIndex === -1) {
+            styleObj.options.push({
+                value: style,
+                count: 1,
+            });
+        } else {
+            styleObj.options[styleIndex].count += 1;
+        }
+    }
+    );
+    if (styleObj.options.length > 0) {
+        filters.push(styleObj);
+    }
+   
+
+     const designObj = {
+        name: "Design",
+        type: "checkbox",
+        options: [],
+    }
+    allDesigns.forEach((design) => {  
+        if(!design){
+            return;
+        }  
+        const designIndex = designObj.options.findIndex((option) => option.value === design);
+        if (designIndex === -1) {
+            designObj.options.push({
+                value: design,
+                count: 1,
+            });
+        } else {
+            designObj.options[designIndex].count += 1;
+        }
+    }
+    );
+    if (designObj.options.length > 0) {
+        filters.push(designObj);
+    }
+    
+    const sizeObj = {
+        name: "Size",
+        type: "checkbox",
+        options: [],
+    }
+    allSizes.forEach((size) => {
+        if(!size){
+            return;
+        }
+        const sizeIndex = sizeObj.options.findIndex((option) => option.value === size);
+        if (sizeIndex === -1) {
+            sizeObj.options.push({
+                value: size,
+                count: 1,
+            });
+        } else {
+            sizeObj.options[sizeIndex].count += 1;
+        }
+    }
+    );
+    if (sizeObj.options.length > 0) {
+        filters.push(sizeObj);
+    }
+    const brandObj = {
+        name: "Brand",
+        type: "checkbox",
+        options: [],
+    }
+    allBrands.forEach((brand) => {
+        if(!brand){
+            return;
+        }
+        const brandIndex = brandObj.options.findIndex((option) => option.value === brand);
+        if (brandIndex === -1) {
+            brandObj.options.push({
+                value: brand,
+                count: 1,
+            });
+        } else {
+            brandObj.options[brandIndex].count += 1;
+        }
+    }
+    );
+    if (brandObj.options.length > 0) {
+        filters.push(brandObj);
+    }
+    const fitObj = {
+        name: "Fit",
+        type: "checkbox",
+        options: [],
+    }
+    allFits.forEach((fit) => {
+        if(!fit){
+            return;
+        }
+        const fitIndex = fitObj.options.findIndex((option) => option.value === fit);
+        if (fitIndex === -1) {
+            fitObj.options.push({
+                value: fit,
+                count: 1,
+            });
+        } else {
+            fitObj.options[fitIndex].count += 1;
+        }
+    }
+    );
+    if (fitObj.options.length > 0) {
+        filters.push(fitObj);
+    }
+    const fasteningObj = {
+        name: "Fastening",
+        type: "checkbox",
+        options: [],
+    }
+    allFastening.forEach((fastening) => {
+        if(!fastening){
+            return;
+        }
+        const fasteningIndex = fasteningObj.options.findIndex((option) => option.value === fastening);
+        if (fasteningIndex === -1) {
+            fasteningObj.options.push({
+                value: fastening,
+                count: 1,
+            });
+        } else {
+            fasteningObj.options[fasteningIndex].count += 1;
+        }
+    }
+    );
+    if (fasteningObj.options.length > 0) {
+        filters.push(fasteningObj);
+    }
+    const occasionObj = {
+        name: "Occasion",
+        type: "checkbox",
+        options: [],
+    }
+    allOccasion.forEach((occasion) => {
+        if(!occasion){
+            return;
+        }
+        const occasionIndex = occasionObj.options.findIndex((option) => option.value === occasion);
+        if (occasionIndex === -1) {
+            occasionObj.options.push({
+                value: occasion,
+                count: 1,
+            });
+        } else {
+            occasionObj.options[occasionIndex].count += 1;
+        }
+    }
+    );
+    if (occasionObj.options.length > 0) {
+        filters.push(occasionObj);
+    }
+    const sleeveLengthObj = {
+        name: "Sleeve Length",
+        type: "checkbox",
+        options: [],
+    }
+    allSleeveLength.forEach((sleeveLength) => {
+        if(!sleeveLength){
+            return;
+        }
+        const sleeveLengthIndex = sleeveLengthObj.options.findIndex((option) => option.value === sleeveLength);
+        if(!sleeveLength){
+            return;
+        }
+        if (sleeveLengthIndex === -1) {
+            sleeveLengthObj.options.push({
+                value: sleeveLength,
+                count: 1,
+            });
+        } else {
+            sleeveLengthObj.options[sleeveLengthIndex].count += 1;
+        }
+    }
+    );
+    if (sleeveLengthObj.options.length > 0) {
+        filters.push(sleeveLengthObj);
+    }
+    const heelHeightObj = {
+        name: "Heel Height",
+        type: "checkbox",
+        options: [],
+    }
+    allHeelHeight.forEach((heelHeight) => {
+        if(!heelHeight){
+            return;
+        }
+        const heelHeightIndex = heelHeightObj.options.findIndex((option) => option.value === heelHeight);
+        if (heelHeightIndex === -1) {
+            heelHeightObj.options.push({
+                value: heelHeight,
+                count: 1,
+            });
+        } else {
+            heelHeightObj.options[heelHeightIndex].count += 1;
+        }
+    }
+    );
+    if (heelHeightObj.options.length > 0) {
+        filters.push(heelHeightObj);
+    }
+    const heelTypeObj = {
+        name: "Heel Type",
+        type: "checkbox",
+        options: []
+        
+    }
+    allHeelType.forEach((heelType) => {
+        if(!heelType){
+            return;
+        }
+        const heelTypeIndex = heelTypeObj.options.findIndex((option) => option.value === heelType);
+        if (heelTypeIndex === -1) {
+            heelTypeObj.options.push({
+                value: heelType,
+                count: 1,
+            });
+        } else {
+            heelTypeObj.options[heelTypeIndex].count += 1;
+        }
+    }
+    );
+    if (heelTypeObj.options.length > 0) {
+        filters.push(heelTypeObj);
+    }
+    const priceObj = {
+        name: "Price",
+        type: "range",
+        options: {
+            min: Math.min(...allPrices),
+            max: Math.max(...allPrices),
+        }
+    }
+    filters.push(priceObj);
+    
    
    
    
@@ -480,8 +528,9 @@ const getDynamicFilters = (products) => {
 
 
   const getQuery = (queries)=>{
-    const { lastSeen_id,shopId,  productType, productId, sizes,title,description,colors,brand,design,gender,ageGroup,ageRange,
-         style,main,sleeveLength,fastening,fit,occasion,price
+
+    const { shopId,  productType, productId, sizes,title,description,colors,brand,design,gender,ageGroup,ageRange,
+         style,main,sleeveLength,fastening,fit,occasion,price, status
     } = queries;
   
   
@@ -489,21 +538,20 @@ const getDynamicFilters = (products) => {
       const match = {
         disabled: queries.disabled ? queries.disabled : false,  
       };
-      if(lastSeen_id){
-        match._id = { $lt: lastSeen_id }
-      }
+      
       if(shopId){
         match.shopId = shopId;
       }
       if(productType){
-        match.productType = productType;
+        match.productType = lowerFirstChar(productType.replace(/\s/g, ''))
+     
       }
       if(productId){
         match.productId = productId;
       }
      
       if(sizes){
-        console.log("sizes", sizes);
+       
         match.sizes = { $in: sizes.replace(/\s*,\s*/g, ',').split(",") };
       }
       // use $regex to search for title and description
@@ -550,16 +598,19 @@ const getDynamicFilters = (products) => {
       if(occasion){
         match["categories.occasion"] = { $in: occasion.replace(/\s*,\s*/g, ',').split(",") };
       }
+        if(status){
+            match.status = status;
+        }
         if(price){
             const [min, max] = price.split("-");
-            console.log("min", min);
-            console.log("max", max);
+           
             match["variations.price"] = { $gte: min, $lte: max };
         }
 
   
   
       const query = { ...match };
+      console.log("query", query);
         return query;
   }
 

@@ -45,6 +45,7 @@ const ReadyMadeClothesSchema = new mongoose.Schema({
       ageRange:{ type: String, enum: ageRangeEnums, required: false },
       
     },
+    productGroup: { type: String, required: false },
 
     style:[
       {
@@ -132,6 +133,14 @@ const ReadyMadeClothesSchema = new mongoose.Schema({
     required: true,
   },
   shop: { type: mongoose.Schema.Types.ObjectId, ref: "Shops", required: true },
+  timeLine:[
+    {
+      date: { type: String, required: true },
+      description: { type: String, required: true },
+      actionBy:{type:mongoose.Schema.Types.ObjectId, ref: "Users", required: true}
+    }
+  ]
+  
 });
 
 ReadyMadeClothesSchema.plugin(timestamp);

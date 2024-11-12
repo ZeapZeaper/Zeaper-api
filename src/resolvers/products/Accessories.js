@@ -118,7 +118,7 @@ const editAccessories = async (req) => {
       if(variations){
         return { error: "you can not update variations with this endpoint" };
       }
-    
+      categories.productGroup = "Ready-Made";
       // remove productId from params
       delete params.productId;
     
@@ -301,9 +301,9 @@ const editAccessories = async (req) => {
     };
     
     variations.push(newVariation);
-    console.log("here1")
+  
     await product.save();
-    console.log("here2")
+
     return newVariation;
 
 
