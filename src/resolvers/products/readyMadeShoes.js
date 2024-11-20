@@ -16,6 +16,7 @@ const { ageGroupEnums,ageRangeEnums, genderEnums,
 const { validateVariations, verifyColorsHasImages } = require("./productHelpers");
 
 const editReadyMadeShoes = async (req) => {
+  console.log("here")
     try {
      
       const params = req.body;
@@ -113,11 +114,11 @@ const editReadyMadeShoes = async (req) => {
       if (brand && brandEnums.indexOf(brand) === -1) {
         return { error: "invalid brand category" };
       }
-  
+      categories.main = ["Footwear"];
+      categories.productGroup = "Ready-Made";
      
       }
-      categories.main = ["Footwear"];
-     categories.productGroup = "Ready-Made";
+     
       if(colors){
         return { error: "you can not update colors with this endpoint" };
       }
