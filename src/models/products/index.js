@@ -139,7 +139,13 @@ const ReadyMadeClothesSchema = new mongoose.Schema({
       description: { type: String, required: true },
       actionBy:{type:mongoose.Schema.Types.ObjectId, ref: "Users", required: true}
     }
-  ]
+  ],
+  rejectionReasons: [
+    {
+      type: String,
+      required: true,
+    },
+  ],
   
 });
 

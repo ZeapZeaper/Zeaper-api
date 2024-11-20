@@ -34,7 +34,7 @@ const {
 const { storageRef } = require("../../config/firebase");
 const root = require("../../../root");
 const { getAuthUser } = require("../../middleware/firebaseUserAuth");
-const { getDynamicFilters, deleteProductsById, restoreProductsById, getQuery } = require("./productHelpers");
+const { getDynamicFilters,  getQuery } = require("./productHelpers");
 const ProductModel = require("../../models/products");
 const { editReadyMadeShoes, validateReadyMadeShoes, addVariationToReadyMadeShoes } = require("./readyMadeShoes");
 const { editAccessories,validateAccessories,addVariationToAccesories } = require("./Accessories");
@@ -555,14 +555,44 @@ const deleteProducts = async (req, res) => {
     if (!productIds || !productIds.length) {
       return res.status(400).send({ error: "productid is required" });
     }
-
+//check all products exist
+    const products = await ProductModel.find({ productId: { $in: productIds } }).exec();
+    if (products.length !== productIds.length) {
+      return res.status(400).send({ error: "one or more products not found" });
+    }
+    const user = await getAuthUser(req);
+    const shopIds = products.map((product) => product.shopId);
+    const shopId = shopIds[0];
+    if(shopIds.some((id) => id !== shopId && !user?.isAdmin && !user?.isSuperAdmin)){
+      return res.status(400).send({ error: "You can only delete products from the same shop" });
+    }
+    if(user.shopId !== shopId && !user?.isAdmin && !user?.isSuperAdmin){
+      return res.status(400).send({ error: "You are not authorized to delete products from this shop" });
+    }
+    const newTimeline = {
+      date: new Date(),
+      description: "product deleted",
+      actionBy: user._id,
+    }
     const promises = [];
-    promises.push(
-      deleteProductsById(param)
-      //   deleteReadyMadeShoes(param)
-    );
+    productIds.forEach((productId) => {
+      promises.push(
+        ProductModel.findOneAndUpdate(
+          {
+            productId,
+          },
+          {
+            status: "deleted",
+            disabled : true,
+            $push: { timeLine: newTimeline },
+          },
+          { new: true }
+        )
+      );
+    });
     await Promise.all(promises);
     return res.status(200).send({ message: "products deleted successfully" });
+
   } catch (err) {
     return res.status(500).send({ error: err.message });
   }
@@ -575,12 +605,41 @@ const restoreProducts = async (req, res) => {
     if (!productIds || !productIds.length) {
       return res.status(400).send({ error: "productid is required" });
     }
-
+//check all products exist
+    const products = await ProductModel.find({ productId: { $in: productIds } }).exec();
+    if (products.length !== productIds.length) {
+      return res.status(400).send({ error: "one or more products not found" });
+    }
+    const user = await getAuthUser(req);
+    const shopIds = products.map((product) => product.shopId);
+    const shopId = shopIds[0];
+    if(shopIds.some((id) => id !== shopId && !user?.isAdmin && !user?.isSuperAdmin)){
+      return res.status(400).send({ error: "You can only restore products from the same shop" });
+    }
+    if(user.shopId !== shopId && !user?.isAdmin && !user?.isSuperAdmin){
+      return res.status(400).send({ error: "You are not authorized to restore products from this shop" });
+    }
+    const newTimeline = {
+      date: new Date(),
+      description: "product restored",
+      actionBy: user._id,
+    }
     const promises = [];
-    promises.push(
-      restoreProductsById(param)
-      //   deleteReadyMadeShoes(param)
-    );
+    productIds.forEach((productId) => {
+      promises.push(
+        ProductModel.findOneAndUpdate(
+          {
+            productId,
+          },
+          {
+            status: "draft",
+            disabled : false,
+            $push: { timeLine: newTimeline },
+          },
+          { new: true }
+        )
+      );
+    });
     await Promise.all(promises);
     return res.status(200).send({ message: "products restored successfully" });
   } catch (err) {
@@ -696,7 +755,7 @@ const createProduct = async (req, res) => {
 };
 const setProductStatus = async (req, res) => {
   try{
-    const { productId, status } = req.body;
+    const { productId, status,rejectionReasons } = req.body;
     if (!productId) {
       return res.status(400).send({ error: "productId is required" });
     }
@@ -704,9 +763,28 @@ const setProductStatus = async (req, res) => {
     if (statusEnums.indexOf(status) === -1) {
       return res.status(400).send({ error: "invalid status" });
     }
+    if(status === "deleted"){
+      return res.status(400).send({ error: "You cannot set product status to deleted. use delete product instead" });
+    }
     const product = await ProductModel.findOne({ productId }).exec();
     if (!product) {
       return res.status(400).send({ error: "product not found" });
+    }
+    if(status === product?.status){
+      return res.status(400).send({ error: "product status is already set to " + status });
+    }
+    if(product?.status === "deleted"){
+      return res.status(400).send({ error: "You cannot set status for a deleted product" });
+    }
+    if(status ==="live" && product?.status !== "under review"){
+      return res.status(400).send({ error: "You can only set product status to live if it is under review" });
+    }
+    const user = await getAuthUser(req);
+    if(user.shopId !== product.shopId && !user?.isAdmin && !user?.isSuperAdmin){
+      return res.status(400).send({ error: "You are not authorized to edit this product" });
+    }
+    if(status === "rejected" && (!rejectionReasons || rejectionReasons?.length === 0)){
+      return res.status(400).send({ error: "rejectionReason(s) is required" });
     }
     const productType = product.productType
     if(status === "under review" &&  productType === "readyMadeCloth"){
@@ -728,8 +806,24 @@ const setProductStatus = async (req, res) => {
         return res.status(400).send({ error: verify.error });
       }
     }
+   
+    let updatedRejectedReasons = product.rejectionReasons;
+    if(status === "rejected"){
+      updatedRejectedReasons = rejectionReasons;
+    }
+    else{
+      updatedRejectedReasons = [];
+    }
+    const newTimeLine = {
+      date: new Date(),
+      description: `product status set to ${status}`,
+      actionBy: user._id,
+    }
+    const updatedProduct = await ProductModel.findOneAndUpdate
+    ({ productId }, { status, rejectionReasons: updatedRejectedReasons,
+      $push: { timeLine: newTimeLine }
+     }, { new: true }).exec();
 
-    const updatedProduct = await ProductModel.findOneAndUpdate( { productId }, { status }, { new: true }).exec();
       return res.status(200).send({ data: updatedProduct, message: "product status updated successfully" });
 
   }
@@ -799,7 +893,7 @@ const getProduct = async (req, res) => {
     if (!productId) {
       return res.status(400).send({ error: "productId is required" });
     }
-    const product = await ProductModel.findOne({ productId }).populate("shop").populate("postedBy").exec();
+    const product = await ProductModel.findOne({ productId }).populate("shop").populate("postedBy").populate("timeLine.actionBy").exec();
     if (!product) {
       return res.status(400).send({ error: "product not found" });
     }
@@ -817,7 +911,7 @@ const getProductById = async (req, res) => {
     if (!_id) {
       return res.status(400).send({ error: "_id is required" });
     }
-    const product = await ProductModel.findById(_id).populate("shop").populate("postedBy").exec();
+    const product = await ProductModel.findById(_id).populate("shop").populate("postedBy").populate("timeLine.actionBy").exec();
     if (!product) {
       return res.status(400).send({ error: "product not found" });
     }

@@ -98,9 +98,9 @@ const shoeTypeEnums = [
   "Sliders",
   "Brogues",
 ];
-const productTypeEnums = ["readyMadeCloth", "readyMadeShoe", "accessory"];
+const productTypeEnums = ["readyMadeCloth", "readyMadeShoe", "accessory","bespokeCloth","bespokeShoe"];
 
-const statusEnums = ["draft","live", "under review", "disabled","rejected"];
+const statusEnums = ["draft","live", "under review","rejected","deleted"];
 
 module.exports = {
   genderEnums,

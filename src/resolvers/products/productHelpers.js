@@ -478,53 +478,7 @@ const getDynamicFilters = (products) => {
    }
 
 
-   const deleteRestoreProducts = async (
-    productIds,
-    userId,
-    disabledValue
-  ) => {
-    return productIds.reduce(async (acc, _id) => {
-      const result = await acc;
-  
-      const disabled = await ProductModel.findByIdAndUpdate(
-        _id,
-        { disabled: disabledValue },
-        { new: true }
-      );
-  
-      if (disabled) {
-        result.push(_id);
-      }
-  
-      return result;
-    }, []);
-  };
-  const deleteProductsById = async (param) => {
-    try {
-      const { productIds, userId } = param;
-      const deletedProducts = await deleteRestoreProducts(
-        productIds,
-        userId,
-        true
-      );
-      return deletedProducts;
-    } catch (err) {
-      return res.status(500).send({ error: err.message });
-    }
-  };
-  const restoreProductsById = async (param) => {
-    try {
-      const { productIds, userId } = param;
-      const restoredProducts = await deleteRestoreReadyMadeClothes(
-        productIds,
-        userId,
-        false
-      );
-      return restoredProducts;
-    } catch (err) {
-      return res.status(500).send({ error: err.message });
-    }
-  };
+
 
 
   const getQuery = (queries)=>{
@@ -536,7 +490,7 @@ const getDynamicFilters = (products) => {
   
    
       const match = {
-        disabled: queries.disabled ? queries.disabled : false,  
+         disabled: queries.disabled ? true : false,  
       };
       
       if(shopId){
@@ -610,7 +564,7 @@ const getDynamicFilters = (products) => {
   
   
       const query = { ...match };
-      console.log("query", query);
+    
         return query;
   }
 
@@ -665,8 +619,7 @@ const getDynamicFilters = (products) => {
    
    module.exports = {
     getDynamicFilters,
-    deleteProductsById,
-    restoreProductsById,
+    
     getQuery,
     verifyColorsHasImages,
     validateVariations

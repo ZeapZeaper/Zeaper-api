@@ -9,6 +9,7 @@ const userResolver = require("../resolvers/user");
 const shopResolver = require("../resolvers/shop");
 const productResolver = require("../resolvers/products/product");
 const commentResolver = require("../resolvers/comment");
+const reviewResolver = require("../resolvers/review");
 
 const handleMoreFieldsUploads = uploadMultiple.fields([
   { name: "documents", maxCount: 5 },
@@ -93,6 +94,7 @@ let routes = (app) => {
   router.get("/product", authMiddleware, productResolver.getProduct);
   router.get("/product/id", authMiddleware, productResolver.getProductById);
   router.put("/product/update", authMiddleware, productResolver.editProduct);
+  router.put("/product/update/status", authUserAdminMiddleware, productResolver.setProductStatus);
   router.put("/product/update/addProductVariation", authMiddleware, productResolver. addProductVariation);
   router.put("/product/update/deleteProductColor", authMiddleware, productResolver.deleteProductColor);
   router.put("/product/update/deleteProductImage", authMiddleware, productResolver.deleteProductImage);
@@ -101,6 +103,9 @@ let routes = (app) => {
   router.put("/product/update/editProductVariation", authMiddleware,    handleMoreFieldsUploads, productResolver.editProductVariation);
   router.put("/product/update/deleteProductVariation", authMiddleware, productResolver.deleteProductVariation);
   router.put("/product/update/submitProduct", authMiddleware, productResolver.submitProduct);
+  router.put("/product/delete", authMiddleware, productResolver.deleteProducts);
+  router.put("/product/restore", authMiddleware, productResolver.restoreProducts);
+
   
 
   router.put(
@@ -109,6 +114,18 @@ let routes = (app) => {
     handleMoreFieldsUploads,
     productResolver.addProductColorAndImages
   );
+  
+
+
+  //Review routes
+  router.post("/review/create", authMiddleware, reviewResolver.createReview);
+  router.get("/reviews", authMiddleware, reviewResolver.getReviews);
+  router.get("/reviews/shop", authMiddleware, reviewResolver.getReviewsForShopProducts);
+  router.get("/review", authMiddleware, reviewResolver.getReview);
+  router.put("/review/update", authMiddleware, reviewResolver.updateReview);
+  router.put("/review/update/likeReview", authMiddleware, reviewResolver.likeReview);
+  router.put("/review/update/dislikeReview", authMiddleware, reviewResolver.dislikeReview);
+  router.delete("/review/delete", authMiddleware, reviewResolver.deleteReview);
   
   
   
