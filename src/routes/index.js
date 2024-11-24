@@ -130,6 +130,7 @@ let routes = (app) => {
     productResolver.getCategoryProducts
   );
   router.get("/products/live", authMiddleware, productResolver.getLiveProducts);
+  router.get("/products/live/promo", authMiddleware, productResolver.getPromoWithLiveProducts);
   router.get(
     "/products/live/newest",
     authMiddleware,

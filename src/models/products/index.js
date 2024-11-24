@@ -132,6 +132,7 @@ const ReadyMadeClothesSchema = new mongoose.Schema({
       quantity: { type: Number, required: true },
     },
   ],
+  
   postedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Users",
