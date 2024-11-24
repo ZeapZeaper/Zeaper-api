@@ -1,7 +1,9 @@
 require("dotenv").config();
 const fs = require("fs");
+const root = require("../../root");
 const UserModel = require("../models/user");
 const ShopModel = require("../models/shop");
+const path = require("path");
 const crypto = require("crypto");
 const CryptoJS = require("crypto-js");
 const algorithm = "aes-256-ctr";
@@ -17,6 +19,16 @@ const deleteLocalFile = async (path) => {
       resolve();
     });
   });
+};
+
+const deleLocalImages = async (files) => {
+  for (let i = 0; i < files?.length; i++) {
+       
+    const file = files[i];
+    const source = path.join(root + "/uploads/" + file.filename);
+ 
+    const deleteSourceFile = await deleteLocalFile(source);
+  }
 };
 const numberWithCommas = (x) => {
   return x?.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
@@ -91,5 +103,6 @@ module.exports = {
   verifyUserId,
   verifyShopId,
   checkForDuplicates,
-  lowerFirstChar
+  lowerFirstChar,
+  deleLocalImages,
 };

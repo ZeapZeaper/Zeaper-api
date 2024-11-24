@@ -123,7 +123,7 @@ const editReadyMadeClothes = async (req) => {
     }
     
   
-    console.log("here");
+  
     // remove productId from params
     delete params.productId;
   

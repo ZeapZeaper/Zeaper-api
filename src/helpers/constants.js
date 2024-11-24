@@ -101,6 +101,7 @@ const shoeTypeEnums = [
 const productTypeEnums = ["readyMadeCloth", "readyMadeShoe", "accessory","bespokeCloth","bespokeShoe"];
 
 const statusEnums = ["draft","live", "under review","rejected","deleted"];
+const promoStatusEnums = ["draft","live", "expired","scheduled"];
 
 module.exports = {
   genderEnums,
@@ -125,5 +126,6 @@ module.exports = {
   shoeSizeEnums,
   accessoryTypeEnums,
   accessoryStyleEnums,
-  accessorySizeEnums
+  accessorySizeEnums,
+  promoStatusEnums,
 };
