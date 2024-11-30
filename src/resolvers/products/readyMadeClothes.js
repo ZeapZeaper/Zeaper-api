@@ -244,6 +244,7 @@ const validateReadyMadeClothes = async (product) => {
    if (checkForDuplicates(colorValues)) {
      return { error: "color value must be unique in the colors array" };
    }
+  
     // check colors has images
     if (!verifyColorsHasImages(colors)) {
       return { error: "colors must have images and must be in right format" };

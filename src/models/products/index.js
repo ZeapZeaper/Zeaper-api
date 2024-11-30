@@ -130,9 +130,21 @@ const ReadyMadeClothesSchema = new mongoose.Schema({
       colorValue: { type: String, required: true },
       size: { type: String, required: true },
       quantity: { type: Number, required: true },
+      bespoke: {
+        isBespoke: { type: Boolean, required: true, default: false },
+        colorType: { type: String, required: false, enum: ["single", "multiple"] },
+        availableColors: [
+          {
+            type: String,
+            required: false,
+          },
+        ]
+        
+      },
     },
   ],
   
+
   postedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Users",

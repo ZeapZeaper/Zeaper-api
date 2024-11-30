@@ -47,8 +47,18 @@ const {
   editAccessories,
   validateAccessories,
   addVariationToAccesories,
-} = require("./Accessories");
+} = require("./accessories");
 const PromoModel = require("../../models/promo");
+const {
+  editBespokeClothes,
+  addVariationToBespokeCloth,
+  validateBespokeClothes,
+} = require("./BespokeClothes");
+const {
+  editBespokeShoes,
+  addVariationToBespokeShoe,
+  validateBespokeShoes,
+} = require("./bespokeShoes");
 
 //saving image to firebase storage
 const addImage = async (destination, filename) => {
@@ -155,11 +165,9 @@ const addProductColorAndImages = async (req, res) => {
     //if files is more than 5
     if (files?.length > 5) {
       await deleLocalImages(files);
-      return res
-        .status(400)
-        .send({
-          error: "You can only upload a maximum of 5 images for each color",
-        });
+      return res.status(400).send({
+        error: "You can only upload a maximum of 5 images for each color",
+      });
     }
 
     const { productId, color } = req.body;
@@ -168,29 +176,32 @@ const addProductColorAndImages = async (req, res) => {
       await deleLocalImages(files);
       return res.status(400).send({ error: "productId is required" });
     }
-
-    if (!color) {
-      await deleLocalImages(files);
-      return res.status(400).send({ error: "color is required" });
-    }
-
-    if (colorEnums.findIndex((c) => c?.name === color) === -1) {
-      await deleLocalImages(files);
-      return res.status(400).send({ error: "invalid color value" });
-    }
-
     const product = await ProductModel.findOne({ productId }).exec();
     if (!product) {
       await deleLocalImages(files);
       return res.status(400).send({ error: "product not found" });
     }
-    // check if color already exist
+    const productType = product.productType;
+    if (productType !== "bespokeCloth" && productType !== "bespokeShoe") {
+      if (!color) {
+        await deleLocalImages(files);
+        return res.status(400).send({ error: "color is required" });
+      }
 
-    const colorExist = product.colors.find((c) => c.value === color);
-    if (colorExist) {
-      await deleLocalImages(files);
-      return res.status(400).send({ error: "color already exist" });
+      if (colorEnums.findIndex((c) => c?.name === color) === -1) {
+        await deleLocalImages(files);
+        return res.status(400).send({ error: "invalid color value" });
+      }
+
+      // check if color already exist
+
+      const colorExist = product.colors.find((c) => c.value === color);
+      if (colorExist) {
+        await deleLocalImages(files);
+        return res.status(400).send({ error: "color already exist" });
+      }
     }
+
     const user = await getAuthUser(req);
     if (
       user.shopId !== product.shopId &&
@@ -231,7 +242,10 @@ const addProductColorAndImages = async (req, res) => {
     }
 
     const newColor = {
-      value: color,
+      value:
+        productType === "bespokeCloth" || productType === "bespokeShoe"
+          ? "Bespoke"
+          : color,
       images,
     };
 
@@ -270,11 +284,9 @@ const addImagesToProductColor = async (req, res) => {
     //if files is more than 5
     if (files.length > 5) {
       await deleLocalImages(files);
-      return res
-        .status(400)
-        .send({
-          error: "You can only upload a maximum of 5 images for each color",
-        });
+      return res.status(400).send({
+        error: "You can only upload a maximum of 5 images for each color",
+      });
     }
 
     const { productId, color } = req.body;
@@ -288,7 +300,10 @@ const addImagesToProductColor = async (req, res) => {
       return res.status(400).send({ error: "color is required" });
     }
 
-    if (colorEnums.findIndex((c) => c?.name === color) === -1) {
+    if (
+      color.toLowerCase() !== "bespoke" &&
+      colorEnums.findIndex((c) => c?.name === color) === -1
+    ) {
       await deleLocalImages(files);
       return res.status(400).send({ error: "invalid color value" });
     }
@@ -319,11 +334,9 @@ const addImagesToProductColor = async (req, res) => {
     const previousImages = colorExist.images;
     if ([...previousImages, ...files].length > 5) {
       await deleLocalImages(files);
-      return res
-        .status(400)
-        .send({
-          error: "You can only upload a maximum of 5 images for each color",
-        });
+      return res.status(400).send({
+        error: "You can only upload a maximum of 5 images for each color",
+      });
     }
 
     let images = [{}];
@@ -393,12 +406,10 @@ const deleteProductColor = async (req, res) => {
     const images = colorImages.map((image) => image.name);
     const isDefault = colorImages.find((image) => image.isDefault);
     if (isDefault && colors.length > 1) {
-      return res
-        .status(400)
-        .send({
-          error:
-            "There is a default image for this color. set another image as default before deleting this color",
-        });
+      return res.status(400).send({
+        error:
+          "There is a default image for this color. set another image as default before deleting this color",
+      });
     }
     const updatedProduct = await ProductModel.findOneAndUpdate(
       { productId },
@@ -457,12 +468,10 @@ const deleteProductImage = async (req, res) => {
     }
     const isDefault = imageExist.isDefault;
     if (isDefault && (colorImages.length > 1 || colors.length > 1)) {
-      return res
-        .status(400)
-        .send({
-          error:
-            "This is a default image for this product. set another image as default before deleting this image",
-        });
+      return res.status(400).send({
+        error:
+          "This is a default image for this product. set another image as default before deleting this image",
+      });
     }
     const updatedProduct = await ProductModel.findOneAndUpdate(
       { productId, "colors.value": color },
@@ -491,11 +500,9 @@ const setProductImageAsDefault = async (req, res) => {
       return res.status(400).send({ error: "color is required" });
     }
     if (!imageName) {
-      return res
-        .status(400)
-        .send({
-          error: "name of the image you want to set as default is required",
-        });
+      return res.status(400).send({
+        error: "name of the image you want to set as default is required",
+      });
     }
     const product = await ProductModel.findOne({ productId }).exec();
     if (!product) {
@@ -569,20 +576,16 @@ const editProduct = async (req, res) => {
       return res.status(400).send({ error: "product not found" });
     }
     if (req.body.productType && req.body.productType !== product.productType) {
-      return res
-        .status(400)
-        .send({
-          error:
-            "productType cannot be edited. delete and create a new product with correct product type instead",
-        });
+      return res.status(400).send({
+        error:
+          "productType cannot be edited. delete and create a new product with correct product type instead",
+      });
     }
     if (req.body.shopId && req.body.shopId !== product.shopId) {
-      return res
-        .status(400)
-        .send({
-          error:
-            "shopId cannot be edited. delete and create a new product with correct shopId instead",
-        });
+      return res.status(400).send({
+        error:
+          "shopId cannot be edited. delete and create a new product with correct shopId instead",
+      });
     }
 
     if (title && title == "") {
@@ -602,19 +605,15 @@ const editProduct = async (req, res) => {
         .send({ error: "You are not authorized to edit this product" });
     }
     if (product?.status !== "draft" && product?.status !== "rejected") {
-      return res
-        .status(400)
-        .send({
-          error:
-            "You can only edit a product that is in draft or rejected status",
-        });
+      return res.status(400).send({
+        error:
+          "You can only edit a product that is in draft or rejected status",
+      });
     }
     if (status) {
-      return res
-        .status(400)
-        .send({
-          error: "You are not authorized to directly change the status here",
-        });
+      return res.status(400).send({
+        error: "You are not authorized to directly change the status here",
+      });
     }
 
     if (req.body?.postedBy) {
@@ -638,6 +637,12 @@ const editProduct = async (req, res) => {
     }
     if (productType === "accessory") {
       updatedProduct = await editAccessories(req);
+    }
+    if (productType === "bespokeCloth") {
+      updatedProduct = await editBespokeClothes(req);
+    }
+    if (productType === "bespokeShoe") {
+      updatedProduct = await editBespokeShoes(req);
     }
     if (updatedProduct?.error) {
       return res.status(400).send({ error: updatedProduct.error });
@@ -676,11 +681,9 @@ const deleteProducts = async (req, res) => {
         .send({ error: "You can only delete products from the same shop" });
     }
     if (user.shopId !== shopId && !user?.isAdmin && !user?.isSuperAdmin) {
-      return res
-        .status(400)
-        .send({
-          error: "You are not authorized to delete products from this shop",
-        });
+      return res.status(400).send({
+        error: "You are not authorized to delete products from this shop",
+      });
     }
     const newTimeline = {
       date: new Date(),
@@ -737,11 +740,9 @@ const restoreProducts = async (req, res) => {
         .send({ error: "You can only restore products from the same shop" });
     }
     if (user.shopId !== shopId && !user?.isAdmin && !user?.isSuperAdmin) {
-      return res
-        .status(400)
-        .send({
-          error: "You are not authorized to restore products from this shop",
-        });
+      return res.status(400).send({
+        error: "You are not authorized to restore products from this shop",
+      });
     }
     const newTimeline = {
       date: new Date(),
@@ -829,11 +830,9 @@ const createProduct = async (req, res) => {
       !user?.isAdmin &&
       !user?.isSuperAdmin
     ) {
-      return res
-        .status(400)
-        .send({
-          error: "You are not authorized to create product for this shop",
-        });
+      return res.status(400).send({
+        error: "You are not authorized to create product for this shop",
+      });
     }
 
     if (!user?.shopId && !shopId) {
@@ -888,12 +887,10 @@ const setProductStatus = async (req, res) => {
       return res.status(400).send({ error: "invalid status" });
     }
     if (status === "deleted") {
-      return res
-        .status(400)
-        .send({
-          error:
-            "You cannot set product status to deleted. use delete product instead",
-        });
+      return res.status(400).send({
+        error:
+          "You cannot set product status to deleted. use delete product instead",
+      });
     }
     const product = await ProductModel.findOne({ productId }).exec();
     if (!product) {
@@ -910,12 +907,9 @@ const setProductStatus = async (req, res) => {
         .send({ error: "You cannot set status for a deleted product" });
     }
     if (status === "live" && product?.status !== "under review") {
-      return res
-        .status(400)
-        .send({
-          error:
-            "You can only set product status to live if it is under review",
-        });
+      return res.status(400).send({
+        error: "You can only set product status to live if it is under review",
+      });
     }
     const user = await getAuthUser(req);
     if (
@@ -974,12 +968,10 @@ const setProductStatus = async (req, res) => {
       { new: true }
     ).exec();
 
-    return res
-      .status(200)
-      .send({
-        data: updatedProduct,
-        message: "product status updated successfully",
-      });
+    return res.status(200).send({
+      data: updatedProduct,
+      message: "product status updated successfully",
+    });
   } catch (err) {
     return res.status(500).send({ error: err.message });
   }
@@ -1009,6 +1001,18 @@ const submitProduct = async (req, res) => {
         return res.status(400).send({ error: verify.error });
       }
     }
+    if (productType === "bespokeCloth") {
+      const verify = await validateBespokeClothes(product);
+      if (verify?.error) {
+        return res.status(400).send({ error: verify.error });
+      }
+    }
+    if (productType === "bespokeShoe") {
+      const verify = await validateBespokeShoes(product);
+      if (verify?.error) {
+        return res.status(400).send({ error: verify.error });
+      }
+    }
     if (productType === "accessory") {
       const verify = await validateAccessories(product);
       if (verify?.error) {
@@ -1029,12 +1033,10 @@ const submitProduct = async (req, res) => {
     if (!updatedProduct) {
       return res.status(400).send({ error: "product not found" });
     }
-    return res
-      .status(200)
-      .send({
-        data: updatedProduct,
-        message: "product submitted successfully",
-      });
+    return res.status(200).send({
+      data: updatedProduct,
+      message: "product submitted successfully",
+    });
   } catch (err) {
     return res.status(500).send({ error: err.message });
   }
@@ -1132,20 +1134,16 @@ const getProducts = async (req, res) => {
     const limit = parseInt(req.query.limit);
     const pageNumber = parseInt(req.query.pageNumber);
     if (!limit) {
-      return res
-        .status(400)
-        .send({
-          error: "limit is required. This is maximum number you want per page",
-        });
+      return res.status(400).send({
+        error: "limit is required. This is maximum number you want per page",
+      });
     }
 
     if (!pageNumber) {
-      return res
-        .status(400)
-        .send({
-          error:
-            "pageNumber is required. This is the current page number in the pagination",
-        });
+      return res.status(400).send({
+        error:
+          "pageNumber is required. This is the current page number in the pagination",
+      });
     }
     if (sort !== -1 && sort !== 1) {
       return res.status(400).send({ error: "sort value can only be 1 or -1" });
@@ -1199,20 +1197,16 @@ const getLiveProducts = async (req, res) => {
     const limit = parseInt(req.query.limit);
     const pageNumber = parseInt(req.query.pageNumber);
     if (!limit) {
-      return res
-        .status(400)
-        .send({
-          error: "limit is required. This is maximum number you want per page",
-        });
+      return res.status(400).send({
+        error: "limit is required. This is maximum number you want per page",
+      });
     }
 
     if (!pageNumber) {
-      return res
-        .status(400)
-        .send({
-          error:
-            "pageNumber is required. This is the current page number in the pagination",
-        });
+      return res.status(400).send({
+        error:
+          "pageNumber is required. This is the current page number in the pagination",
+      });
     }
     const sort = req.query.sort || -1;
     if (sort !== -1 && sort !== 1) {
@@ -1253,20 +1247,16 @@ const getPromoWithLiveProducts = async (req, res) => {
     const pageNumber = parseInt(req.query.pageNumber);
     const { promoId } = req.query;
     if (!limit) {
-      return res
-        .status(400)
-        .send({
-          error: "limit is required. This is maximum number you want per page",
-        });
+      return res.status(400).send({
+        error: "limit is required. This is maximum number you want per page",
+      });
     }
 
     if (!pageNumber) {
-      return res
-        .status(400)
-        .send({
-          error:
-            "pageNumber is required. This is the current page number in the pagination",
-        });
+      return res.status(400).send({
+        error:
+          "pageNumber is required. This is the current page number in the pagination",
+      });
     }
     const sort = req.query.sort || -1;
     if (sort !== -1 && sort !== 1) {
@@ -1316,20 +1306,16 @@ const getNewestArrivals = async (req, res) => {
     const limit = parseInt(req.query.limit);
     const pageNumber = parseInt(req.query.pageNumber);
     if (!limit) {
-      return res
-        .status(400)
-        .send({
-          error: "limit is required. This is maximum number you want per page",
-        });
+      return res.status(400).send({
+        error: "limit is required. This is maximum number you want per page",
+      });
     }
 
     if (!pageNumber) {
-      return res
-        .status(400)
-        .send({
-          error:
-            "pageNumber is required. This is the current page number in the pagination",
-        });
+      return res.status(400).send({
+        error:
+          "pageNumber is required. This is the current page number in the pagination",
+      });
     }
 
     const query = getQuery(req.query);
@@ -1366,20 +1352,16 @@ const getMostPopular = async (req, res) => {
     const limit = parseInt(req.query.limit);
     const pageNumber = parseInt(req.query.pageNumber);
     if (!limit) {
-      return res
-        .status(400)
-        .send({
-          error: "limit is required. This is maximum number you want per page",
-        });
+      return res.status(400).send({
+        error: "limit is required. This is maximum number you want per page",
+      });
     }
 
     if (!pageNumber) {
-      return res
-        .status(400)
-        .send({
-          error:
-            "pageNumber is required. This is the current page number in the pagination",
-        });
+      return res.status(400).send({
+        error:
+          "pageNumber is required. This is the current page number in the pagination",
+      });
     }
 
     const query = getQuery(req.query);
@@ -1504,12 +1486,10 @@ const getShopDraftProducts = async (req, res) => {
       .populate("postedBy")
       .exec();
 
-    return res
-      .status(200)
-      .send({
-        data: draftProducts,
-        message: "Draft products fetched successfully",
-      });
+    return res.status(200).send({
+      data: draftProducts,
+      message: "Draft products fetched successfully",
+    });
   } catch (err) {
     return res.status(500).send({ error: err.message });
   }
@@ -1533,6 +1513,21 @@ const getProductOptions = async (req, res) => {
       clothSizeEnums: clothSizeEnums.sort(),
       colorEnums: colorEnums.sort((a, b) => a.name.localeCompare(b.name)),
     };
+    const bespokeClothesParams = {
+      mainEnums: mainEnums.filter((m) => !nonClothMainEnums.includes(m)).sort(),
+      genderEnums: genderEnums.sort(),
+      ageGroupEnums: ageGroupEnums.sort(),
+      ageRangeEnums: ageRangeEnums.sort(),
+      statusEnums: statusEnums.sort(),
+      clothStyleEnums: clothStyleEnums.sort(),
+      sleeveLengthEnums: sleeveLengthEnums.sort(),
+      designEnums: designEnums.sort(),
+      fasteningEnums: fasteningEnums.sort(),
+      occasionEnums: occasionEnums.sort(),
+      fitEnums: fitEnums.sort(),
+      brandEnums: brandEnums.sort(),
+      colorEnums: colorEnums.sort((a, b) => a.name.localeCompare(b.name)),
+    };
     const readyMadeShoeParams = {
       genderEnums: genderEnums.sort(),
       ageGroupEnums: ageGroupEnums.sort(),
@@ -1541,6 +1536,21 @@ const getProductOptions = async (req, res) => {
       shoeStyleEnums: shoeStyleEnums.sort(),
       shoeTypeEnums: shoeTypeEnums.sort(),
       shoeSizeEnums: shoeSizeEnums.sort(),
+      designEnums: designEnums.sort(),
+      fasteningEnums: fasteningEnums.sort(),
+      occasionEnums: occasionEnums.sort(),
+      brandEnums: brandEnums.sort(),
+      colorEnums: colorEnums.sort((a, b) => a.name.localeCompare(b.name)),
+      heelHeightEnums: heelHightEnums.sort(),
+      heelTypeEnums: heelTypeEnums.sort(),
+    };
+    const bespokeShoeParams = {
+      genderEnums: genderEnums.sort(),
+      ageGroupEnums: ageGroupEnums.sort(),
+      ageRangeEnums: ageRangeEnums.sort(),
+      statusEnums: statusEnums.sort(),
+      shoeStyleEnums: shoeStyleEnums.sort(),
+      shoeTypeEnums: shoeTypeEnums.sort(),
       designEnums: designEnums.sort(),
       fasteningEnums: fasteningEnums.sort(),
       occasionEnums: occasionEnums.sort(),
@@ -1568,6 +1578,8 @@ const getProductOptions = async (req, res) => {
         readyMadeClothes: readyMadeClothesParams,
         readyMadeShoes: readyMadeShoeParams,
         accessories: accessoriesParams,
+        bespokeClothes: bespokeClothesParams,
+        bespokeShoes: bespokeShoeParams,
         productTypeEnums: productTypeEnums,
       },
     });
@@ -1623,6 +1635,23 @@ const addProductVariation = async (req, res) => {
         user
       );
     }
+    if (productType === "bespokeCloth") {
+      updatedVariation = await addVariationToBespokeCloth(
+        product,
+        variation,
+        user
+      );
+    }
+    if (productType === "bespokeShoe") {
+      updatedVariation = await addVariationToBespokeShoe(
+        product,
+        variation,
+        user
+      );
+    }
+    if (!updatedVariation) {
+      return res.status(400).send({ error: "product not found" });
+    }
     if (!updatedVariation) {
       return res.status(400).send({ error: "product not found" });
     }
@@ -1640,12 +1669,10 @@ const addProductVariation = async (req, res) => {
       { new: true }
     ).exec();
 
-    return res
-      .status(200)
-      .send({
-        data: updatedVariation,
-        message: "variation added successfully",
-      });
+    return res.status(200).send({
+      data: updatedVariation,
+      message: "variation added successfully",
+    });
   } catch (err) {
     return res.status(500).send({ error: err.message });
   }
@@ -1682,24 +1709,22 @@ const editProductVariation = async (req, res) => {
     if (!originalVariation) {
       return res.status(400).send({ error: "variation not found" });
     }
-    if (originalVariation?.colorValue !== variation.colorValue) {
-      return res
-        .status(400)
-        .send({
+    const productType = product.productType;
+    if (productType === "readyMadeCloth" || productType === "readyMadeShoe") {
+      if (originalVariation?.colorValue !== variation.colorValue) {
+        return res.status(400).send({
           error:
             "color of variation cannot be edited. delete and create a new variation with correct color instead",
         });
-    }
-    if (originalVariation?.size !== variation.size) {
-      return res
-        .status(400)
-        .send({
+      }
+      if (originalVariation?.size !== variation.size) {
+        return res.status(400).send({
           error:
             "size of variation cannot be edited. delete and create a new variation with correct size instead",
         });
+      }
     }
 
-    const productType = product.productType;
     let updatedProduct;
     if (productType === "readyMadeCloth") {
       updatedProduct = await addVariationToReadyMadeClothes(product, variation);
@@ -1709,6 +1734,12 @@ const editProductVariation = async (req, res) => {
     }
     if (productType === "accessory") {
       updatedProduct = await addVariationToAccesories(product, variation);
+    }
+    if (productType === "bespokeCloth") {
+      updatedProduct = await addVariationToBespokeCloth(product, variation);
+    }
+    if (productType === "bespokeShoe") {
+      updatedProduct = await addVariationToBespokeShoe(product, variation);
     }
     if (!updatedProduct) {
       return res.status(400).send({ error: "product not found" });

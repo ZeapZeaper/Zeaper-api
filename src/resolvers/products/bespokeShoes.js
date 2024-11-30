@@ -3,40 +3,31 @@ const {
   ageGroupEnums,
   ageRangeEnums,
   genderEnums,
-
+  sleeveLengthEnums,
   fasteningEnums,
   occasionEnums,
-  brandEnums,
-
+  fitEnums,
+  colorEnums,
+  shoeStyleEnums,
   designEnums,
 
-  shoeStyleEnums,
+  mainEnums,
+  brandEnums,
   heelHightEnums,
   heelTypeEnums,
   shoeSizeEnums,
 } = require("../../helpers/constants");
 const ProductModel = require("../../models/products");
 const {
-  validateVariations,
+  validateBespokeVariations,
   verifyColorsHasImages,
 } = require("./productHelpers");
 
-const editReadyMadeShoes = async (req) => {
-  console.log("here");
+const editBespokeShoes = async (req) => {
   try {
     const params = req.body;
-    const { productId, categories, sizes, colors, variations } = params;
-    console.log("params", params);
+    const { productId, categories, colors, variations } = params;
 
-    if (
-      sizes &&
-      (!Array.isArray(sizes) || sizes.length === 0 || checkForDuplicates(sizes))
-    ) {
-      return { error: "sizes is required and must be unique" };
-    }
-    if (sizes?.some((s) => shoeSizeEnums.indexOf(s) === -1)) {
-      return { error: "invalid size category" };
-    }
     if (categories && Object.keys(categories).length === 0) {
       return { error: "categories is required" };
     }
@@ -132,9 +123,8 @@ const editReadyMadeShoes = async (req) => {
         return { error: "invalid brand category" };
       }
       categories.main = ["Footwear"];
-      categories.productGroup = "Ready-Made";
+      categories.productGroup = "Bespoke";
     }
-
     if (colors) {
       return { error: "you can not update colors with this endpoint" };
     }
@@ -144,21 +134,22 @@ const editReadyMadeShoes = async (req) => {
 
     // remove productId from params
     delete params.productId;
+    params.sizes = ["Custom"];
 
-    const readyMadeShoe = await ProductModel.findOneAndUpdate(
+    const bespokeShoe = await ProductModel.findOneAndUpdate(
       { productId },
       {
         ...params,
       },
       { new: true }
     );
-    return readyMadeShoe;
+    return bespokeShoe;
   } catch (err) {
     return { error: err.message };
   }
 };
 
-const validateReadyMadeShoes = async (product) => {
+const validateBespokeShoes = async (product) => {
   const { categories, sizes, colors, images, variations } = product;
   if (!categories || Object.keys(categories).length === 0) {
     return { error: "categories is required" };
@@ -243,8 +234,11 @@ const validateReadyMadeShoes = async (product) => {
   ) {
     return { error: "sizes is required and must be unique" };
   }
-  if (sizes.some((s) => shoeSizeEnums.indexOf(s) === -1)) {
-    return { error: "invalid size category" };
+  if (sizes?.length > 1) {
+    return { error: "sizes must have only one size for bespoke" };
+  }
+  if (sizes && sizes[0] !== "Custom") {
+    return { error: "sizes must be an array with only Custom size" };
   }
   // check for duplicates in color.value in colors array
   const colorValues = colors.map((color) => color.value);
@@ -263,17 +257,23 @@ const validateReadyMadeShoes = async (product) => {
   }
 
   // check variations has correct size, colorValue, price, quantity
-  const isValidVariations = validateVariations(variations, sizes, colors);
+  const isValidVariations = validateBespokeVariations(variations);
   if (!isValidVariations) {
     return { error: "invalid variations array" };
   }
   return true;
 };
-
-const addVariationToReadyMadeShoes = async (product, variation) => {
-  const { price, colorValue, size, quantity } = variation;
-  const { colors, sizes, variations } = product;
-
+const addVariationToBespokeShoe = async (product, variation) => {
+  const { price, colorType, availableColors } = variation;
+  const { variations } = product;
+  // check if there is bespoke variation already
+  const isBespoke = variations.some((v) => v.bespoke?.isBespoke);
+  if (isBespoke && !variation?.sku) {
+    return {
+      error:
+        "bespoke variation already exists for this product. if you want to edit variation, provide sku",
+    };
+  }
   let sku;
   if (!variation) {
     return { error: "variation is required" };
@@ -281,58 +281,82 @@ const addVariationToReadyMadeShoes = async (product, variation) => {
   if (!price || typeof price !== "number" || price < 0) {
     return { error: "price is required and must be a number greater than 0" };
   }
-  if (!colorValue) {
-    return { error: "colorValue is required" };
+  if (!colorType || (colorType !== "single" && colorType !== "multiple")) {
+    return { error: "colorType is required and must be single or multiple" };
   }
-  if (!size) {
-    return { error: "size is required" };
+  if (colorType === "single" && !availableColors) {
+    return { error: "availableColors is required when colorType is multiple" };
   }
-  if (!quantity || typeof quantity !== "number" || quantity < 0) {
+  if (colorType === "single" && !Array.isArray(availableColors)) {
+    return { error: "availableColors must be an array" };
+  }
+  if (colorType === "single" && availableColors.length === 0) {
+    return { error: "availableColors must have at least one color" };
+  }
+  if (
+    colorType === "single" &&
+    availableColors.some(
+      (color) => colorEnums.map((c) => c.name).indexOf(color) === -1
+    )
+  ) {
+    return { error: "invalid color in available colors" };
+  }
+  if (colorType === "multiple" && availableColors?.length > 0) {
     return {
-      error: "quantity is required and must be a number greater than 0",
+      error: "availableColors must be empty when color type is multiple",
     };
   }
-  if (!sizes.includes(size)) {
-    return { error: "size is not valid" };
-  }
-  if (!colors.map((color) => color.value).includes(colorValue)) {
-    return { error: "colorValue is not valid" };
-  }
   if (variation?.sku) {
-    // edit variation
     sku = variation.sku;
     const isExist = variations.some((v) => v.sku === sku);
     if (!isExist) {
-      return { error: "variation does not exist" };
+      return { error: "provided sku does not exist in variations" };
     }
     const index = variations.findIndex((v) => v.sku === sku);
-    variations[index] = { ...variation };
+
+    const editedVariation = {
+      sku: sku,
+      price,
+      size: "Custom",
+      quantity: 1,
+      colorValue: "Bespoke",
+      bespoke: {
+        isBespoke: true,
+        colorType,
+        availableColors,
+      },
+    };
+    variations[index] = { ...editedVariation };
     await product.save();
     return variations[index];
   }
-  sku = `${product.productId}-${size}-${colorValue}`;
-  const isExist = variations.some((v) => v.sku === sku);
-  if (isExist) {
-    return { error: "variation of same color and size already exists" };
+
+  if (colorType === "single") {
+    sku = "BESPOKE";
+  } else {
+    sku = "BESPOKE-MULTIPLE";
   }
 
   const newVariation = {
     sku,
     price,
-    colorValue,
-    size,
-    quantity,
+    size: "Custom",
+    quantity: 1,
+    colorValue: "Bespoke",
+    bespoke: {
+      isBespoke: true,
+      colorType,
+      availableColors,
+    },
   };
-
   variations.push(newVariation);
 
   await product.save();
-
   return newVariation;
 };
 
 module.exports = {
-  editReadyMadeShoes,
-  validateReadyMadeShoes,
-  addVariationToReadyMadeShoes,
+  validateBespokeShoes,
+  editBespokeShoes,
+  addVariationToBespokeShoe,
 };

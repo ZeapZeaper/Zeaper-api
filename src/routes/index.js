@@ -2,7 +2,11 @@ const express = require("express");
 const router = express.Router();
 //const organisationUsersResolver = require("../resolvers/organisationUsers");
 
-const { upload, uploadMultiple } = require("../middleware/uploadImage");
+const {
+  upload,
+  uploadMultiple,
+  validateFileSizes,
+} = require("../middleware/uploadImage");
 const {
   authMiddleware,
   authUserAdminMiddleware,
@@ -17,7 +21,7 @@ const promoResolver = require("../resolvers/promo");
 
 const handleMoreFieldsUploads = uploadMultiple.fields([
   { name: "documents", maxCount: 5 },
-  { name: "images", maxCount: 10 },
+  { name: "images", maxCount: 5 },
 ]);
 
 let routes = (app) => {
@@ -35,7 +39,7 @@ let routes = (app) => {
   router.post(
     "/user/create/googleApple",
     authMiddleware,
-    upload,
+    upload,validateFileSizes,
     userResolver.createUserWithGoogleOrApple
   );
   router.get(
@@ -64,7 +68,7 @@ let routes = (app) => {
   router.put(
     "/user/update/profilePic",
     authMiddleware,
-    upload,
+    upload,validateFileSizes,
     userResolver.uploadProfilePic
   );
   router.put("/user/delete", authMiddleware, userResolver.deleteUsers);
@@ -112,12 +116,7 @@ let routes = (app) => {
   );
 
   //Product routes
-  router.post(
-    "/product/create",
-    authMiddleware,
-    handleMoreFieldsUploads,
-    productResolver.createProduct
-  );
+  router.post("/product/create", authMiddleware, productResolver.createProduct);
   router.get(
     "/products",
     authMiddleware,
@@ -130,7 +129,11 @@ let routes = (app) => {
     productResolver.getCategoryProducts
   );
   router.get("/products/live", authMiddleware, productResolver.getLiveProducts);
-  router.get("/products/live/promo", authMiddleware, productResolver.getPromoWithLiveProducts);
+  router.get(
+    "/products/live/promo",
+    authMiddleware,
+    productResolver.getPromoWithLiveProducts
+  );
   router.get(
     "/products/live/newest",
     authMiddleware,
@@ -194,12 +197,13 @@ let routes = (app) => {
     "/product/update/addImagesToProductColor",
     authMiddleware,
     handleMoreFieldsUploads,
+    validateFileSizes,
     productResolver.addImagesToProductColor
   );
   router.put(
     "/product/update/editProductVariation",
     authMiddleware,
-    handleMoreFieldsUploads,
+
     productResolver.editProductVariation
   );
   router.put(
@@ -223,6 +227,7 @@ let routes = (app) => {
     "/product/update/addColorAndImages",
     authMiddleware,
     handleMoreFieldsUploads,
+    validateFileSizes,
     productResolver.addProductColorAndImages
   );
 
@@ -253,7 +258,7 @@ let routes = (app) => {
     "/promo/create",
     authMiddleware,
     authUserAdminMiddleware,
-    upload,
+    upload,validateFileSizes,
     promoResolver.createPromo
   );
   router.get(
@@ -290,14 +295,14 @@ let routes = (app) => {
     "/promo/update",
     authMiddleware,
     authUserAdminMiddleware,
-    upload,
+    upload,validateFileSizes,
     promoResolver.updatePromo
   );
   router.put(
     "/promo/update/image",
     authMiddleware,
     authUserAdminMiddleware,
-    upload,
+    upload,validateFileSizes,
     promoResolver.updatePromoImage
   );
   router.delete(

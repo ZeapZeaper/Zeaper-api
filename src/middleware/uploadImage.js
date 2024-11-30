@@ -32,38 +32,67 @@ const storage = multer.diskStorage({
   },
 });
 
+const validateFileSizes = (request, response, next) => {
+  if (request.fileValidationError) {
+    return response.status(400).json({ error: request.fileValidationError });
+  }
+  if (request?.file) {
+    if (request.file.size > 1500 * 1500 * 1) {
+      return response
+        .status(400)
+        .json({ error: "File is too large. Max file size is 1.5MB" });
+    }
+  }
+  if (request?.files) {
+    const images = request.files.images;
+    console.log("images", images);
+    if (!images) {
+      return response.status(400).json({ error: "No files uploaded" });
+    }
+    let valid = true;
+    images.forEach((file) => {
+      if (file.size > 1500 * 1500 * 1) {
+        valid = false;
+      }
+    });
+    if (!valid) {
+      return response
+        .status(400)
+        .json({
+          error: "one or more files are too large. Max file size is 1.5MB",
+        });
+    }
+  }
+
+  next();
+};
+
 const upload = multer({
   storage: storage,
-  limits: {
-    fileSize: 1024 * 1024 * 5,
-  },
+  // limits: {
+  //   fileSize: 1024 * 1024 * 5,
+  // },
 }).single("file");
 
 const uploadMultiple = multer({
   storage: storage,
-  limits: {
-    fileSize: 1024 * 1024 * 1,
-  },
+  // limits: {
+  //   fileSize: 1024 * 1024 * 1,
+  // },
   fileFilter: (req, file, cb) => {
-    
     if (
       file.mimetype == "image/png" ||
       file.mimetype == "image/jpg" ||
       file.mimetype == "image/jpeg" ||
       file.mimetype == "image/webp" ||
       file.mimetype == "image/avif"
-
     ) {
       cb(null, true);
     } else {
-       
-     req.fileValidationError = "Only .png, .jpg, .jpeg, .webp and .avif format allowed!";
+      req.fileValidationError =
+        "Only .png, .jpg, .jpeg, .webp and .avif format allowed!";
       return cb(null, false, req.fileValidationError);
-
- 
-
     }
-   
   },
 });
 
@@ -102,4 +131,4 @@ const uploadMultiple = multer({
 //   },
 // });
 
-module.exports = { upload, uploadMultiple };
+module.exports = { upload, uploadMultiple, validateFileSizes };

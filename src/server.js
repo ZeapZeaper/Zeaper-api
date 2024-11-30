@@ -13,7 +13,15 @@ const url = dbConfig.url;
 const app = express();
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {explorer: true}));
-
+app.use(function (err, req, res, next) {
+  console.log("error", err);
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    res.send({ result: 'fail', error: { code: 1001, message: 'File is too big' } })
+    return 
+  }
+  next(err)
+}
+)
 
 // app.use(
 //   express.urlencoded({
@@ -74,6 +82,7 @@ app.use(function (req, res, next) {
 
   next();
 });
+
 
 const start = async () => {
   try {
