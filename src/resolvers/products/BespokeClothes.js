@@ -23,7 +23,8 @@ const {
 const editBespokeClothes = async (req) => {
   try {
     const params = req.body;
-    const { productId, categories, colors, variations } = params;
+    const { productId, categories, colors, bodyMeasurement, variations } =
+      params;
 
     if (categories && Object.keys(categories).length === 0) {
       return { error: "categories is required" };
@@ -129,6 +130,9 @@ const editBespokeClothes = async (req) => {
     if (variations) {
       return { error: "you can not update variations with this endpoint" };
     }
+    if (bodyMeasurement) {
+      return { error: "you can not update bodyMeasurement with this endpoint" };
+    }
 
     // remove productId from params
     delete params.productId;
@@ -148,7 +152,8 @@ const editBespokeClothes = async (req) => {
 };
 
 const validateBespokeClothes = async (product) => {
-  const { categories, sizes, colors, images, variations } = product;
+  const { categories, sizes, colors, images, bodyMeasurement, variations } =
+    product;
   if (!categories || Object.keys(categories).length === 0) {
     return { error: "categories is required" };
   }
@@ -229,7 +234,7 @@ const validateBespokeClothes = async (product) => {
   if (sizes && sizes[0] !== "Custom") {
     return { error: "sizes must be an array with only Custom size" };
   }
-  if(sizes?.length > 1){
+  if (sizes?.length > 1) {
     return { error: "sizes must have only one size for bespoke" };
   }
 
@@ -241,6 +246,11 @@ const validateBespokeClothes = async (product) => {
   // check colors has images
   if (!verifyColorsHasImages(colors)) {
     return { error: "colors must have images and must be in right format" };
+  }
+
+  // validate bodyMeasurement
+  if (!bodyMeasurement) {
+    return { error: "bodyMeasurement is required" };
   }
 
   // check for duplicates in variations array
@@ -257,16 +267,17 @@ const validateBespokeClothes = async (product) => {
   return true;
 };
 const addVariationToBespokeCloth = async (product, variation) => {
-
-    
-  const {price, colorType, availableColors} = variation;
+  const { price, colorType, availableColors } = variation;
   const { variations } = product;
   // check if there is bespoke variation already
   const isBespoke = variations.some((v) => v.bespoke?.isBespoke);
   if (isBespoke && !variation?.sku) {
-    return { error: "bespoke variation already exists for this product. if you want to edit variation, provide sku" };
+    return {
+      error:
+        "bespoke variation already exists for this product. if you want to edit variation, provide sku",
+    };
   }
-let sku;
+  let sku;
   if (!variation) {
     return { error: "variation is required" };
   }
@@ -287,13 +298,16 @@ let sku;
   }
   if (
     colorType === "single" &&
-    availableColors.some((color) => colorEnums.map((c) => c.name).indexOf(color) === -1)
+    availableColors.some(
+      (color) => colorEnums.map((c) => c.name).indexOf(color) === -1
+    )
   ) {
-   
     return { error: "invalid color in available colors" };
   }
   if (colorType === "multiple" && availableColors?.length > 0) {
-    return { error: "availableColors must be empty when color type is multiple" };
+    return {
+      error: "availableColors must be empty when color type is multiple",
+    };
   }
 
   if (variation?.sku) {
@@ -332,7 +346,7 @@ let sku;
     price,
     size: "Custom",
     quantity: 1,
-    colorValue:"Bespoke",
+    colorValue: "Bespoke",
     bespoke: {
       isBespoke: true,
       colorType,
@@ -340,13 +354,10 @@ let sku;
     },
   };
   variations.push(newVariation);
- 
+
   await product.save();
   return newVariation;
-
-
-
-}
+};
 
 module.exports = {
   validateBespokeClothes,

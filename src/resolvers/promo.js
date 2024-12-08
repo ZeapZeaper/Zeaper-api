@@ -669,6 +669,7 @@ const joinPromo = async (req, res) => {
         return { ...variation, discount };
       });
     }
+   
     let timeLineDescription = `Product joined promo ${promo.title}/${promo.promoId}`;
     if (promo.status === "live") {
       timeLineDescription = `Product joined live promo ${promo.title}/${promo.promoId} with discount ${discountPercentage}%`;

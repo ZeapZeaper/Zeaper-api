@@ -1,0 +1,33 @@
+const mongoose = require("mongoose");
+const timestamp = require("mongoose-timestamp");
+
+const BodyMeasurementTemplateSchema = new mongoose.Schema({
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Users",
+    required: true,
+  },
+  name: { type: String, required: true },
+  measurements: [
+    {
+      name: { type: String, required: true },
+      measurements: [
+        {
+          field: { type: String, required: true },
+          value: { type: Number, required: true },
+          unit: { type: String, required: true },
+        },
+      ],
+    },
+  ],
+});
+
+BodyMeasurementTemplateSchema.plugin(timestamp);
+
+const BodyMeasurementTemplateModel = mongoose.model(
+  "BodyMeasurementTemplates",
+  BodyMeasurementTemplateSchema,
+  "BodyMeasurementTemplates"
+);
+
+module.exports = BodyMeasurementTemplateModel;

@@ -6,13 +6,13 @@ const ShopModel = require("../models/shop");
 const path = require("path");
 const crypto = require("crypto");
 const CryptoJS = require("crypto-js");
+const ProductModel = require("../models/products");
 const algorithm = "aes-256-ctr";
 const ENCRYPTION_KEY = process.env.ZEAPCRYPTOKEY;
 //const ENCRYPTION_KEY = "emVhcCBmYXNoaW9uIGFwcCBpcyBvd25l==";
 const IV_LENGTH = 16;
 
 const deleteLocalFile = async (path) => {
-
   return new Promise((resolve) => {
     fs.unlink(path, (error) => {
       error && console.log("WARNING:: Delete local file", error);
@@ -23,10 +23,9 @@ const deleteLocalFile = async (path) => {
 
 const deleLocalImages = async (files) => {
   for (let i = 0; i < files?.length; i++) {
-       
     const file = files[i];
     const source = path.join(root + "/uploads/" + file.filename);
- 
+
     const deleteSourceFile = await deleteLocalFile(source);
   }
 };
@@ -53,7 +52,7 @@ const cryptoEncrypt = (text) => {
   return result;
 };
 const cryptoDecrypt = (text) => {
-  const bytes  = CryptoJS.AES.decrypt(text, ENCRYPTION_KEY);
+  const bytes = CryptoJS.AES.decrypt(text, ENCRYPTION_KEY);
   const originalText = bytes.toString(CryptoJS.enc.Utf8);
   return originalText;
 };
@@ -93,7 +92,69 @@ const checkForDuplicates = (array) => {
 };
 const lowerFirstChar = (str) => {
   return str.charAt(0).toLowerCase() + str.slice(1);
-}
+};
+const validateProductAvailability = async (product, quantity, sku) => {
+  const { variations } = product;
+  const bespokeVariation = variations.find(
+    (v) => v.sku === sku && v.bespoke.isBespoke
+  );
+  if (bespokeVariation) {
+    return { success: true };
+  }
+  const variation = variations.find((v) => v.sku === sku);
+  if (!variation) {
+    return { error: "Product variation not found. ensure sku is correct" };
+  }
+  if (variation.quantity === 0) {
+    return { error: `Product with sku ${sku} is out of stock` };
+  }
+  if (variation.quantity < quantity) {
+    return {
+      error: `Product with sku ${sku} has only ${variation.quantity} left`,
+    };
+  }
+  return { success: true };
+};
+
+const calculateTotalBasketPrice = async (basket) => {
+  return new Promise(async (resolve) => {
+    let total = 0;
+    let items = [];
+    for (let i = 0; i < basket.length; i++) {
+      const item = basket[i];
+      const product = await ProductModel.findOne({ _id: item.product }).lean();
+      const variation = product.variations.find((v) => v.sku === item.sku);
+      const totalPrice =
+        (variation?.discount || variation.price) * item.quantity;
+      total += totalPrice;
+      items.push({
+        item: basket[i],
+        totalPrice,
+        quantity: item.quantity,
+      });
+    }
+    resolve({ total, items });
+  });
+};
+
+const validateBodyMeasurements = (measurements) => {
+  let isValid = true;
+  measurements.forEach((measurement) => {
+    if (
+      !measurement.name ||
+      !measurement.measurements ||
+      !Array.isArray(measurement.measurements)
+    ) {
+      isValid = false;
+    }
+    measurement.measurements.forEach((m) => {
+      if (!m.field || !m.value || !m.unit) {
+        isValid = false;
+      }
+    });
+  });
+  return isValid;
+};
 module.exports = {
   deleteLocalFile,
   numberWithCommas,
@@ -105,4 +166,7 @@ module.exports = {
   checkForDuplicates,
   lowerFirstChar,
   deleLocalImages,
+  validateProductAvailability,
+  calculateTotalBasketPrice,
+  validateBodyMeasurements,
 };

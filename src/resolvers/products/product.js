@@ -22,6 +22,7 @@ const {
   accessoryTypeEnums,
   accessoryStyleEnums,
   accessorySizeEnums,
+  bodyMeasurementEnums
 } = require("../../helpers/constants");
 const { checkForDuplicates, deleteLocalFile } = require("../../helpers/utils");
 const ShopModel = require("../../models/shop");
@@ -784,7 +785,13 @@ const getProuctTypePrefix = (productType) => {
   if (productType === "accessory") {
     return "ACC";
   }
-  return "";
+  if (productType === "bespokeCloth") {
+    return "BSC";
+  }
+  if (productType === "bespokeShoe") {
+    return "BSS";
+  }
+  return "OTH";
 };
 const generateProductId = async (shopId, productType) => {
   let productId = "";
@@ -1527,6 +1534,7 @@ const getProductOptions = async (req, res) => {
       fitEnums: fitEnums.sort(),
       brandEnums: brandEnums.sort(),
       colorEnums: colorEnums.sort((a, b) => a.name.localeCompare(b.name)),
+      bodyMeasurementEnums: bodyMeasurementEnums.sort((a, b) => a.name.localeCompare(b.name)).filter((m) => m.name !== "shoe")
     };
     const readyMadeShoeParams = {
       genderEnums: genderEnums.sort(),
@@ -1542,7 +1550,8 @@ const getProductOptions = async (req, res) => {
       brandEnums: brandEnums.sort(),
       colorEnums: colorEnums.sort((a, b) => a.name.localeCompare(b.name)),
       heelHeightEnums: heelHightEnums.sort(),
-      heelTypeEnums: heelTypeEnums.sort(),
+      heelTypeEnums: heelTypeEnums.sort()
+    
     };
     const bespokeShoeParams = {
       genderEnums: genderEnums.sort(),
@@ -1558,6 +1567,7 @@ const getProductOptions = async (req, res) => {
       colorEnums: colorEnums.sort((a, b) => a.name.localeCompare(b.name)),
       heelHeightEnums: heelHightEnums.sort(),
       heelTypeEnums: heelTypeEnums.sort(),
+      bodyMeasurementEnums: bodyMeasurementEnums.sort((a, b) => a.name.localeCompare(b.name)).filter((m) => m.name === "shoe")
     };
     const accessoriesParams = {
       genderEnums: genderEnums.sort(),

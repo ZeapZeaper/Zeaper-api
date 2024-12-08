@@ -26,7 +26,7 @@ const {
 const editBespokeShoes = async (req) => {
   try {
     const params = req.body;
-    const { productId, categories, colors, variations } = params;
+    const { productId, categories, colors,bodyMeasurement, variations } = params;
 
     if (categories && Object.keys(categories).length === 0) {
       return { error: "categories is required" };
@@ -131,6 +131,9 @@ const editBespokeShoes = async (req) => {
     if (variations) {
       return { error: "you can not update variations with this endpoint" };
     }
+    if (bodyMeasurement) {
+      return { error: "you can not update bodyMeasurement with this endpoint" };
+    }
 
     // remove productId from params
     delete params.productId;
@@ -150,7 +153,7 @@ const editBespokeShoes = async (req) => {
 };
 
 const validateBespokeShoes = async (product) => {
-  const { categories, sizes, colors, images, variations } = product;
+  const { categories, sizes, colors, images,bodyMeasurement, variations } = product;
   if (!categories || Object.keys(categories).length === 0) {
     return { error: "categories is required" };
   }
@@ -248,6 +251,11 @@ const validateBespokeShoes = async (product) => {
   // check colors has images
   if (!verifyColorsHasImages(colors)) {
     return { error: "colors must have images and must be in right format" };
+  }
+
+   // validate bodyMeasurement
+   if (!bodyMeasurement) {
+    return { error: "bodyMeasurement is required" };
   }
 
   // check for duplicates in variations array

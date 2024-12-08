@@ -93,11 +93,11 @@ const getReviews = async (req, res) => {
 
 const getReview = async (req, res) => {
   try {
-    const { reviewId } = req.query;
-    if (!reviewId) {
-      return res.status(400).send({ error: "reviewId is required" });
+    const { _id } = req.query;
+    if (!_id) {
+      return res.status(400).send({ error: "_id is required" });
     }
-    const review = await ReviewModel.findOne({ _id: reviewId })
+    const review = await ReviewModel.findOne({ _id: _id })
       .populate("user")
       .exec();
     if (!review) {
@@ -115,7 +115,7 @@ const getReview = async (req, res) => {
 const updateReview = async (req, res) => {
   try {
     const {
-      reviewId,
+      _id,
       productId,
       rating,
       title,
@@ -123,8 +123,8 @@ const updateReview = async (req, res) => {
       displayName,
       imageMatch,
     } = req.body;
-    if (!reviewId) {
-      return res.status(400).send({ error: "reviewId is required" });
+    if (!_id) {
+      return res.status(400).send({ error: "_id is required" });
     }
     if (!productId) {
       return res.status(400).send({ error: "productId is required" });
@@ -152,7 +152,7 @@ const updateReview = async (req, res) => {
       return res.status(400).send({ error: "Product not found" });
     }
 
-    const currentReview = await ReviewModel.findOne({ _id: reviewId }).exec();
+    const currentReview = await ReviewModel.findOne({ _id: _id }).exec();
     if (!currentReview) {
       return res.status(400).send({ error: "Review not found" });
     }
@@ -164,7 +164,7 @@ const updateReview = async (req, res) => {
     }
     const updatedReview = await ReviewModel.findOneAndUpdate(
       {
-        _id: reviewId,
+        _id: _id,
       },
       { ...req.body },
       { new: true }
@@ -179,11 +179,11 @@ const updateReview = async (req, res) => {
 
 const deleteReview = async (req, res) => {
   try {
-    const { reviewId } = req.body;
-    if (!reviewId) {
-      return res.status(400).send({ error: "reviewId is required" });
+    const { _id } = req.body;
+    if (!_id) {
+      return res.status(400).send({ error: "_id is required" });
     }
-    const review = await ReviewModel.findOne({ _id: reviewId }).exec();
+    const review = await ReviewModel.findOne({ _id: _id }).exec();
     if (!review) {
       return res.status(400).send({ error: "Review not found" });
     }
@@ -193,7 +193,7 @@ const deleteReview = async (req, res) => {
         .status(400)
         .send({ error: "You are not authorized to delete this review" });
     }
-    await ReviewModel.deleteOne({ _id: reviewId }).exec();
+    await ReviewModel.deleteOne({ _id: _id }).exec();
     res.status(200).send({ message: "Review deleted successfully" });
   } catch (error) {
     res.status(400).send({ error: error.message });
@@ -240,11 +240,11 @@ const getReviewsForShopProducts = async (req, res) => {
 };
 const likeReview = async (req, res) => {
   try {
-    const { reviewId } = req.body;
-    if (!reviewId) {
-      return res.status(400).send({ error: "reviewId is required" });
+    const { _id } = req.body;
+    if (!_id) {
+      return res.status(400).send({ error: "_id is required" });
     }
-    const review = await ReviewModel.findOne({ _id: reviewId }).exec();
+    const review = await ReviewModel.findOne({ _id: _id }).exec();
     if (!review) {
       return res.status(400).send({ error: "Review not found" });
     }
@@ -277,11 +277,11 @@ const likeReview = async (req, res) => {
 
 const dislikeReview = async (req, res) => {
   try {
-    const { reviewId } = req.body;
-    if (!reviewId) {
-      return res.status(400).send({ error: "reviewId is required" });
+    const { _id } = req.body;
+    if (!_id) {
+      return res.status(400).send({ error: "_id is required" });
     }
-    const review = await ReviewModel.findOne({ _id: reviewId }).exec();
+    const review = await ReviewModel.findOne({ _id: _id }).exec();
     if (!review) {
       return res.status(400).send({ error: "Review not found" });
     }

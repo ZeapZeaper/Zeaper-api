@@ -687,7 +687,6 @@ const validateBespokeVariations = (variations) => {
   variations.every((variation) => {
     const { sku, price, colorValue } = variation;
     if (!sku || !price || !colorValue) {
-       
       valid = false;
       return false;
     }
@@ -696,37 +695,32 @@ const validateBespokeVariations = (variations) => {
       !colorValue ||
       !colorEnums.findIndex((c) => c.name === colorValue) === -1
     ) {
-  
       valid = false;
       return false;
     }
     return true;
   });
-  
+
   const bespokeVariations = variations.filter(
-    (variation) => variation.colorValue === "bespoke"
+    (variation) => variation.colorValue.toLocaleLowerCase() === "bespoke"
   );
-  console.log("bespokeVariations", bespokeVariations);
+
   if (bespokeVariations.length === 0) {
-    
     valid = false;
   }
-  if (bespokeVariations.length > 1) {
 
+  if (bespokeVariations.length > 1) {
     valid = false;
   }
   if (bespokeVariations.length === 1) {
     const { colorType, availableColors } = bespokeVariations[0].bespoke;
     if (!colorType || !availableColors) {
-      
       valid = false;
     }
     if (colorType === "single" && availableColors.length === 0) {
-      
       valid = false;
     }
     if (colorType === "multiple" && availableColors.length !== 0) {
-       
       valid = false;
     }
   }

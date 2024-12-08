@@ -18,6 +18,11 @@ const productResolver = require("../resolvers/products/product");
 const commentResolver = require("../resolvers/comment");
 const reviewResolver = require("../resolvers/review");
 const promoResolver = require("../resolvers/promo");
+const basketResolver = require("../resolvers/basket");
+const paymentResolver = require("../resolvers/payment");
+const deliveryAddressResolver = require("../resolvers/deliveryAddress");
+const bodyMeasurementTemplateResolver = require("../resolvers/bodyMeasurementTemplateModel");
+const bodyMeasurementResolver = require("../resolvers/bodyMeasurement");
 
 const handleMoreFieldsUploads = uploadMultiple.fields([
   { name: "documents", maxCount: 5 },
@@ -39,7 +44,8 @@ let routes = (app) => {
   router.post(
     "/user/create/googleApple",
     authMiddleware,
-    upload,validateFileSizes,
+    upload,
+    validateFileSizes,
     userResolver.createUserWithGoogleOrApple
   );
   router.get(
@@ -68,7 +74,8 @@ let routes = (app) => {
   router.put(
     "/user/update/profilePic",
     authMiddleware,
-    upload,validateFileSizes,
+    upload,
+    validateFileSizes,
     userResolver.uploadProfilePic
   );
   router.put("/user/delete", authMiddleware, userResolver.deleteUsers);
@@ -258,7 +265,8 @@ let routes = (app) => {
     "/promo/create",
     authMiddleware,
     authUserAdminMiddleware,
-    upload,validateFileSizes,
+    upload,
+    validateFileSizes,
     promoResolver.createPromo
   );
   router.get(
@@ -295,14 +303,16 @@ let routes = (app) => {
     "/promo/update",
     authMiddleware,
     authUserAdminMiddleware,
-    upload,validateFileSizes,
+    upload,
+    validateFileSizes,
     promoResolver.updatePromo
   );
   router.put(
     "/promo/update/image",
     authMiddleware,
     authUserAdminMiddleware,
-    upload,validateFileSizes,
+    upload,
+    validateFileSizes,
     promoResolver.updatePromoImage
   );
   router.delete(
@@ -348,6 +358,127 @@ let routes = (app) => {
     authUserAdminMiddleware,
     commentResolver.deleteComment
   );
+
+  //Basket routes
+  router.post(
+    "/basket/product/add",
+    authMiddleware,
+    basketResolver.addProductToBasket
+  );
+  router.get(
+    "/baskets",
+    authMiddleware,
+    authUserAdminMiddleware,
+    basketResolver.getBaskets
+  );
+  router.get("/basket/total", authMiddleware, basketResolver.getBasketTotal);
+  router.get("/basket", authMiddleware, basketResolver.getBasket);
+  router.delete("/basket/delete", authMiddleware, basketResolver.deleteBasket);
+  router.put(
+    "/basket/product/remove",
+    authMiddleware,
+    basketResolver.removeProductFromBasket
+  );
+  router.put(
+    "/basket/product/increase",
+    authMiddleware,
+    basketResolver.increaseProductQuantity
+  );
+  router.put(
+    "/basket/product/decrease",
+    authMiddleware,
+    basketResolver.decreaseProductQuantity
+  );
+
+  //Payment routes
+
+  router.get(
+    "/payment/reference",
+    authMiddleware,
+    paymentResolver.getReference
+  );
+  router.post("/payment/verify", authMiddleware, paymentResolver.verifyPayment);
+
+  // delivery address routes
+  router.post(
+    "/deliveryAddress/create",
+    authMiddleware,
+    deliveryAddressResolver.createDeliveryAddress
+  );
+  router.get(
+    "/deliveryAddresses",
+    authMiddleware,
+    deliveryAddressResolver.getDeliveryAddresses
+  );
+  router.get(
+    "/deliveryAddress",
+    authMiddleware,
+    deliveryAddressResolver.getDeliveryAddress
+  );
+  router.put(
+    "/deliveryAddress/update",
+    authMiddleware,
+    deliveryAddressResolver.updateDeliveryAddress
+  );
+  router.put(
+    "/deliveryAddress/setDefault",
+    authMiddleware,
+    deliveryAddressResolver.setDefaultDeliveryAddress
+  );
+  router.delete(
+    "/deliveryAddress/delete",
+    authMiddleware,
+    deliveryAddressResolver.deleteDeliveryAddress
+  );
+
+
+
+
+  // body measurement template routes
+  router.post(
+    "/bodyMeasurementTemplate/add",
+    authMiddleware,
+    bodyMeasurementTemplateResolver.addBodyMeasurementTemplate
+  );
+  router.get(
+    "/bodyMeasurementTemplates",
+    authMiddleware,
+    bodyMeasurementTemplateResolver.getBodyMeasurementTemplates
+  );
+  router.get(
+    "/bodyMeasurementTemplate",
+    authMiddleware,
+    bodyMeasurementTemplateResolver.getBodyMeasurementTemplate
+  );
+  router.get(
+    "/bodyMeasurementTemplate/authUser",
+    authMiddleware,
+    bodyMeasurementTemplateResolver.getAuthUserBodyMeasurementTemplates
+  );
+
+  router.put(
+    "/bodyMeasurementTemplate/update",
+    authMiddleware,
+    bodyMeasurementTemplateResolver.updateBodyMeasurementTemplate
+  );
+  router.delete(
+    "/bodyMeasurementTemplate/delete",
+    authMiddleware,
+    bodyMeasurementTemplateResolver.deleteBodyMeasurementTemplate
+  );
+
+  // body measurement routes
+  router.post(
+    "/bodyMeasurement/add",
+    authMiddleware,
+    bodyMeasurementResolver.addBodyMeasurement
+  );
+  router.get(
+    "/bodyMeasurement/product",
+    authMiddleware,
+    bodyMeasurementResolver.getProductBodyMeasurement
+  );
+
 
   return app.use("/", router);
 };
