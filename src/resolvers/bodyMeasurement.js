@@ -1,4 +1,4 @@
-const BodyMeasurementModel = require("../models/BodyMeasurement");
+const BodyMeasurementModel = require("../models/bodyMeasurement");
 const ProductModel = require("../models/products");
 
 const validateBodyMeasurement = (measurements) => {
