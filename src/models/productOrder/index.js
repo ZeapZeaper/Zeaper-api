@@ -7,6 +7,7 @@ const ProductOrderSchema = new mongoose.Schema({
     ref: "Order",
     required: true,
   },
+  disabled: { type: Boolean, required: false, default: false },
   orderId : { type: String, required: true },
   itemNo: { type: Number, required: true},
   shop: {
@@ -29,7 +30,7 @@ const ProductOrderSchema = new mongoose.Schema({
         {
           field: { type: String, required: true },
           value: { type: Number, required: true },
-          unit: { type: String, required: true, value: "inch" },
+          unit: { type: String,  value: "inch" },
         },
       ],
     },

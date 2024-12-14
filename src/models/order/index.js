@@ -3,33 +3,19 @@ const timestamp = require("mongoose-timestamp");
 
 const OrderSchema = new mongoose.Schema({
   orderId: { type: String, required: true, unique: true },
+  disabled: { type: Boolean, required: false, default: false },
+
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Users",
     required: true,
   },
-  basketItems: [
+  
+  productOrders: [
     {
-      product: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Product",
-        required: true,
-      },
-      quantity: { type: Number, required: true },
-      sku: { type: String, required: true },
-      bespokeColor: { type: String, required: false },
-      bodyMeasurements: [
-        {
-          name: { type: String, required: true },
-          measurements: [
-            {
-              field: { type: String, required: true },
-              value: { type: Number, required: true },
-              unit: { type: String, required: true, value: "inch" },
-            },
-          ],
-        },
-      ],
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "ProductOrders",
+      required: false,
     },
   ],
 

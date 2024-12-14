@@ -33,68 +33,60 @@ const generateUniqueOrderId = async () => {
   return orderId.toString();
 };
 
-const buildProductOrders = async (order) => {
- 
-    const productOrders = [];
-    const basketItems = order.basketItems;
-    const orderId = order.orderId;
+const buildProductOrders = async (order, basketItems) => {
+  const productOrders = [];
+  const orderId = order.orderId;
 
   const promises = basketItems.map(async (item, index) => {
-      const product = await ProductModel.findOne({
-        _id: item.product,
-      }).lean();
-      if (!product) {
-        return;
-      }
-      const shop = product.shop;
+    const product = await ProductModel.findOne({
+      _id: item.product,
+    }).lean();
+    if (!product) {
+      return;
+    }
+    const shop = product.shop;
 
-      const itemNo = index + 1;
-      const quantity = item.quantity;
-      const sku = item.sku;
-      const bespokeColor = item.bespokeColor;
-      const bodyMeasurements = item.bodyMeasurements;
-      const status = "order placed";
-      const promo = product.promo;
-      const variation = product.variations.find((v) => v.sku === sku);
-      const amount = (variation?.discount || variation.price) * quantity;
-      const newTimeline = {
-        date: new Date().toDateString(),
-        status: "order placed",
-        description:
-          "Order placed was placed successfully and is awaiting confirmation from vendor",
-        actionBy: order.user,
-      };
-      const timeLines = [newTimeline];
+    const itemNo = index + 1;
+    const quantity = item.quantity;
+    const sku = item.sku;
+    const bespokeColor = item.bespokeColor;
+    const bodyMeasurements = item.bodyMeasurements;
+    const status = "order placed";
+    const promo = product.promo;
+    const variation = product.variations.find((v) => v.sku === sku);
+    const amount = (variation?.discount || variation.price) * quantity;
+    const newTimeline = {
+      date: new Date().toDateString(),
+      status: "order placed",
+      description:
+        "Order placed was placed successfully and is awaiting confirmation from vendor",
+      actionBy: order.user,
+    };
+    const timeLines = [newTimeline];
 
-      const productOrder = new ProductOrderModel({
-        order: order._id,
-        orderId,
-        itemNo,
-        shop,
-        product: item.product._id,
-        quantity,
-        sku,
-        bespokeColor,
-        bodyMeasurements,
-        status,
-        timeLines,
-        amount,
-        promo,
-      });
-
-      const savedProductOrder = await productOrder.save();
-      
-      productOrders.push(savedProductOrder);
-     
+    const productOrder = new ProductOrderModel({
+      order: order._id,
+      orderId,
+      itemNo,
+      shop,
+      product: item.product._id,
+      quantity,
+      sku,
+      bespokeColor,
+      bodyMeasurements,
+      status,
+      timeLines,
+      amount,
+      promo,
     });
 
-    await Promise.all(promises);
-    return productOrders;
+    const savedProductOrder = await productOrder.save();
 
+    productOrders.push(savedProductOrder._id);
+  });
 
-   
-  
-
+  await Promise.all(promises);
+  return productOrders;
 };
 const updateVariationQuantity = async (basketItems, action) => {
   return new Promise(async (resolve) => {
@@ -141,13 +133,11 @@ const updateVariationQuantity = async (basketItems, action) => {
 };
 
 const createOrder = async (param) => {
- 
   const { payment, user } = param;
   const basket = await BasketModel.findOne({
     _id: payment.basket,
   })
-    .populate("basketItems.product")
-    .lean();
+  .lean();
   if (!basket) {
     return {
       error: "Payment successful but basket not found. Please contact support",
@@ -164,6 +154,7 @@ const createOrder = async (param) => {
     };
   }
   const basketItems = basket.basketItems;
+ 
   const orderId = await generateUniqueOrderId();
   const order = new OrderModel({
     orderId,
@@ -171,7 +162,7 @@ const createOrder = async (param) => {
     basket: basket?._id,
     deliveryAddress: basket?.deliveryAddress,
     payment: payment?._id,
-    basketItems: basket?.basketItems,
+   
   });
 
   const savedOrder = await order.save();
@@ -180,7 +171,14 @@ const createOrder = async (param) => {
       error: "Payment successful but order not created. Please contact support",
     };
   }
-  const productOrders = await buildProductOrders(savedOrder);
+  const productOrders = await buildProductOrders(savedOrder, basketItems);
+  if (!productOrders || productOrders.length === 0) {
+    return {
+      error:
+        "Payment successful but product orders not created. Please contact support",
+    };
+  }
+
   console.log("productOrders", productOrders);
   if (!productOrders || productOrders.length === 0) {
     return {
@@ -188,12 +186,23 @@ const createOrder = async (param) => {
         "Payment successful but product orders not created. Please contact support",
     };
   }
+  const updateOrder = await OrderModel.findOneAndUpdate(
+    { _id: savedOrder._id },
+    { productOrders },
+    { new: true }
+  );
+  
+
   const updateVariation = await updateVariationQuantity(
     basketItems,
     "subtract"
   );
+  if(updateOrder && updateVariation){
+    // delete basket
+    await BasketModel.findOneAndDelete({ _id: basket._id });
+  }
   return {
-    order: savedOrder,
+    order: updateOrder,
     productOrders,
   };
 };
