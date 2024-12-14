@@ -1,6 +1,7 @@
 const BasketModel = require("../models/basket");
 const DeliveryAddressModel = require("../models/deliveryAddresses");
 const OrderModel = require("../models/order");
+const ProductOrderModel = require("../models/productOrder");
 const ProductModel = require("../models/products");
 const ShopModel = require("../models/shop");
 
@@ -32,34 +33,68 @@ const generateUniqueOrderId = async () => {
   return orderId.toString();
 };
 
-const buildShopOrders = async (basketItems) => {
-  return new Promise(async (resolve) => {
-    const shopOrders = [];
-    const shop_ids = basketItems.map((item) => item.product.shop);
-    const shops = await ShopModel.find({
-      _id: { $in: shop_ids },
-    }).lean();
+const buildProductOrders = async (order) => {
+ 
+    const productOrders = [];
+    const basketItems = order.basketItems;
+    const orderId = order.orderId;
 
-    basketItems.forEach(async (item) => {
-      const shop = shops.find(
-        (shop) => shop._id.toString() === item.product.shop.toString()
-      );
-
-      const shopOrder = shopOrders.find((order) => order.shop === shop?._id);
-
-      if (shopOrder) {
-        shopOrder.basketItems.push(item);
-      } else if (shop) {
-        shopOrders.push({
-          shop: shop?._id,
-          basketItems: [item],
-          status: "pending",
-        });
+  const promises = basketItems.map(async (item, index) => {
+      const product = await ProductModel.findOne({
+        _id: item.product,
+      }).lean();
+      if (!product) {
+        return;
       }
+      const shop = product.shop;
+
+      const itemNo = index + 1;
+      const quantity = item.quantity;
+      const sku = item.sku;
+      const bespokeColor = item.bespokeColor;
+      const bodyMeasurements = item.bodyMeasurements;
+      const status = "order placed";
+      const promo = product.promo;
+      const variation = product.variations.find((v) => v.sku === sku);
+      const amount = (variation?.discount || variation.price) * quantity;
+      const newTimeline = {
+        date: new Date().toDateString(),
+        status: "order placed",
+        description:
+          "Order placed was placed successfully and is awaiting confirmation from vendor",
+        actionBy: order.user,
+      };
+      const timeLines = [newTimeline];
+
+      const productOrder = new ProductOrderModel({
+        order: order._id,
+        orderId,
+        itemNo,
+        shop,
+        product: item.product._id,
+        quantity,
+        sku,
+        bespokeColor,
+        bodyMeasurements,
+        status,
+        timeLines,
+        amount,
+        promo,
+      });
+
+      const savedProductOrder = await productOrder.save();
+      
+      productOrders.push(savedProductOrder);
+     
     });
 
-    resolve(shopOrders);
-  });
+    await Promise.all(promises);
+    return productOrders;
+
+
+   
+  
+
 };
 const updateVariationQuantity = async (basketItems, action) => {
   return new Promise(async (resolve) => {
@@ -106,6 +141,7 @@ const updateVariationQuantity = async (basketItems, action) => {
 };
 
 const createOrder = async (param) => {
+ 
   const { payment, user } = param;
   const basket = await BasketModel.findOne({
     _id: payment.basket,
@@ -128,19 +164,14 @@ const createOrder = async (param) => {
     };
   }
   const basketItems = basket.basketItems;
-  const shopOrders = await buildShopOrders(basketItems);
-
   const orderId = await generateUniqueOrderId();
-
   const order = new OrderModel({
     orderId,
     user: user,
     basket: basket?._id,
     deliveryAddress: basket?.deliveryAddress,
     payment: payment?._id,
-    status: "pending",
     basketItems: basket?.basketItems,
-    shopOrders,
   });
 
   const savedOrder = await order.save();
@@ -149,8 +180,22 @@ const createOrder = async (param) => {
       error: "Payment successful but order not created. Please contact support",
     };
   }
-  const updateVariation = await updateVariationQuantity(basketItems, "subtract");
-  return savedOrder;
+  const productOrders = await buildProductOrders(savedOrder);
+  console.log("productOrders", productOrders);
+  if (!productOrders || productOrders.length === 0) {
+    return {
+      error:
+        "Payment successful but product orders not created. Please contact support",
+    };
+  }
+  const updateVariation = await updateVariationQuantity(
+    basketItems,
+    "subtract"
+  );
+  return {
+    order: savedOrder,
+    productOrders,
+  };
 };
 
 module.exports = {

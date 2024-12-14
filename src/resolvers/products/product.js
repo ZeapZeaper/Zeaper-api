@@ -22,7 +22,7 @@ const {
   accessoryTypeEnums,
   accessoryStyleEnums,
   accessorySizeEnums,
-  bodyMeasurementEnums
+  bodyMeasurementEnums,
 } = require("../../helpers/constants");
 const { checkForDuplicates, deleteLocalFile } = require("../../helpers/utils");
 const ShopModel = require("../../models/shop");
@@ -1199,6 +1199,75 @@ const getProducts = async (req, res) => {
     return res.status(500).send({ error: err.message });
   }
 };
+const getAuthShopProducts = async (req, res) => {
+  try {
+    const sort = req.query.sort || -1;
+    const limit = parseInt(req.query.limit);
+    const pageNumber = parseInt(req.query.pageNumber);
+    if (!limit) {
+      return res.status(400).send({
+        error: "limit is required. This is maximum number you want per page",
+      });
+    }
+
+    if (!pageNumber) {
+      return res.status(400).send({
+        error:
+          "pageNumber is required. This is the current page number in the pagination",
+      });
+    }
+    if (sort !== -1 && sort !== 1) {
+      return res.status(400).send({ error: "sort value can only be 1 or -1" });
+    }
+    const user = await getAuthUser(req);
+    if (!user?.isAdmin && !user?.isSuperAdmin) {
+      return res
+        .status(400)
+        .send({ error: "You are not authorized to view all products" });
+    }
+    const query = getQuery(req.query);
+    const authShop = await ShopModel.findOne({ user: user._id }).exec();
+    if (!authShop) {
+      return res.status(400).send({ error: "shop not found" });
+    }
+    query.shopId = authShop.shopId;
+    const aggregate = [
+      {
+        $facet: {
+          products: [
+            { $match: { ...query } },
+            { $sort: { createdAt: sort } },
+            { $skip: limit * (pageNumber - 1) },
+            { $limit: limit },
+          ],
+          totalCount: [{ $match: { ...query } }, { $count: "count" }],
+        },
+      },
+    ];
+    const productQuery = await ProductModel.aggregate(aggregate).exec();
+    const products = productQuery[0].products;
+    const totalCount = productQuery[0].totalCount[0]?.count || 0;
+
+    // const updateProducts = products.map((product) => {
+    //   const update =  ProductModel.findOneAndUpdate({ _id: product._id }, {
+    //     "categories.productGroup" : "Ready-Made"
+    //    }, { new: true }).exec();
+    //   return update;
+    // });
+    // await Promise.all(updateProducts);
+
+    const dynamicFilters = getDynamicFilters(products);
+
+    const data = {
+      products,
+      totalCount,
+      dynamicFilters,
+    };
+    return res.status(200).send({ data: data });
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
+};
 const getLiveProducts = async (req, res) => {
   try {
     const limit = parseInt(req.query.limit);
@@ -1534,7 +1603,9 @@ const getProductOptions = async (req, res) => {
       fitEnums: fitEnums.sort(),
       brandEnums: brandEnums.sort(),
       colorEnums: colorEnums.sort((a, b) => a.name.localeCompare(b.name)),
-      bodyMeasurementEnums: bodyMeasurementEnums.sort((a, b) => a.name.localeCompare(b.name)).filter((m) => m.name !== "shoe")
+      bodyMeasurementEnums: bodyMeasurementEnums
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .filter((m) => m.name !== "shoe"),
     };
     const readyMadeShoeParams = {
       genderEnums: genderEnums.sort(),
@@ -1550,8 +1621,7 @@ const getProductOptions = async (req, res) => {
       brandEnums: brandEnums.sort(),
       colorEnums: colorEnums.sort((a, b) => a.name.localeCompare(b.name)),
       heelHeightEnums: heelHightEnums.sort(),
-      heelTypeEnums: heelTypeEnums.sort()
-    
+      heelTypeEnums: heelTypeEnums.sort(),
     };
     const bespokeShoeParams = {
       genderEnums: genderEnums.sort(),
@@ -1567,7 +1637,9 @@ const getProductOptions = async (req, res) => {
       colorEnums: colorEnums.sort((a, b) => a.name.localeCompare(b.name)),
       heelHeightEnums: heelHightEnums.sort(),
       heelTypeEnums: heelTypeEnums.sort(),
-      bodyMeasurementEnums: bodyMeasurementEnums.sort((a, b) => a.name.localeCompare(b.name)).filter((m) => m.name === "shoe")
+      bodyMeasurementEnums: bodyMeasurementEnums
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .filter((m) => m.name === "shoe"),
     };
     const accessoriesParams = {
       genderEnums: genderEnums.sort(),
@@ -1854,6 +1926,7 @@ module.exports = {
   getShopProducts,
   getCategoryProducts,
   getProducts,
+  getAuthShopProducts,
   getLiveProducts,
   getPromoWithLiveProducts,
   getNewestArrivals,

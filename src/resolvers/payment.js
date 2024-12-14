@@ -182,11 +182,11 @@ const verifyPayment = async (req, res) => {
           "Payment not found. Please ensure you have the correct reference",
       });
     }
-    if (payment.status === "success") {
-      return res
-        .status(200)
-        .send({ message: "Payment already verified", data: { payment } });
-    }
+    // if (payment.status === "success") {
+    //   return res
+    //     .status(200)
+    //     .send({ message: "Payment already verified", data: { payment } });
+    // }
 
     verifyPaystack(reference, async (error, body) => {
       if (error) {

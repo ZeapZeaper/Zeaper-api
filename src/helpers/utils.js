@@ -7,6 +7,7 @@ const path = require("path");
 const crypto = require("crypto");
 const CryptoJS = require("crypto-js");
 const ProductModel = require("../models/products");
+const { error } = require("console");
 const algorithm = "aes-256-ctr";
 const ENCRYPTION_KEY = process.env.ZEAPCRYPTOKEY;
 //const ENCRYPTION_KEY = "emVhcCBmYXNoaW9uIGFwcCBpcyBvd25l==";
@@ -137,23 +138,53 @@ const calculateTotalBasketPrice = async (basket) => {
   });
 };
 
-const validateBodyMeasurements = (measurements) => {
-  let isValid = true;
-  measurements.forEach((measurement) => {
+const validateBodyMeasurements = (bodyMeasurements) => {
+  let error;
+  if (
+    !bodyMeasurements ||
+    !Array.isArray(bodyMeasurements) ||
+    bodyMeasurements.length === 0
+  ) {
+    error = "Please provide a valid array of measurements";
+    return { error };
+  }
+  bodyMeasurements.forEach((measurement) => {
+    const { name, measurements } = measurement;
+    if (!name || name === "" || name === undefined) {
+      error = "One or more body measurements has no name";
+      return { error };
+    }
+
     if (
-      !measurement.name ||
-      !measurement.measurements ||
-      !Array.isArray(measurement.measurements)
+      !measurements ||
+      !Array.isArray(measurements) ||
+      measurements.length === 0
     ) {
-      isValid = false;
+      error = `One or more measurements in ${measurement.name} has no measurement object`;
+      return { error };
     }
     measurement.measurements.forEach((m) => {
-      if (!m.field || !m.value || !m.unit) {
-        isValid = false;
+    
+
+      const { field, value } = m;
+     
+
+      if (!field || field === "" || field === undefined) {
+    
+        error = `One or more measurements in ${name} has no field`;
+        return { error };
+      }
+      if (!value || value === "" || value === undefined) {
+        error = `One or more measurements in ${name} with field ${m.field} has no value`;
+        return { error };
       }
     });
   });
-  return isValid;
+
+  if (error) {
+    return { error };
+  }
+  return { success: true };
 };
 module.exports = {
   deleteLocalFile,

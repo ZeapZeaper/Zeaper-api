@@ -17,7 +17,8 @@ const OrderSchema = new mongoose.Schema({
       },
       quantity: { type: Number, required: true },
       sku: { type: String, required: true },
-      measurements: [
+      bespokeColor: { type: String, required: false },
+      bodyMeasurements: [
         {
           name: { type: String, required: true },
           measurements: [
@@ -31,11 +32,7 @@ const OrderSchema = new mongoose.Schema({
       ],
     },
   ],
-  status: {
-    type: String,
-    required: true,
-    default: "pending",
-  },
+
   payment: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Payments",
@@ -46,39 +43,6 @@ const OrderSchema = new mongoose.Schema({
     ref: "DeliveryAddresses",
     required: true,
   },
-  deliveryDate: { type: String, required: false },
-  deliveryTime: { type: String, required: false },
-  deliveryFee: { type: Number, required: false },
-  deliveryCompany: { type: String, required: false },
-  deliveryTrackingNumber: { type: String, required: false },
-  deliveryTrackingLink: { type: String, required: false },
-  deliveryNote: { type: String, required: false },
-  deliveryTimeRange: { type: String, required: false },
-  shopOrders: [
-    {
-      basketItems: [
-        {
-          product: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "Product",
-            required: true,
-          },
-          quantity: { type: Number, required: true },
-          sku: { type: String, required: true },
-        },
-      ],
-      status: {
-        type: String,
-        required: true,
-        default: "pending",
-      },
-      shop: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Shops",
-        required: true,
-      },
-    },
-  ],
 });
 
 OrderSchema.plugin(timestamp);

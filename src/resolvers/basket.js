@@ -1,6 +1,11 @@
-const { calculateTotalBasketPrice } = require("../helpers/utils");
+const {
+  calculateTotalBasketPrice,
+  validateBodyMeasurements,
+} = require("../helpers/utils");
 const { getAuthUser } = require("../middleware/firebaseUserAuth");
 const BasketModel = require("../models/basket");
+const BodyMeasurementModel = require("../models/BodyMeasurement");
+const BodyMeasurementTemplateModel = require("../models/BodyMeasurementTemplate");
 const ProductModel = require("../models/products");
 
 function getRandomInt(min, max) {
@@ -30,6 +35,93 @@ const generateUniqueBasketId = async () => {
 
   return basketId.toString();
 };
+
+const validateProductBodyMeasurements = async (product, bodyMeasurements) => {
+  const { variations } = product;
+  const bespokeVariation = variations.find((v) => v.bespoke?.isBespoke);
+  let error;
+
+  if (bespokeVariation) {
+    if (!bodyMeasurements) {
+      return {
+        error:
+          "required body measurements since product is bespoke and requires body measurements",
+      };
+    }
+    const validateMeasurements = validateBodyMeasurements(bodyMeasurements);
+
+    if (validateMeasurements.error) {
+      return {
+        error: validateMeasurements.error,
+      };
+    }
+    const productBodyMeasurement = product.bodyMeasurement;
+    const expectedProductBodyMeasurement = await BodyMeasurementModel.findOne({
+      _id: productBodyMeasurement,
+    }).lean();
+    if (!expectedProductBodyMeasurement) {
+      return {
+        error: "Product body measurement not found, please contact support",
+      };
+    }
+    // check if measurements match the expected body measurement
+    const expectedMeasurements = expectedProductBodyMeasurement.measurements;
+    const expectedMeasurementNames = expectedMeasurements.map((m) => m.name);
+    const measurementNames = bodyMeasurements.map((m) => m.name);
+    const missingMeasurements = expectedMeasurementNames.filter(
+      (m) => !measurementNames.includes(m)
+    );
+    if (missingMeasurements.length > 0) {
+      return {
+        error: `missing measurements: ${missingMeasurements.join(", ")}`,
+      };
+    }
+    expectedMeasurements.map((m) => {
+      const { name, fields } = m;
+      const bodyMeasurement = bodyMeasurements.find((bm) => bm.name === name);
+
+      if (!bodyMeasurement) {
+        error = `missing measurement: ${name}`;
+      }
+      const measurements = bodyMeasurement.measurements;
+      // check if every field in fields is in measurements array object.field
+      fields.map((f) => {
+        const fieldMeasurement = measurements.find(
+          (m) =>
+            m.field.toLowerCase().replace(/\s/g, "") ===
+            f.toLowerCase().replace(/\s/g, "")
+        );
+
+        if (!fieldMeasurement || fieldMeasurement === undefined) {
+          return (error = `missing field: ${f} for measurement: ${m.name}`);
+        }
+        if (!fieldMeasurement.value) {
+          error = `missing value for field: ${f} for measurement: ${m.name}`;
+        }
+      });
+
+      // if (measurement.fields.length !== m.fields.length) {
+      //   return {
+      //     error: `invalid fields for measurement: ${m.name}`,
+      //   };
+      // }
+      // const invalidFields = measurement.fields.filter(
+      //   (f) => !m.fields.includes(f)
+      // );
+      // if (invalidFields.length > 0) {
+      //   return {
+      //     error: `invalid fields for measurement: ${m.name}`,
+      //   };
+      // }
+    });
+   
+    if (error) {
+      return { error };
+    }
+    return { success: true };
+  }
+  return { success: true };
+};
 const validateProductAvailability = async (
   product,
   quantity,
@@ -57,7 +149,9 @@ const validateProductAvailability = async (
     const availableColors = bespoke.availableColors;
     if (bespokeColor && !availableColors.includes(bespokeColor)) {
       return {
-        error: `selected bespokeColor is not available for product with sku ${sku}`,
+        error: `selected bespokeColor is not available for product with sku ${sku}. available colors are ${availableColors.join(
+          ", "
+        )}`,
       };
     }
     return { success: true };
@@ -115,7 +209,7 @@ const getBasket = async (req, res) => {
       return res.status(400).send({ error: "User not found, please login" });
     }
     const basket = await BasketModel.findOne({ user: user._id }).lean();
-  
+
     return res.status(200).send({
       message: basket ? "Basket fetched successfully" : "No basket found",
       data: basket,
@@ -145,7 +239,8 @@ const deleteBasket = async (req, res) => {
 
 const addProductToBasket = async (req, res) => {
   try {
-    const { productId, quantity, sku, bespokeColor } = req.body;
+    const { productId, quantity, sku, bespokeColor, bodyMeasurements } =
+      req.body;
 
     if (!productId) {
       return res.status(400).send({ error: "required productId" });
@@ -182,13 +277,29 @@ const addProductToBasket = async (req, res) => {
       return res.status(400).send({ error: validation.error });
     }
 
+    const bodyMeasurementValidation = await validateProductBodyMeasurements(
+      product,
+      bodyMeasurements
+    );
+    if (bodyMeasurementValidation.error) {
+      return res.status(400).send({ error: bodyMeasurementValidation.error });
+    }
+
     const basket = await BasketModel.findOne({ user: user._id }).lean();
     if (!basket) {
       const basketId = await generateUniqueBasketId();
       const newBasket = await BasketModel.create({
         user: user._id,
         basketId,
-        basketItems: [{ product: product._id, quantity, sku }],
+        basketItems: [
+          {
+            product: product._id,
+            quantity,
+            sku,
+            bodyMeasurements,
+            bespokeColor,
+          },
+        ],
       });
       return res.status(200).send({
         message: "Product added to basket successfully",
@@ -200,11 +311,15 @@ const addProductToBasket = async (req, res) => {
     const itemIndex = basketItems.findIndex((item) => item.sku === sku);
     if (itemIndex !== -1) {
       basketItems[itemIndex].quantity += quantity;
+      basketItems[itemIndex].bespokeColor = bespokeColor;
+      basketItems[itemIndex].bodyMeasurements = bodyMeasurements;
     } else {
       basketItems.push({
         product: product._id,
         quantity,
         sku,
+        bespokeColor,
+        bodyMeasurements,
       });
     }
     const updatedBasket = await BasketModel.findByIdAndUpdate(

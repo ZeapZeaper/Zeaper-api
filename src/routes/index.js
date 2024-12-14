@@ -131,6 +131,11 @@ let routes = (app) => {
     productResolver.getProducts
   );
   router.get(
+    "/products/auth/shop",
+    authMiddleware,
+    productResolver.getAuthShopProducts
+  );
+  router.get(
     "/products/getCategoryProducts",
     authMiddleware,
     productResolver.getCategoryProducts
