@@ -10,7 +10,7 @@ const OrderSchema = new mongoose.Schema({
     ref: "Users",
     required: true,
   },
-  
+
   productOrders: [
     {
       type: mongoose.Schema.Types.ObjectId,
@@ -26,7 +26,7 @@ const OrderSchema = new mongoose.Schema({
   },
   deliveryAddress: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "DeliveryAddresses",
+    ref: "DeliveryAddress",
     required: true,
   },
 });

@@ -826,6 +826,15 @@ const bodyMeasurementEnums = [
 
 const statusEnums = ["draft", "live", "under review", "rejected", "deleted"];
 const promoStatusEnums = ["draft", "live", "expired", "scheduled"];
+const orderStatusEnums = [
+  "order placed",
+  "order confirmed",
+  "order processing",
+  "order ready for delivery",
+  "order dispatched",
+  "order delivered",
+  "order cancelled",
+];
 
 module.exports = {
   genderEnums,
@@ -852,5 +861,6 @@ module.exports = {
   accessoryStyleEnums,
   accessorySizeEnums,
   promoStatusEnums,
-  bodyMeasurementEnums
+  bodyMeasurementEnums,
+  orderStatusEnums,
 };

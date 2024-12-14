@@ -84,8 +84,9 @@ const getDeliveryAddresses = async (req, res) => {
         .status(400)
         .send({ error: "You are not authorized to fetch delivery addresses" });
     }
+    console.log("user_id", authUser._id.toString());
     const deliveryAddresses = await DeliveryAddressModel.find({
-      user: user_id || authUser._id,
+      user: user_id || authUser._id.toString(),
       disabled: false,
     });
     return res.status(200).send({ data: deliveryAddresses });

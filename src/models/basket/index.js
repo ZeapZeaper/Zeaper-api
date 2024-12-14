@@ -34,7 +34,7 @@ const BasketSchema = new mongoose.Schema({
   ],
   deliveryAddress: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "DeliveryAddresses",
+    ref: "DeliveryAddress",
     required: false,
   },
 });

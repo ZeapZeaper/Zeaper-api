@@ -1,15 +1,16 @@
 const mongoose = require("mongoose");
 const timestamp = require("mongoose-timestamp");
+const { orderStatusEnums } = require("../../helpers/constants");
 
 const ProductOrderSchema = new mongoose.Schema({
   order: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Order",
+    ref: "Orders",
     required: true,
   },
   disabled: { type: Boolean, required: false, default: false },
-  orderId : { type: String, required: true },
-  itemNo: { type: Number, required: true},
+  orderId: { type: String, required: true },
+  itemNo: { type: Number, required: true },
   shop: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Shops",
@@ -30,7 +31,7 @@ const ProductOrderSchema = new mongoose.Schema({
         {
           field: { type: String, required: true },
           value: { type: Number, required: true },
-          unit: { type: String,  value: "inch" },
+          unit: { type: String, value: "inch" },
         },
       ],
     },
@@ -38,20 +39,10 @@ const ProductOrderSchema = new mongoose.Schema({
   status: {
     type: String,
     required: true,
-    default: "pending",
+    default: "order placed",
+    enum: orderStatusEnums,
   },
-  timeLines: [
-    {
-      date: { type: String, required: true },
-      status: { type: String, required: true },
-      description: { type: String, required: true },
-      actionBy: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Users",
-        required: true,
-      },
-    },
-  ],
+
   amount: { type: Number, required: true },
   promo: {
     promoId: { type: String, required: false },
@@ -69,7 +60,10 @@ const ProductOrderSchema = new mongoose.Schema({
 
 ProductOrderSchema.plugin(timestamp);
 
-const ProductOrderModel = mongoose.model( "ProductOrders", ProductOrderSchema, "ProductOrders");
-
+const ProductOrderModel = mongoose.model(
+  "ProductOrders",
+  ProductOrderSchema,
+  "ProductOrders"
+);
 
 module.exports = ProductOrderModel;

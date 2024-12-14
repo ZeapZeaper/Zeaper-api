@@ -20,7 +20,7 @@ DeliveryAddressSchema.plugin(timestamp);
 const DeliveryAddressModel = mongoose.model(
   "DeliveryAddress",
   DeliveryAddressSchema,
-  "DeliveryAddresses"
+  "DeliveryAddress"
 );
 
 module.exports = DeliveryAddressModel;

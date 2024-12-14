@@ -23,6 +23,7 @@ const paymentResolver = require("../resolvers/payment");
 const deliveryAddressResolver = require("../resolvers/deliveryAddress");
 const bodyMeasurementTemplateResolver = require("../resolvers/bodyMeasurementTemplateModel");
 const bodyMeasurementResolver = require("../resolvers/bodyMeasurement");
+const orderResolver = require("../resolvers/order");
 
 const handleMoreFieldsUploads = uploadMultiple.fields([
   { name: "documents", maxCount: 5 },
@@ -484,6 +485,51 @@ let routes = (app) => {
     bodyMeasurementResolver.getProductBodyMeasurement
   );
 
+
+  // order routes
+ 
+  router.get(
+    "/orders",
+    authMiddleware,
+    authUserAdminMiddleware,
+    orderResolver.getOrders
+  );
+  router.get(
+    "/orders/authUser/buyer/order",
+    authMiddleware,
+    authUserAdminMiddleware,
+    orderResolver.getOrder
+  );
+  router.get(
+    "/orders/authUser/buyer",
+    authMiddleware,
+    orderResolver.getAuthBuyerOrders
+  );
+  router.get(
+    "/orders/authUser/vendor",
+    authMiddleware,
+    orderResolver.getAuthVendorProductOrders
+  );
+  router.get(
+    "/orders/products",
+    authMiddleware,
+    orderResolver.getProductOrders
+  );
+  router.get(
+    "/orders/authUser/vendor/product",
+    authMiddleware,
+    orderResolver.getProductOrder
+  );
+  router.get(
+    "/orders/status/options",
+    authMiddleware,
+    orderResolver.getOrderStatusOptions
+  );
+  router.put(
+    "/order/status",
+    authMiddleware,
+    orderResolver.updateProductOrderStatus
+  );
 
   return app.use("/", router);
 };
