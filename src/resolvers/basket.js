@@ -6,7 +6,7 @@ const { getAuthUser } = require("../middleware/firebaseUserAuth");
 const BasketModel = require("../models/basket");
 const BodyMeasurementModel = require("../models/bodyMeasurement");
 
-const BodyMeasurementTemplateModel = require("../models/BodyMeasurementTemplate");
+const BodyMeasurementTemplateModel = require("../models/bodyMeasurementTemplate");
 const ProductModel = require("../models/products");
 
 function getRandomInt(min, max) {

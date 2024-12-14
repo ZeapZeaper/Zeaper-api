@@ -1,7 +1,7 @@
 
 const { validateBodyMeasurements } = require("../helpers/utils");
 const { getAuthUser } = require("../middleware/firebaseUserAuth");
-const BodyMeasurementTemplateModel = require("../models/BodyMeasurementTemplate");
+const BodyMeasurementTemplateModel = require("../models/bodyMeasurementTemplate");
 
 
 
