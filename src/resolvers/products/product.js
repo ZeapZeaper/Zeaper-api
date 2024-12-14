@@ -48,7 +48,7 @@ const {
   editAccessories,
   validateAccessories,
   addVariationToAccesories,
-} = require("./accessories");
+} = require("./accessory");
 const PromoModel = require("../../models/promo");
 const {
   editBespokeClothes,
