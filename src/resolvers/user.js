@@ -15,9 +15,7 @@ const { firebase } = require("../config/firebase");
 const { generateUniqueShopId } = require("./shop");
 const { getAuthUser } = require("../middleware/firebaseUserAuth");
 const { sendOTP, verifyOTP } = require("../helpers/sms");
-
-
-  
+const PointModel = require("../models/points");
 
 //saving image to firebase storage
 const addImage = async (req, filename) => {
@@ -105,7 +103,6 @@ const addUserToFirebase = async (params) => {
 };
 const deleteUserFromFirebase = async (uid) => {
   try {
-
     const user = await firebase.auth().deleteUser(uid);
     return user;
   } catch (error) {
@@ -117,38 +114,36 @@ const addShop = async (user) => {
   const shop = new ShopModel({
     shopId,
     userId: user?.userId,
-    user: user?._id
- 
+    user: user?._id,
   });
   const newShop = await shop.save();
   return newShop;
 };
 
 const createUser = async (req, res) => {
-  const { email,  password, isVendor } = req.body;
+  const { email, password, isVendor } = req.body;
   let firebaseUser = {};
   let newUser;
   let shopId;
 
   try {
-    
-   
     if (!email) {
       return res.status(400).send({ error: "email is required" });
     }
     if (!password) {
       return res.status(400).send({ error: "password is required" });
     }
-// check if social is Json string
-if (req.body?.social) {
-  try {
-    JSON.parse(req.body.social);
-  } catch (e) {
-    return res.status(400).send({ error: "social must be a valid JSON string" });
-  }
-}
+    // check if social is Json string
+    if (req.body?.social) {
+      try {
+        JSON.parse(req.body.social);
+      } catch (e) {
+        return res
+          .status(400)
+          .send({ error: "social must be a valid JSON string" });
+      }
+    }
 
-  
     if (email && !validator.validate(email)) {
       return res.status(400).send({ error: "email is invalid" });
     }
@@ -161,21 +156,19 @@ if (req.body?.social) {
         });
       }
     }
-    ;
-    const authUser = await getAuthUser(req);
-    if (authUser) {
-     
-      const isAdmin = authUser.isAdmin || authUser.superAdmin;
-      if(!isAdmin){
-        return res.status(400).send({ error: "You are not authorized to create user" });
-      }
-     
-      req.body.createdBy = authUser.userId;
-    }
+    //const authUser = await getAuthUser(req);
+    // if (authUser) {
 
-  
-    const decriptedPassword =  cryptoDecrypt(password);
-  
+    //   const isAdmin = authUser.isAdmin || authUser.superAdmin;
+    //   if(!isAdmin){
+    //     return res.status(400).send({ error: "You are not authorized to create user" });
+    //   }
+
+    //   req.body.createdBy = authUser.userId;
+    // }
+
+    const decriptedPassword = cryptoDecrypt(password);
+
     req.body.password = decriptedPassword;
     firebaseUser = await addUserToFirebase(req.body);
     if (!firebaseUser.uid) {
@@ -191,17 +184,13 @@ if (req.body?.social) {
       req.body.social = JSON.parse(req.body.social);
     }
 
- 
-
-    
     const userId = await generateUniqueUserId();
     let social = {};
-    if(req.body.social){
+    if (req.body.social) {
       social = JSON.parse(req.body.social);
     }
 
     const params = {
-      
       ...req.body,
       imageUrl,
       email,
@@ -209,10 +198,32 @@ if (req.body?.social) {
       uid: firebaseUser.uid,
       emailVerified: firebaseUser.emailVerified,
       social,
-      
     };
     const user = new UserModel({ ...params });
     newUser = await user.save();
+    if (!newUser) {
+      if (firebaseUser.uid) {
+        await deleteUserFromFirebase(firebaseUser.uid);
+      }
+      return res.status(500).send({ error: "Error creating user" });
+    }
+    // create point for user
+    const point = new PointModel({
+      user: newUser._id,
+      availablePoints: 0,
+      redeemedPoints: 0,
+      totalPoints: 0,
+      timeline: [
+        {
+          description: "Initial points",
+          points: 0,
+          type: "add",
+          createdAt: new Date(),
+        },
+      ],
+    });
+
+    const newPoint = await point.save();
 
     const data = {};
 
@@ -238,11 +249,11 @@ if (req.body?.social) {
       data.shop = shop;
       data.user = newUser;
     }
- 
-   
+
     return res.status(200).send({
       data,
-      message: "User created successfully and phone number OTP verification sent",
+      message:
+        "User created successfully and phone number OTP verification sent",
     });
   } catch (error) {
     if (firebaseUser.uid) {
@@ -309,7 +320,24 @@ const createUserWithGoogleOrApple = async (req, res) => {
     if (!newUser) {
       return res.status(500).send({ error: "Error creating user" });
     }
-    
+     // create point for user
+     const point = new PointModel({
+      user: newUser._id,
+      availablePoints: 0,
+      redeemedPoints: 0,
+      totalPoints: 0,
+      timeline: [
+        {
+          description: "Initial points",
+          points: 0,
+          type: "add",
+          createdAt: new Date(),
+        },
+      ],
+    });
+
+    const newPoint = await point.save();
+
     return res
       .status(200)
       .send({ data: newUser, message: "User created successfully" });
@@ -320,6 +348,7 @@ const createUserWithGoogleOrApple = async (req, res) => {
 
 const getUsers = async (req, res) => {
   try {
+   
     const skip = parseInt(req.query.skip) || 0;
     const limit = parseInt(req.query.limit) || 10;
     const sort = req.query.sort || "desc";
@@ -340,6 +369,37 @@ const getUsers = async (req, res) => {
       .skip(skip)
       .limit(limit)
       .lean();
+
+      // add point to every user without pointModel
+    // const usersWithPoints = await Promise.all(
+    //   users.map(async (user) => {
+    //     const point = await PointModel.findOne({
+    //       user: user._id,
+    //     });
+    //     if (!point) {
+    //       const newPoint = new PointModel({
+    //         user: user._id,
+    //         availablePoints: 0,
+    //         redeemedPoints: 0,
+    //         totalPoints: 0,
+    //         timeline: [
+    //           {
+    //             description: "Initial points",
+    //             points: 0,
+    //             type: "add",
+    //             createdAt: new Date(),
+    //           },
+    //         ],
+    //       });
+    //       await newPoint.save();
+    //       console.log("newPoint", newPoint._id);
+    //     }
+    //   })
+    // );
+
+
+
+
     return res.status(200).send({ data: users });
   } catch (error) {
     return res.status(500).send({ error: error.message });
@@ -353,7 +413,7 @@ const getUser = async (req, res) => {
       return res.status(400).send({ error: "userId is required" });
     }
     const user = await UserModel.findOne({ userId }).lean();
-    
+
     if (!user) {
       return res.status(404).send({ error: "User not found" });
     }
@@ -362,10 +422,11 @@ const getUser = async (req, res) => {
       adminAccess: user?.isAdmin || user?.superAdmin,
     };
     let createdBy = "Self";
-    if(user?.createdBy && user?.createdBy.toLowerCase() !== "self"){
-  
-    const  createdByUser = await UserModel.findOne({userId: user.createdBy}).lean()
-    createdBy = createdByUser?.firstName + " " + createdByUser?.lastName;
+    if (user?.createdBy && user?.createdBy.toLowerCase() !== "self") {
+      const createdByUser = await UserModel.findOne({
+        userId: user.createdBy,
+      }).lean();
+      createdBy = createdByUser?.firstName + " " + createdByUser?.lastName;
     }
 
     if (email) {
@@ -373,7 +434,6 @@ const getUser = async (req, res) => {
         .auth()
         .getUserByEmail(email)
         .then((userRecord) => {
-  
           if (userRecord?.uid) {
             userAccessRecord = {
               email: userRecord?.email,
@@ -381,8 +441,8 @@ const getUser = async (req, res) => {
               creationTime: userRecord?.metadata?.creationTime,
               lastSignInTime: userRecord?.metadata?.lastSignInTime,
               lastRefreshTime: userRecord?.metadata?.lastRefreshTime,
-              providerId:userRecord?.providerData[0]?.providerId,  
-               createdBy  : createdBy || "Self"
+              providerId: userRecord?.providerData[0]?.providerId,
+              createdBy: createdBy || "Self",
             };
           }
         })
@@ -391,7 +451,6 @@ const getUser = async (req, res) => {
         });
     }
     user.userAccessRecord = userAccessRecord;
-   
 
     return res.status(200).send({ data: user });
   } catch (error) {
@@ -450,36 +509,34 @@ const getAdminUsers = async (req, res) => {
 };
 
 const updateUser = async (req, res) => {
-  
   try {
-    
-    const { _id, email, phoneNumber, social} = req.body;
+    const { _id, email, phoneNumber, social } = req.body;
     if (!_id) {
       return res.status(400).send({ error: "_id is required" });
     }
-    if (email){
+    if (email) {
       return res.status(400).send({ error: "email cannot be updated" });
     }
     const user = await UserModel.findById(_id);
     if (!user) {
       return res.status(404).send({ error: "User not found" });
     }
-    
-    if(phoneNumber !== user.phoneNumber){
+
+    if (phoneNumber !== user.phoneNumber) {
       req.body.phoneNumberVerified = false;
     }
     if (req.body?.social) {
       try {
         JSON.parse(req.body.social);
       } catch (e) {
-        return res.status(400).send({ error: "social must be a valid JSON string" });
+        return res
+          .status(400)
+          .send({ error: "social must be a valid JSON string" });
       }
     }
-    if(social){
+    if (social) {
       req.body.social = JSON.parse(req.body.social);
     }
-    
-
 
     const updatedUser = await UserModel.findByIdAndUpdate(_id, req.body);
 
@@ -525,10 +582,8 @@ const deleteUsers = async (req, res) => {
     const { ids } = req.body;
     if (!ids) {
       return res.status(400).send({ error: "ids are required" });
-    
-
     }
-      // if ids is not an array
+    // if ids is not an array
     if (!Array.isArray(ids)) {
       return res.status(400).send({ error: "ids must be an array" });
     }
@@ -630,25 +685,23 @@ const getUserByUid = async (req, res) => {
     if (!user) {
       return res.status(404).send({ error: "User not found" });
     }
-    if(user?.disabled){
+    if (user?.disabled) {
       return res.status(404).send({ error: "User is disabled" });
     }
-    
+
     return res.status(200).send({ data: user });
-  }
-  catch (error) {
+  } catch (error) {
     return res.status(500).send({ error: error.message });
   }
-}
+};
 
 const uploadProfilePic = async (req, res) => {
   try {
-   
     if (!req.file) {
       return res.status(400).send({ error: "no file uploaded" });
     }
 
- const authUser = await getAuthUser(req);
+    const authUser = await getAuthUser(req);
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
     }
@@ -667,9 +720,7 @@ const uploadProfilePic = async (req, res) => {
     );
 
     if (!update) return res.status(400).send({ error: "User not found" });
-    await deleteImageFromFirebase(
-      user?.imageUrl?.name
-    );
+    await deleteImageFromFirebase(user?.imageUrl?.name);
     return res.status(200).send({ data: update });
   } catch (error) {
     return res.status(500).send({ error: error.message });
@@ -677,9 +728,8 @@ const uploadProfilePic = async (req, res) => {
 };
 
 const sendOTPToUser = async (req, res) => {
-  const {  userId } = req.body;
+  const { userId } = req.body;
   try {
-   
     if (!userId) {
       return res.status(400).send({ error: "userId is required" });
     }
@@ -695,21 +745,26 @@ const sendOTPToUser = async (req, res) => {
     if (isAlreadyVerified) {
       return res.status(400).send({ error: "Phone number already verified" });
     }
-  
+
     const otp = await sendOTP({ to: phoneNumber, firstName: user.firstName });
     console.log("otp", otp);
     if (otp?.status === "200") {
-      return res.status(200).send({ data: otp, message: "OTP sent successfully" });
+      return res
+        .status(200)
+        .send({ data: otp, message: "OTP sent successfully" });
     }
-    return res.status(500).send({ error: "Error sending OTP. Ensure the phone number is correct. If issue continues, please contact admin" });
+    return res.status(500).send({
+      error:
+        "Error sending OTP. Ensure the phone number is correct. If issue continues, please contact admin",
+    });
   } catch (error) {
     return res.status(500).send({ error: error.message });
   }
-}
+};
 
 const verifyUserOTP = async (req, res) => {
   const { pin_id, pin, userId } = req.body;
-  try{
+  try {
     console.log("req.body", req.body);
 
     if (!pin_id) {
@@ -725,7 +780,7 @@ const verifyUserOTP = async (req, res) => {
     if (!user) {
       return res.status(404).send({ error: "User not found" });
     }
-    if(user?.phoneNumberVerified){
+    if (user?.phoneNumberVerified) {
       return res.status(400).send({ error: "Phone number already verified" });
     }
     const otp = await verifyOTP({ pin_id, pin });
@@ -736,18 +791,19 @@ const verifyUserOTP = async (req, res) => {
         { phoneNumberVerified: true },
         { new: true }
       );
-      return res.status(200).send({ data: updatedUser, message: "Phone number verified successfully" });
-
+      return res.status(200).send({
+        data: updatedUser,
+        message: "Phone number verified successfully",
+      });
     }
-    return res.status(500).send({ error: "Error verifying OTP. Ensure the pin is correct and not expired. Note that it expires after 15 mins. If issue continues, please contact admin" });
-
-
-  }
-  catch(error){
+    return res.status(500).send({
+      error:
+        "Error verifying OTP. Ensure the pin is correct and not expired. Note that it expires after 15 mins. If issue continues, please contact admin",
+    });
+  } catch (error) {
     return res.status(500).send({ error: error.message });
   }
-}
-
+};
 
 module.exports = {
   createUser,
@@ -764,5 +820,4 @@ module.exports = {
   uploadProfilePic,
   verifyUserOTP,
   sendOTPToUser,
-
 };

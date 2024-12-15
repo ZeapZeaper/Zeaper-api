@@ -24,6 +24,7 @@ const deliveryAddressResolver = require("../resolvers/deliveryAddress");
 const bodyMeasurementTemplateResolver = require("../resolvers/bodyMeasurementTemplateModel");
 const bodyMeasurementResolver = require("../resolvers/bodyMeasurement");
 const orderResolver = require("../resolvers/order");
+const pointResolver = require("../resolvers/point");
 
 const handleMoreFieldsUploads = uploadMultiple.fields([
   { name: "documents", maxCount: 5 },
@@ -530,6 +531,25 @@ let routes = (app) => {
     authMiddleware,
     orderResolver.updateProductOrderStatus
   );
+
+
+
+  // point routes
+
+  router.get(
+    "/point/authUser",
+    authMiddleware,
+    pointResolver.getAuthUserPoint
+  );
+  router.get(
+    "/point/user",
+    authMiddleware,
+    pointResolver.getUserPoint
+  );
+
+
+
+
 
   return app.use("/", router);
 };
