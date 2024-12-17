@@ -11,14 +11,7 @@ const PointSchema = new mongoose.Schema({
   availablePoints: { type: Number, required: true },
   redeemedPoints: { type: Number, required: true },
   totalPoints: { type: Number, required: true },
-  timeline: [
-    {
-      description: { type: String, required: true },
-      points : { type: Number, required: true },
-      type: { type: String, required: true , enum: ["add", "minus"]},
-      createdAt: { type: Date, required: true },
-    },
-  ],
+  
 });
 
 PointSchema.plugin(timestamp);

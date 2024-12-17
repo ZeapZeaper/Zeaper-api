@@ -8,6 +8,11 @@ const BasketSchema = new mongoose.Schema({
     required: true,
   },
   basketId: { type: String, required: true },
+  voucher : {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Vouchers",
+    required: false,
+  },
   basketItems: [
     {
       product: {

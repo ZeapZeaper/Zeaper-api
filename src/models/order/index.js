@@ -29,6 +29,11 @@ const OrderSchema = new mongoose.Schema({
     ref: "DeliveryAddress",
     required: true,
   },
+  voucher: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Vouchers",
+    required: false,
+  },
 });
 
 OrderSchema.plugin(timestamp);

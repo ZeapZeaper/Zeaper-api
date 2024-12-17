@@ -1,11 +1,16 @@
 const PaymentModel = require("../models/payment");
 const BasketModel = require("../models/basket");
 const { ENV } = require("./../config");
-const { calculateTotalBasketPrice } = require("../helpers/utils");
+const {
+  calculateTotalBasketPrice,
+  codeGenerator,
+} = require("../helpers/utils");
 const request = require("request");
 const { getAuthUser } = require("../middleware/firebaseUserAuth");
 const DeliveryAddressModel = require("../models/deliveryAddresses");
 const { createOrder } = require("./order");
+const OrderModel = require("../models/order");
+const { addPointAfterSales } = require("./point");
 
 const secretKey =
   ENV === "dev"
@@ -22,7 +27,8 @@ const generateReference = async () => {
   let found = true;
   do {
     const randomVal = getRandomInt(10000000000, 99999999999);
-    reference = `${randomVal}`;
+    const code = codeGenerator(5);
+    reference = `${randomVal}${code}`;
     const exist = await PaymentModel.findOne({ reference }).lean();
 
     if (exist) {
@@ -44,6 +50,7 @@ const getReference = async (req, res) => {
     if (!deliveryAddress_id) {
       return res.status(400).send({ error: "required deliveryAddress_id" });
     }
+    const authUser = await getAuthUser(req);
     const basket = await BasketModel.findOne({ basketId })
       .populate("user")
       .lean();
@@ -57,7 +64,7 @@ const getReference = async (req, res) => {
     if (!deliveryAddress) {
       return res.status(404).send({ error: "Delivery Address not found" });
     }
-    const authUser = await getAuthUser(req);
+
     if (
       authUser._id.toString() !== basket.user._id.toString() &&
       !authUser.isAdmin &&
@@ -67,8 +74,9 @@ const getReference = async (req, res) => {
         error: "You are not authorized to make payment for this basket",
       });
     }
-    const reference = await generateReference();
-    let payment = await PaymentModel.findOne({ basketId }).lean();
+    let payment = await PaymentModel.findOne({ basket: basket._id }).lean();
+    const reference = payment?.reference || await generateReference();
+  
     if (payment) {
       if (payment.status === "success") {
         return res.status(400).send({ error: "Payment already made" });
@@ -105,7 +113,7 @@ const getReference = async (req, res) => {
       });
     }
 
-    const calculateTotal = await calculateTotalBasketPrice(basket.basketItems);
+    const calculateTotal = await calculateTotalBasketPrice(basket);
 
     // convert amount to kobo or cent
     const amount = calculateTotal.total * 100;
@@ -238,6 +246,22 @@ const verifyPayment = async (req, res) => {
               "Payment successful but unable to update payment. Please contact support",
           });
         }
+        // 1000 naira = 10 points
+        // round down to the nearest 1000
+        const pointToAdd = Math.floor(amount / 1000) * 10;
+        const existingOrder = await OrderModel.findOne({
+          payment: updatedPayment._id,
+        }).lean();
+        if (existingOrder) {
+          return res.status(200).send({
+            message: "Payment verified successfully",
+            data: {
+              payment: updatedPayment,
+              order: existingOrder,
+              addedPoints: pointToAdd,
+            },
+          });
+        }
 
         const order = await createOrder({
           payment: updatedPayment,
@@ -246,10 +270,14 @@ const verifyPayment = async (req, res) => {
         if (order.error) {
           return res.status(400).send({ error: order.error });
         }
+        const addPoints = await addPointAfterSales(
+          updatedPayment.user,
+          pointToAdd
+        );
 
         return res.status(200).send({
           message: "Payment verified successfully",
-          data: { payment: updatedPayment, order },
+          data: { payment: updatedPayment, order, addedPoints: pointToAdd },
         });
       }
       return res.status(400).send({

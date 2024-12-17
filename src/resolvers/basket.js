@@ -180,7 +180,7 @@ const getBaskets = async (req, res) => {
       .lean();
     for (let i = 0; i < baskets.length; i++) {
       const basketTotal = await calculateTotalBasketPrice(
-        baskets[i].basketItems
+        baskets[i]
       );
 
       baskets[i].total = basketTotal.total;
@@ -209,7 +209,7 @@ const getBasket = async (req, res) => {
     if (!user) {
       return res.status(400).send({ error: "User not found, please login" });
     }
-    const basket = await BasketModel.findOne({ user: user._id }).lean();
+    const basket = await BasketModel.findOne({ user: user._id }).populate("voucher").lean();
 
     return res.status(200).send({
       message: basket ? "Basket fetched successfully" : "No basket found",
@@ -466,7 +466,7 @@ const getBasketTotal = async (req, res) => {
       return res.status(400).send({ error: "Basket not found" });
     }
     // use Promise to wait for the total to be calculated
-    const basketTotal = await calculateTotalBasketPrice(basket.basketItems);
+    const basketTotal = await calculateTotalBasketPrice(basket);
 
     return res.status(200).send({
       message: "Basket total fetched successfully",

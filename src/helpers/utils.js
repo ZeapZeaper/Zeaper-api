@@ -8,6 +8,7 @@ const crypto = require("crypto");
 const CryptoJS = require("crypto-js");
 const ProductModel = require("../models/products");
 const { error } = require("console");
+const VoucherModel = require("../models/voucher");
 const algorithm = "aes-256-ctr";
 const ENCRYPTION_KEY = process.env.ZEAPCRYPTOKEY;
 //const ENCRYPTION_KEY = "emVhcCBmYXNoaW9uIGFwcCBpcyBvd25l==";
@@ -118,21 +119,36 @@ const validateProductAvailability = async (product, quantity, sku) => {
 };
 
 const calculateTotalBasketPrice = async (basket) => {
+
+  const basketItems = basket.basketItems;
+  if (basketItems.length === 0) {
+    return { total: 0, items: [], appliedVoucherAmount: 0 };
+  }
+  const voucher = await VoucherModel.findOne({
+    _id: basket.voucher,
+    user: basket.user,
+    isUsed: true,
+  }).lean();
+  const voucherAmount = voucher ? voucher.amount : 0;
   return new Promise(async (resolve) => {
     let total = 0;
     let items = [];
-    for (let i = 0; i < basket.length; i++) {
-      const item = basket[i];
+    for (let i = 0; i < basketItems.length; i++) {
+      const item = basketItems[i];
       const product = await ProductModel.findOne({ _id: item.product }).lean();
       const variation = product.variations.find((v) => v.sku === item.sku);
+
       const totalPrice =
-        (variation?.discount || variation.price) * item.quantity;
+        (variation?.discount || variation.price) * item.quantity -
+        voucherAmount;
       total += totalPrice;
       items.push({
-        item: basket[i],
-        totalPrice,
+        item: basketItems[i],
         quantity: item.quantity,
       });
+    }
+    if (total < 0) {
+      total = 0;
     }
     resolve({ total, items });
   });
@@ -164,13 +180,9 @@ const validateBodyMeasurements = (bodyMeasurements) => {
       return { error };
     }
     measurement.measurements.forEach((m) => {
-    
-
       const { field, value } = m;
-     
 
       if (!field || field === "" || field === undefined) {
-    
         error = `One or more measurements in ${name} has no field`;
         return { error };
       }
@@ -186,6 +198,16 @@ const validateBodyMeasurements = (bodyMeasurements) => {
   }
   return { success: true };
 };
+const codeGenerator = (length) => {
+  let code = "";
+  const condeLength = length || 10;
+  const characters =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz";
+  for (let i = 0; i < condeLength; i++) {
+    code += characters.charAt(Math.floor(Math.random() * characters.length));
+  }
+  return code;
+};
 module.exports = {
   deleteLocalFile,
   numberWithCommas,
@@ -200,4 +222,5 @@ module.exports = {
   validateProductAvailability,
   calculateTotalBasketPrice,
   validateBodyMeasurements,
+  codeGenerator,
 };

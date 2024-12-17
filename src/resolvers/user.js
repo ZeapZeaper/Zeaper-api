@@ -210,17 +210,9 @@ const createUser = async (req, res) => {
     // create point for user
     const point = new PointModel({
       user: newUser._id,
-      availablePoints: 0,
+      availablePoints: 500,
       redeemedPoints: 0,
-      totalPoints: 0,
-      timeline: [
-        {
-          description: "Initial points",
-          points: 0,
-          type: "add",
-          createdAt: new Date(),
-        },
-      ],
+      totalPoints: 500
     });
 
     const newPoint = await point.save();
@@ -323,17 +315,10 @@ const createUserWithGoogleOrApple = async (req, res) => {
      // create point for user
      const point = new PointModel({
       user: newUser._id,
-      availablePoints: 0,
+      availablePoints: 500,
       redeemedPoints: 0,
-      totalPoints: 0,
-      timeline: [
-        {
-          description: "Initial points",
-          points: 0,
-          type: "add",
-          createdAt: new Date(),
-        },
-      ],
+      totalPoints: 500,
+   
     });
 
     const newPoint = await point.save();
@@ -379,17 +364,10 @@ const getUsers = async (req, res) => {
     //     if (!point) {
     //       const newPoint = new PointModel({
     //         user: user._id,
-    //         availablePoints: 0,
+    //         availablePoints: 500,
     //         redeemedPoints: 0,
-    //         totalPoints: 0,
-    //         timeline: [
-    //           {
-    //             description: "Initial points",
-    //             points: 0,
-    //             type: "add",
-    //             createdAt: new Date(),
-    //           },
-    //         ],
+    //         totalPoints: 500
+    //         
     //       });
     //       await newPoint.save();
     //       console.log("newPoint", newPoint._id);

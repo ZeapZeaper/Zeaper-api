@@ -25,6 +25,7 @@ const bodyMeasurementTemplateResolver = require("../resolvers/bodyMeasurementTem
 const bodyMeasurementResolver = require("../resolvers/bodyMeasurement");
 const orderResolver = require("../resolvers/order");
 const pointResolver = require("../resolvers/point");
+const voucherResolver = require("../resolvers/voucher");
 
 const handleMoreFieldsUploads = uploadMultiple.fields([
   { name: "documents", maxCount: 5 },
@@ -545,6 +546,50 @@ let routes = (app) => {
     "/point/user",
     authMiddleware,
     pointResolver.getUserPoint
+  );
+  router.post(
+    "/point/convert/voucher",
+    authMiddleware,
+    pointResolver.convertPointToVoucher
+  );
+
+
+  // Voucher routes
+
+  router.get(
+    "/vouchers/authUser/active",
+    authMiddleware,
+    voucherResolver.getAuthUserActiveVouchers
+  );
+  router.get(
+    "/vouchers/authUser/inactive",
+    authMiddleware,
+    voucherResolver.getAuthUserInactiveVouchers
+  );
+  router.get(
+    "/vouchers",
+    authMiddleware,
+    voucherResolver.getVouchers
+  );
+  router.get(
+    "/voucher",
+    authMiddleware,
+    voucherResolver.getVoucher
+  );
+  router.get(
+    "/vouchers/user/active",
+    authMiddleware,
+    voucherResolver.getUserActiveVouchers
+  );
+  router.get(
+    "/vouchers/user/inactive",
+    authMiddleware,
+    voucherResolver.getUserInactiveVouchers
+  );
+  router.put(
+    "/voucher/apply",
+    authMiddleware,
+    voucherResolver.applyVoucher
   );
 
 

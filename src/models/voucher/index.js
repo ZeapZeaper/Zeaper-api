@@ -6,6 +6,7 @@ const VoucherSchema = new mongoose.Schema({
     amount: { type: Number, required: true },
     expiryDate: { type: Date, required: true },
     isUsed: { type: Boolean, required: false, default: false },
+    source : { type: String, required: true },
     user: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Users",
