@@ -139,14 +139,15 @@ const calculateTotalBasketPrice = async (basket) => {
       const variation = product.variations.find((v) => v.sku === item.sku);
 
       const totalPrice =
-        (variation?.discount || variation.price) * item.quantity -
-        voucherAmount;
+        (variation?.discount || variation.price) * item.quantity 
       total += totalPrice;
       items.push({
         item: basketItems[i],
         quantity: item.quantity,
+        totalPrice,
       });
     }
+    total -= voucherAmount;
     if (total < 0) {
       total = 0;
     }
