@@ -1,3 +1,4 @@
+const { isCancel } = require("axios");
 const { orderStatusEnums } = require("../helpers/constants");
 const { getAuthUser } = require("../middleware/firebaseUserAuth");
 const BasketModel = require("../models/basket");
@@ -368,6 +369,47 @@ const updateProductOrderStatus = async (req, res) => {
     res.status(400).send({ error: error.message });
   }
 };
+const cancelOrder = async (req, res) => {
+  try {
+    const { order_id, reason } = req.body;
+    if (!order_id) {
+      return res.status(400).send({ error: "required order_id" });
+    }
+    if (!reason) {
+      return res.status(400).send({ error: "required reason" });
+    }
+    const order = await OrderModel.findOne({ _id: order_id });
+    if (!order) {
+      return res.status(400).send({ error: "Order not found" });
+    }
+    const productOrders = await ProductOrderModel.find({ order: order._id });
+    if (!productOrders || productOrders.length === 0) {
+      return res.status(400).send({ error: "Product Orders not found" });
+    }
+    const promises = productOrders.map(async (productOrder) => {
+      const updatedStatus = await ProductOrderModel.findOneAndUpdate(
+        { _id: productOrder._id },
+        { status: "order cancelled" },
+        { new: true }
+      );
+      return updatedStatus;
+    });
+    await Promise.all(promises);
+    const cancel = {
+      isCancelled: true,
+      reason,
+      cancelledAt: new Date(),
+    };
+    const updatedOrder = await OrderModel.findOneAndUpdate(
+      { _id: order_id },
+      { cancel },
+      { new: true }
+    );
+    return res.status(200).send({ data: updatedOrder, message: "Order Cancelled successfully" });
+  } catch (error) {
+    res.status(400).send({ error: error.message });
+  }
+};
 
 module.exports = {
   createOrder,
@@ -379,4 +421,5 @@ module.exports = {
   updateProductOrderStatus,
   getOrder,
   getProductOrder,
+  cancelOrder,
 };

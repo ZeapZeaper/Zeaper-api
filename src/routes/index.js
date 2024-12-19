@@ -532,6 +532,11 @@ let routes = (app) => {
     authMiddleware,
     orderResolver.updateProductOrderStatus
   );
+  router.put(
+    "/order/cancel",
+    authMiddleware,
+    orderResolver.cancelOrder
+  );
 
 
 

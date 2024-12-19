@@ -1,3 +1,4 @@
+const { isCancel } = require("axios");
 const mongoose = require("mongoose");
 const timestamp = require("mongoose-timestamp");
 
@@ -33,6 +34,11 @@ const OrderSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Vouchers",
     required: false,
+  },
+  cancel: {
+    isCancelled: { type: Boolean, required: false, default: false },
+    cancelledAt: { type: Date, required: false },
+    reason: { type: String, required: false },
   },
 });
 
