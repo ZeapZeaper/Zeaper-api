@@ -119,7 +119,6 @@ const validateProductAvailability = async (product, quantity, sku) => {
 };
 
 const calculateTotalBasketPrice = async (basket) => {
-
   const basketItems = basket.basketItems;
   if (basketItems.length === 0) {
     return { total: 0, items: [], appliedVoucherAmount: 0 };
@@ -139,7 +138,7 @@ const calculateTotalBasketPrice = async (basket) => {
       const variation = product.variations.find((v) => v.sku === item.sku);
 
       const totalPrice =
-        (variation?.discount || variation.price) * item.quantity 
+        (variation?.discount || variation.price) * item.quantity;
       total += totalPrice;
       items.push({
         item: basketItems[i],
@@ -151,7 +150,13 @@ const calculateTotalBasketPrice = async (basket) => {
     if (total < 0) {
       total = 0;
     }
-    resolve({ total, items });
+    resolve({
+      total,
+      items,
+      appliedVoucherAmount: voucherAmount,
+
+      ...(voucher && { totalWithoutVoucher: total + voucherAmount }),
+    });
   });
 };
 

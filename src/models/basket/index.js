@@ -23,6 +23,7 @@ const BasketSchema = new mongoose.Schema({
       quantity: { type: Number, required: true },
       sku: { type: String, required: true },
       bespokeColor: { type: String, required: false },
+      bespokeInstruction: { type: String, required: false },
       bodyMeasurements: [
         {
           name: { type: String, required: true },

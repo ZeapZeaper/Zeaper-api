@@ -115,7 +115,7 @@ const validateProductBodyMeasurements = async (product, bodyMeasurements) => {
       //   };
       // }
     });
-   
+
     if (error) {
       return { error };
     }
@@ -179,12 +179,12 @@ const getBaskets = async (req, res) => {
       .populate("basketItems.product")
       .lean();
     for (let i = 0; i < baskets.length; i++) {
-      const basketTotal = await calculateTotalBasketPrice(
-        baskets[i]
-      );
+      const basketCalc = await calculateTotalBasketPrice(baskets[i]);
 
-      baskets[i].total = basketTotal.total;
-      const items = basketTotal.items;
+      baskets[i].appliedVoucherAmount = basketCalc.appliedVoucherAmount;
+
+      baskets[i].total = basketCalc.total;
+      const items = basketCalc.items;
 
       for (let j = 0; j < baskets[i].basketItems.length; j++) {
         const item = items.find(
@@ -192,6 +192,9 @@ const getBaskets = async (req, res) => {
         );
 
         baskets[i].basketItems[j].price = item.totalPrice;
+      }
+      if (basketCalc?.totalWithoutVoucher) {
+        baskets[i].totalWithoutVoucher = basketCalc.totalWithoutVoucher;
       }
     }
 
@@ -209,7 +212,9 @@ const getBasket = async (req, res) => {
     if (!user) {
       return res.status(400).send({ error: "User not found, please login" });
     }
-    const basket = await BasketModel.findOne({ user: user._id }).populate("voucher").lean();
+    const basket = await BasketModel.findOne({ user: user._id })
+      .populate("voucher")
+      .lean();
 
     return res.status(200).send({
       message: basket ? "Basket fetched successfully" : "No basket found",
@@ -240,7 +245,7 @@ const deleteBasket = async (req, res) => {
 
 const addProductToBasket = async (req, res) => {
   try {
-    const { productId, quantity, sku, bespokeColor, bodyMeasurements } =
+    const { productId, quantity, sku, bespokeColor, bodyMeasurements, bespokeInstruction } =
       req.body;
 
     if (!productId) {
@@ -299,6 +304,7 @@ const addProductToBasket = async (req, res) => {
             sku,
             bodyMeasurements,
             bespokeColor,
+            bespokeInstruction
           },
         ],
       });
@@ -314,6 +320,7 @@ const addProductToBasket = async (req, res) => {
       basketItems[itemIndex].quantity += quantity;
       basketItems[itemIndex].bespokeColor = bespokeColor;
       basketItems[itemIndex].bodyMeasurements = bodyMeasurements;
+      basketItems[itemIndex].bespokeInstruction = bespokeInstruction;
     } else {
       basketItems.push({
         product: product._id,
@@ -321,6 +328,7 @@ const addProductToBasket = async (req, res) => {
         sku,
         bespokeColor,
         bodyMeasurements,
+        bespokeInstruction
       });
     }
     const updatedBasket = await BasketModel.findByIdAndUpdate(

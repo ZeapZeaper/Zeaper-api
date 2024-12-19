@@ -24,6 +24,7 @@ const ProductOrderSchema = new mongoose.Schema({
   quantity: { type: Number, required: true },
   sku: { type: String, required: true },
   bespokeColor: { type: String, required: false },
+  bespokeInstruction: { type: String, required: false },
   bodyMeasurements: [
     {
       name: { type: String, required: true },
@@ -54,8 +55,7 @@ const ProductOrderSchema = new mongoose.Schema({
   deliveryCompany: { type: String, required: false },
   deliveryTrackingNumber: { type: String, required: false },
   deliveryTrackingLink: { type: String, required: false },
-  deliveryNote: { type: String, required: false },
-  deliveryTimeRange: { type: String, required: false },
+
 });
 
 ProductOrderSchema.plugin(timestamp);

@@ -53,6 +53,7 @@ const buildProductOrders = async (order, basketItems) => {
     const sku = item.sku;
     const bespokeColor = item.bespokeColor;
     const bodyMeasurements = item.bodyMeasurements;
+    const bespokeInstruction = item.bespokeInstruction;
     const status = "order placed";
     const promo = product.promo;
     const variation = product.variations.find((v) => v.sku === sku);
@@ -67,6 +68,7 @@ const buildProductOrders = async (order, basketItems) => {
       quantity,
       sku,
       bespokeColor,
+      bespokeInstruction,
       bodyMeasurements,
       status,
       amount,
@@ -190,7 +192,7 @@ const createOrder = async (param) => {
     // delete basket
     await BasketModel.findOneAndDelete({ _id: basket._id });
   }
-  
+
   return {
     order: updateOrder,
     productOrders,
@@ -241,6 +243,9 @@ const getOrders = async (req, res) => {
     const orders = await OrderModel.find({})
       .populate("productOrders")
       .populate("deliveryAddress")
+      .populate("payment")
+      .populate("user")
+
       .lean();
     return res
       .status(200)
