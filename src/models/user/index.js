@@ -1,6 +1,7 @@
 "use strict";
 const mongoose = require("mongoose");
 const timestamp = require("mongoose-timestamp");
+const { currencyEnums } = require("../../helpers/constants");
 
 
 const SocialSchema = new mongoose.Schema({
@@ -66,6 +67,7 @@ const UserSchema = new mongoose.Schema({
   },
   bestOutfit: {type: String, required: false},
   bestColor: {type: String, required: false},
+  prefferedCurrency: {type: String, required: false, enum: currencyEnums, default: "NGN"},
   
 
 });

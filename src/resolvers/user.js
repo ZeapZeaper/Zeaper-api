@@ -212,7 +212,7 @@ const createUser = async (req, res) => {
       user: newUser._id,
       availablePoints: 500,
       redeemedPoints: 0,
-      totalPoints: 500
+      totalPoints: 500,
     });
 
     const newPoint = await point.save();
@@ -312,13 +312,12 @@ const createUserWithGoogleOrApple = async (req, res) => {
     if (!newUser) {
       return res.status(500).send({ error: "Error creating user" });
     }
-     // create point for user
-     const point = new PointModel({
+    // create point for user
+    const point = new PointModel({
       user: newUser._id,
       availablePoints: 500,
       redeemedPoints: 0,
       totalPoints: 500,
-   
     });
 
     const newPoint = await point.save();
@@ -333,7 +332,6 @@ const createUserWithGoogleOrApple = async (req, res) => {
 
 const getUsers = async (req, res) => {
   try {
-   
     const skip = parseInt(req.query.skip) || 0;
     const limit = parseInt(req.query.limit) || 10;
     const sort = req.query.sort || "desc";
@@ -355,7 +353,7 @@ const getUsers = async (req, res) => {
       .limit(limit)
       .lean();
 
-      // add point to every user without pointModel
+    // add point to every user without pointModel
     // const usersWithPoints = await Promise.all(
     //   users.map(async (user) => {
     //     const point = await PointModel.findOne({
@@ -367,16 +365,13 @@ const getUsers = async (req, res) => {
     //         availablePoints: 500,
     //         redeemedPoints: 0,
     //         totalPoints: 500
-    //         
+    //
     //       });
     //       await newPoint.save();
     //       console.log("newPoint", newPoint._id);
     //     }
     //   })
     // );
-
-
-
 
     return res.status(200).send({ data: users });
   } catch (error) {

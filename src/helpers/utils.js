@@ -9,6 +9,7 @@ const CryptoJS = require("crypto-js");
 const ProductModel = require("../models/products");
 const { error } = require("console");
 const VoucherModel = require("../models/voucher");
+const { nairaToOtherCurrencyEnums } = require("./constants");
 const algorithm = "aes-256-ctr";
 const ENCRYPTION_KEY = process.env.ZEAPCRYPTOKEY;
 //const ENCRYPTION_KEY = "emVhcCBmYXNoaW9uIGFwcCBpcyBvd25l==";
@@ -214,6 +215,42 @@ const codeGenerator = (length) => {
   }
   return code;
 };
+const currencyCoversion = (amount, currency) => {
+  if (currency === "NGN") {
+    return amount;
+  }
+  const currencyRates = nairaToOtherCurrencyEnums;
+  let rate;
+  if (currency === "USD") {
+    rate = currencyRates.USD;
+    const convertedAmount = amount * rate;
+    return convertedAmount;
+  }
+  if (currency === "GBP") {
+    rate = currencyRates.GBP;
+    const convertedAmount = amount * rate;
+    return convertedAmount;
+  }
+  return amount;
+};
+// {
+//   // update amount of all productOrders in database
+//   const promises = productOrders.map(async (productOrder) => {
+//     const amount = [
+//       {
+//         currency: "NGN",
+//         value: productOrder.amount,
+//       },
+//     ];
+//     const updatedOrder = await ProductOrderModel.findOneAndUpdate(
+//       { _id: productOrder._id },
+//       { amount },
+//       { new: true }
+//     );
+//     return updatedOrder;
+//   });
+//   await Promise.all(promises);
+// }
 module.exports = {
   deleteLocalFile,
   numberWithCommas,
@@ -229,4 +266,5 @@ module.exports = {
   calculateTotalBasketPrice,
   validateBodyMeasurements,
   codeGenerator,
+  currencyCoversion,
 };

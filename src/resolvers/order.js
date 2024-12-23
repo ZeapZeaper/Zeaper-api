@@ -7,6 +7,7 @@ const OrderModel = require("../models/order");
 const ProductOrderModel = require("../models/productOrder");
 const ProductModel = require("../models/products");
 const ShopModel = require("../models/shop");
+const { currencyCoversion } = require("../helpers/utils");
 
 function getRandomInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));
@@ -36,7 +37,7 @@ const generateUniqueOrderId = async () => {
   return orderId.toString();
 };
 
-const buildProductOrders = async (order, basketItems) => {
+const buildProductOrders = async (order, basketItems, currency) => {
   const productOrders = [];
   const orderId = order.orderId;
 
@@ -55,10 +56,31 @@ const buildProductOrders = async (order, basketItems) => {
     const bespokeColor = item.bespokeColor;
     const bodyMeasurements = item.bodyMeasurements;
     const bespokeInstruction = item.bespokeInstruction;
-    const status = "order placed";
+    const status = {
+      name: "placed",
+      value: "order placed",
+    };
     const promo = product.promo;
     const variation = product.variations.find((v) => v.sku === sku);
-    const amount = (variation?.discount || variation.price) * quantity;
+    const amountDue = (variation?.discount || variation.price) * quantity;
+    const amount = [
+      {
+        currency: "NGN",
+        value: amountDue,
+      },
+    ];
+    if (currency === "USD") {
+      amount.push({
+        currency: "USD",
+        value: currencyCoversion(amountDue, "USD"),
+      });
+    }
+    if (currency === "GBP") {
+      amount.push({
+        currency: "GBP",
+        value: currencyCoversion(amountDue, "GBP"),
+      });
+    }
 
     const productOrder = new ProductOrderModel({
       order: order._id,
@@ -165,7 +187,12 @@ const createOrder = async (param) => {
       error: "Payment successful but order not created. Please contact support",
     };
   }
-  const productOrders = await buildProductOrders(savedOrder, basketItems);
+  const currency = payment.currency;
+  const productOrders = await buildProductOrders(
+    savedOrder,
+    basketItems,
+    currency
+  );
   if (!productOrders || productOrders.length === 0) {
     return {
       error:
@@ -275,12 +302,46 @@ const getOrder = async (req, res) => {
 };
 const getProductOrders = async (req, res) => {
   try {
-    const productOrders = await ProductOrderModel.find({})
-      .populate("product")
-      .populate("order")
-      .lean();
+    const { status } = req.query;
+    if (!status) {
+      return res.status(400).send({ error: "required status" });
+    }
+    const limit = parseInt(req.query.limit);
+    const pageNumber = parseInt(req.query.pageNumber);
+    if (!limit) {
+      return res.status(400).send({ error: "required limit" });
+    }
+    if (!pageNumber) {
+      return res.status(400).send({ error: "required pageNumber" });
+    }
+    console.log("status", status);
+    const query = {
+      "status.value": status,
+    };
+    const aggregate = [
+      {
+        $facet: {
+          productOrders: [
+            { $match: { ...query } },
+            { $skip: limit * (pageNumber - 1) },
+            { $limit: limit },
+          ],
+          totalCount: [{ $match: { ...query } }, { $count: "count" }],
+        },
+      },
+    ];
+    const productOrdersQuery = await ProductOrderModel.aggregate(
+      aggregate
+    ).exec();
+    await ProductOrderModel.populate(productOrdersQuery[0].productOrders, {
+      path: "product",
+    });
+
+    const productOrders = productOrdersQuery[0]?.productOrders;
+    const totalCount = productOrdersQuery[0]?.totalCount[0]?.count;
+
     return res.status(200).send({
-      data: productOrders,
+      data: { productOrders, totalCount },
       message: "Product Orders fetched successfully",
     });
   } catch (error) {
@@ -341,7 +402,7 @@ const updateProductOrderStatus = async (req, res) => {
     if (!status) {
       return res.status(400).send({ error: "required status" });
     }
-    const valideStatus = orderStatusEnums.includes(status);
+    const valideStatus = orderStatusEnums.map((s) => s.value).includes(status);
     if (!valideStatus) {
       return res.status(400).send({ error: "Invalid status" });
     }
@@ -359,9 +420,10 @@ const updateProductOrderStatus = async (req, res) => {
         .status(400)
         .send({ error: "You are not authorized to update this product order" });
     }
+    const selectedStatus = orderStatusEnums.find((s) => s.value === status);
     const UpdatedProductOrder = await ProductOrderModel.findByIdAndUpdate(
       productOrder_id,
-      { status },
+      { status: selectedStatus },
       { new: true }
     );
     return res.status(200).send({ data: UpdatedProductOrder });
@@ -386,10 +448,13 @@ const cancelOrder = async (req, res) => {
     if (!productOrders || productOrders.length === 0) {
       return res.status(400).send({ error: "Product Orders not found" });
     }
+    const cancelledStatus = orderStatusEnums.find(
+      (s) => s.value === "order cancelled"
+    );
     const promises = productOrders.map(async (productOrder) => {
       const updatedStatus = await ProductOrderModel.findOneAndUpdate(
         { _id: productOrder._id },
-        { status: "order cancelled" },
+        { status: cancelledStatus },
         { new: true }
       );
       return updatedStatus;
@@ -405,7 +470,9 @@ const cancelOrder = async (req, res) => {
       { cancel },
       { new: true }
     );
-    return res.status(200).send({ data: updatedOrder, message: "Order Cancelled successfully" });
+    return res
+      .status(200)
+      .send({ data: updatedOrder, message: "Order Cancelled successfully" });
   } catch (error) {
     res.status(400).send({ error: error.message });
   }

@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 const timestamp = require("mongoose-timestamp");
-const { orderStatusEnums } = require("../../helpers/constants");
+const { orderStatusEnums, currencyEnums } = require("../../helpers/constants");
 
 const ProductOrderSchema = new mongoose.Schema({
   order: {
@@ -38,13 +38,24 @@ const ProductOrderSchema = new mongoose.Schema({
     },
   ],
   status: {
-    type: String,
-    required: true,
-    default: "order placed",
-    enum: orderStatusEnums,
+    name: {
+      type: String,
+      required: true,
+      enum: orderStatusEnums.map((status) => status.name),
+    },
+    value: {
+      type: String,
+      required: true,
+      enum: orderStatusEnums.map((status) => status.value),
+    },
   },
 
-  amount: { type: Number, required: true },
+  amount: [
+    {
+      currency: { type: String, required: true, enum: currencyEnums },
+      value: { type: Number, required: true },
+    },
+  ],
   promo: {
     promoId: { type: String, required: false },
     discountPercentage: { type: Number, required: false },
@@ -55,7 +66,6 @@ const ProductOrderSchema = new mongoose.Schema({
   deliveryCompany: { type: String, required: false },
   deliveryTrackingNumber: { type: String, required: false },
   deliveryTrackingLink: { type: String, required: false },
-
 });
 
 ProductOrderSchema.plugin(timestamp);

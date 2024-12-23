@@ -21,6 +21,7 @@ const PaymentSchema = new mongoose.Schema({
   },
  
   amount: { type: Number, required: true },
+  currency: { type: String, required: true },
   reference: { type: String, required: true },
   paidAt: { type: String, required: false },
   channel: { type: String, required: false },

@@ -827,15 +827,40 @@ const bodyMeasurementEnums = [
 const statusEnums = ["draft", "live", "under review", "rejected", "deleted"];
 const promoStatusEnums = ["draft", "live", "expired", "scheduled"];
 const orderStatusEnums = [
-  "order placed",
-  "order confirmed",
-  "order processing",
-  "order ready for delivery",
-  "order dispatched",
-  "order delivered",
-  "order cancelled",
+  {
+    name: "placed",
+    value: "order placed",
+  },
+  {
+    name: "confirmed",
+    value: "order confirmed",
+  },
+  {
+    name: "processing",
+    value: "order processing",
+  },
+  {
+    name: "ready",
+    value: "order ready for delivery",
+  },
+  {
+    name: "dispatched",
+    value: "order dispatched",
+  },
+  {
+    name: "delivered",
+    value: "order delivered",
+  },
+  {
+    name: "cancelled",
+    value: "order cancelled",
+  },
 ];
-
+const nairaToOtherCurrencyEnums = {
+  USD: 0.00065,
+  GBP: 0.00051,
+};
+const currencyEnums = ["NGN", "USD", "GBP"];
 module.exports = {
   genderEnums,
   ageGroupEnums,
@@ -863,4 +888,7 @@ module.exports = {
   promoStatusEnums,
   bodyMeasurementEnums,
   orderStatusEnums,
+  nairaToOtherCurrencyEnums,
+  currencyEnums,
 };
+

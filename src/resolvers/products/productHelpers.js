@@ -1,6 +1,6 @@
 const { type } = require("../../config/firebaseServiceAcc");
 const { colorEnums } = require("../../helpers/constants");
-const { lowerFirstChar } = require("../../helpers/utils");
+const { lowerFirstChar, currencyCoversion } = require("../../helpers/utils");
 const ProductModel = require("../../models/products");
 
 const getDynamicFilters = (products) => {
@@ -727,10 +727,35 @@ const validateBespokeVariations = (variations) => {
 
   return valid;
 };
+const addPreferredAmountAndCurrency = (products, preferredCurrency) => {
+  return products.map((product) => {
+    const variations = product.variations.map((variation) => {
+      const { price, discount } = variation;
+      const priceInPreferredCurrency = currencyCoversion(
+        price,
+        preferredCurrency
+      );
+      const discountInPreferredCurrency = currencyCoversion(
+        discount,
+        preferredCurrency
+      );
+      return {
+        ...variation,
+        price: priceInPreferredCurrency,
+        discount: discountInPreferredCurrency,
+        currency: preferredCurrency,
+      };
+    });
+    return {
+      ...product,
+      variations,
+    };
+  });
+};
 
 module.exports = {
   getDynamicFilters,
-
+addPreferredAmountAndCurrency,
   getQuery,
   verifyColorsHasImages,
   validateVariations,

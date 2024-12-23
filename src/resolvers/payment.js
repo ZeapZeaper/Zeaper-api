@@ -4,6 +4,7 @@ const { ENV } = require("./../config");
 const {
   calculateTotalBasketPrice,
   codeGenerator,
+  currencyCoversion,
 } = require("../helpers/utils");
 const request = require("request");
 const { getAuthUser } = require("../middleware/firebaseUserAuth");
@@ -11,6 +12,7 @@ const DeliveryAddressModel = require("../models/deliveryAddresses");
 const { createOrder } = require("./order");
 const OrderModel = require("../models/order");
 const { addPointAfterSales } = require("./point");
+const { currencyEnums } = require("../helpers/constants");
 
 const secretKey =
   ENV === "dev"
@@ -50,7 +52,9 @@ const getReference = async (req, res) => {
     if (!deliveryAddress_id) {
       return res.status(400).send({ error: "required deliveryAddress_id" });
     }
+
     const authUser = await getAuthUser(req);
+    const currency = authUser.prefferedCurrency || "NGN";
     const basket = await BasketModel.findOne({ basketId })
       .populate("user")
       .lean();
@@ -75,8 +79,17 @@ const getReference = async (req, res) => {
       });
     }
     let payment = await PaymentModel.findOne({ basket: basket._id }).lean();
-    const reference = payment?.reference || await generateReference();
-  
+    const calculateTotal = await calculateTotalBasketPrice(basket);
+
+    // convert amount to kobo or cent
+    const amountDue = calculateTotal.total * 100;
+    const amount = currencyCoversion(amountDue, currency);
+
+    const user = basket.user;
+    const fullName = user.firstName + " " + user.lastName;
+    const email = user.email;
+    const reference = payment?.reference || (await generateReference());
+
     if (payment) {
       if (payment.status === "success") {
         return res.status(400).send({ error: "Payment already made" });
@@ -105,22 +118,14 @@ const getReference = async (req, res) => {
       return res.status(200).send({
         data: {
           reference,
-          amount: payment.amount,
-          fullName: payment.fullName,
-          email: payment.email,
+          currency,
+          amount,
+          fullName,
+          email,
         },
         message: "Reference fetched successfully",
       });
     }
-
-    const calculateTotal = await calculateTotalBasketPrice(basket);
-
-    // convert amount to kobo or cent
-    const amount = calculateTotal.total * 100;
-
-    const user = basket.user;
-    const fullName = user.firstName + " " + user.lastName;
-    const email = user.email;
 
     payment = new PaymentModel({
       reference,
@@ -130,11 +135,12 @@ const getReference = async (req, res) => {
       basket: basket._id,
       status: "pending",
       amount,
+      currency,
     });
 
     await payment.save();
     return res.status(200).send({
-      data: { reference, amount, fullName, email },
+      data: { reference, amount, currency, fullName, email },
       message: "Reference fetched successfully",
     });
   } catch (error) {
@@ -202,6 +208,7 @@ const verifyPayment = async (req, res) => {
         reject(error.message);
       }
       const response = JSON.parse(body);
+      console.log("response", response);
       if (response.status !== true) {
         return res.status(400).send({
           error: "Payment not successful",
@@ -221,6 +228,7 @@ const verifyPayment = async (req, res) => {
         authorization,
       } = response.data;
       const { card_type, bank, country_code } = authorization;
+
       if (status === "success") {
         const updatedPayment = await PaymentModel.findOneAndUpdate(
           { reference },

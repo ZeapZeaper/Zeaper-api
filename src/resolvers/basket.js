@@ -1,6 +1,8 @@
+const { currencyEnums } = require("../helpers/constants");
 const {
   calculateTotalBasketPrice,
   validateBodyMeasurements,
+  currencyCoversion,
 } = require("../helpers/utils");
 const { getAuthUser } = require("../middleware/firebaseUserAuth");
 const BasketModel = require("../models/basket");
@@ -197,6 +199,7 @@ const getBaskets = async (req, res) => {
         baskets[i].totalWithoutVoucher = basketCalc.totalWithoutVoucher;
       }
     }
+    const user = await getAuthUser(req);
 
     return res
       .status(200)
@@ -245,8 +248,14 @@ const deleteBasket = async (req, res) => {
 
 const addProductToBasket = async (req, res) => {
   try {
-    const { productId, quantity, sku, bespokeColor, bodyMeasurements, bespokeInstruction } =
-      req.body;
+    const {
+      productId,
+      quantity,
+      sku,
+      bespokeColor,
+      bodyMeasurements,
+      bespokeInstruction,
+    } = req.body;
 
     if (!productId) {
       return res.status(400).send({ error: "required productId" });
@@ -304,7 +313,7 @@ const addProductToBasket = async (req, res) => {
             sku,
             bodyMeasurements,
             bespokeColor,
-            bespokeInstruction
+            bespokeInstruction,
           },
         ],
       });
@@ -328,7 +337,7 @@ const addProductToBasket = async (req, res) => {
         sku,
         bespokeColor,
         bodyMeasurements,
-        bespokeInstruction
+        bespokeInstruction,
       });
     }
     const updatedBasket = await BasketModel.findByIdAndUpdate(
@@ -469,16 +478,23 @@ const getBasketTotal = async (req, res) => {
     if (!user) {
       return res.status(400).send({ error: "User not found, please login" });
     }
+    const currency = user.prefferedCurrency || "NGN";
     const basket = await BasketModel.findOne({ user: user._id }).lean();
     if (!basket) {
       return res.status(400).send({ error: "Basket not found" });
     }
     // use Promise to wait for the total to be calculated
     const basketTotal = await calculateTotalBasketPrice(basket);
+    const totalAmount = basketTotal.total;
+    const convertedAmount = await currencyCoversion(totalAmount, currency);
+    const total = {
+      total: convertedAmount,
+      currency,
+    };
 
     return res.status(200).send({
       message: "Basket total fetched successfully",
-      data: basketTotal,
+      data: total,
     });
   } catch (err) {
     return res.status(500).send({ error: err.message });

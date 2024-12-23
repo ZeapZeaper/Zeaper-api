@@ -303,7 +303,7 @@ let routes = (app) => {
   router.get(
     "/promo/products",
     authMiddleware,
-    promoResolver.getPromoWithProducts
+    productResolver.getPromoWithLiveProducts
   );
   router.get("/promo", authMiddleware, promoResolver.getPromo);
   router.get("/product/promo", authMiddleware, promoResolver.getProductPromo);

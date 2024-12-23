@@ -9,6 +9,7 @@ const path = require("path");
 const { v4: uuidv4 } = require("uuid");
 const sharp = require("sharp");
 const ShopModel = require("../models/shop");
+const { addPreferredAmountAndCurrency } = require("./products/productHelpers");
 //saving image to firebase storage
 const addImage = async (req, filename) => {
   let url = {};
@@ -351,9 +352,12 @@ const getPromoWithProducts = async (req, res) => {
       return res.status(400).send({ error: "Promo not found" });
     }
     const includedProducts = promo.productIds;
-    const products = await ProductModel.find({
+    const productData = await ProductModel.find({
       productId: { $in: includedProducts },
     });
+    const authUser = await getAuthUser(req);
+    const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
+    const products = addPreferredAmountAndCurrency(productData, currency);
     return res.status(200).send({
       data: { promo, products },
       message: "Promo fetched successfully",
@@ -615,12 +619,10 @@ const joinPromo = async (req, res) => {
     }
     //check if product is already in another promo
     if (product?.promo?.promoId && product?.promo?.promoId !== promo.promoId) {
-      return res
-        .status(400)
-        .send({
-          error:
-            "Product is already in another scheduled or live promo. Please leave that promo first",
-        });
+      return res.status(400).send({
+        error:
+          "Product is already in another scheduled or live promo. Please leave that promo first",
+      });
     }
     // check if product is already in live or scheduled promo
     const productPromo = product.promo;
@@ -669,7 +671,7 @@ const joinPromo = async (req, res) => {
         return { ...variation, discount };
       });
     }
-   
+
     let timeLineDescription = `Product joined promo ${promo.title}/${promo.promoId}`;
     if (promo.status === "live") {
       timeLineDescription = `Product joined live promo ${promo.title}/${promo.promoId} with discount ${discountPercentage}%`;
@@ -693,7 +695,7 @@ const joinPromo = async (req, res) => {
       },
       { new: true }
     ).lean();
-   
+
     return res.status(200).send({
       data: { promo: updatedPromo, product: updatedProduct },
       message: "Promo joined successfully",
@@ -751,7 +753,7 @@ const leavePromo = async (req, res) => {
       if (variation.discount) {
         delete variation.discount;
       }
-    
+
       return { ...variation };
     });
     const newTimeLine = {
