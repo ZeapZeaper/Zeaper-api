@@ -235,6 +235,8 @@ const getAuthBuyerOrders = async (req, res) => {
     }
     const orders = await OrderModel.find({ user: authUser._id })
       .populate("productOrders")
+      .populate("deliveryAddress")
+      .populate("productOrders.product")
       .lean();
     return res
       .status(200)
@@ -256,6 +258,8 @@ const getAuthVendorProductOrders = async (req, res) => {
     }
     const productOrders = await ProductOrderModel.find({ shop: shop._id })
       .populate("product")
+      .populate("user")
+      .populate("deliveryAddress")
       .lean();
     return res.status(200).send({
       data: productOrders,
@@ -269,12 +273,28 @@ const getAuthVendorProductOrders = async (req, res) => {
 const getOrders = async (req, res) => {
   try {
     const orders = await OrderModel.find({})
-      .populate("productOrders")
+
       .populate("deliveryAddress")
       .populate("payment")
       .populate("user")
-
       .lean();
+    await OrderModel.populate(orders, {
+      path: "productOrders",
+  
+      populate: [
+        { path: "product" },
+        {
+          path: "user",
+          select: "firstName lastName",
+        },
+        {
+          path: "shop",
+          select: "shopName",
+        }
+
+      ],
+    });
+
     return res
       .status(200)
       .send({ data: orders, message: "Orders fetched successfully" });
@@ -290,6 +310,8 @@ const getOrder = async (req, res) => {
     }
     const order = await OrderModel.findOne({ _id: order_id })
       .populate("productOrders")
+      .populate("productOrders.product")
+      .populate("productOrders.user")
       .populate("deliveryAddress")
       .lean();
 
@@ -333,8 +355,15 @@ const getProductOrders = async (req, res) => {
     const productOrdersQuery = await ProductOrderModel.aggregate(
       aggregate
     ).exec();
+    // populate user and product
     await ProductOrderModel.populate(productOrdersQuery[0].productOrders, {
-      path: "product",
+      path: "product", // populate product
+    });
+    await ProductOrderModel.populate(productOrdersQuery[0].productOrders, {
+      path: "shop", // populate shop
+    });
+    await ProductOrderModel.populate(productOrdersQuery[0].productOrders, {
+      path: "user", // populate user
     });
 
     const productOrders = productOrdersQuery[0]?.productOrders;

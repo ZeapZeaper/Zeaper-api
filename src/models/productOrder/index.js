@@ -16,6 +16,11 @@ const ProductOrderSchema = new mongoose.Schema({
     ref: "Shops",
     required: true,
   },
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Users",
+    required: true,
+  },
   product: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Product",

@@ -1064,7 +1064,7 @@ const getProduct = async (req, res) => {
       .populate("shop")
       .populate("postedBy")
       .populate("timeLine.actionBy")
-      .exec();
+      .lean();
     if (!productData) {
       return res.status(400).send({ error: "product not found" });
     }
@@ -1087,7 +1087,7 @@ const getProductById = async (req, res) => {
       .populate("shop")
       .populate("postedBy")
       .populate("timeLine.actionBy")
-      .exec();
+      .lean();
     if (!productData) {
       return res.status(400).send({ error: "product not found" });
     }
@@ -1128,7 +1128,7 @@ const getCategoryProducts = async (req, res) => {
     const productsData = await ProductModel.find({ category, status: "live" })
       .populate("shop")
       .populate("postedBy")
-      .exec();
+      .lean();
     if (!productsData) {
       return res.status(400).send({ error: "products not found" });
     }
