@@ -405,6 +405,14 @@ let routes = (app) => {
     authMiddleware,
     paymentResolver.getReference
   );
+  router.get(
+    "/payments/",
+    authMiddleware,
+    authUserAdminMiddleware,
+    paymentResolver.getPayments
+  );
+  router.get("/payment", authMiddleware, paymentResolver.getPayment);
+
   router.post("/payment/verify", authMiddleware, paymentResolver.verifyPayment);
 
   // delivery address routes
@@ -438,9 +446,6 @@ let routes = (app) => {
     authMiddleware,
     deliveryAddressResolver.deleteDeliveryAddress
   );
-
-
-
 
   // body measurement template routes
   router.post(
@@ -487,14 +492,19 @@ let routes = (app) => {
     bodyMeasurementResolver.getProductBodyMeasurement
   );
 
-
   // order routes
- 
+
   router.get(
     "/orders",
     authMiddleware,
     authUserAdminMiddleware,
     orderResolver.getOrders
+  );
+  router.get(
+    "/order",
+    authMiddleware,
+    authUserAdminMiddleware,
+    orderResolver.getOrder
   );
   router.get(
     "/orders/authUser/buyer/order",
@@ -517,10 +527,16 @@ let routes = (app) => {
     authMiddleware,
     orderResolver.getProductOrders
   );
+  router.get("/orders/product", authMiddleware, orderResolver.getProductOrder);
   router.get(
     "/orders/authUser/vendor/product",
     authMiddleware,
     orderResolver.getProductOrder
+  );
+  router.get(
+    "/orders/product-order/status/history",
+    authMiddleware,
+    orderResolver.getProductOrderStatusHistory
   );
   router.get(
     "/orders/status/options",
@@ -532,32 +548,17 @@ let routes = (app) => {
     authMiddleware,
     orderResolver.updateProductOrderStatus
   );
-  router.put(
-    "/order/cancel",
-    authMiddleware,
-    orderResolver.cancelOrder
-  );
-
-
+  router.put("/order/cancel", authMiddleware, orderResolver.cancelOrder);
 
   // point routes
 
-  router.get(
-    "/point/authUser",
-    authMiddleware,
-    pointResolver.getAuthUserPoint
-  );
-  router.get(
-    "/point/user",
-    authMiddleware,
-    pointResolver.getUserPoint
-  );
+  router.get("/point/authUser", authMiddleware, pointResolver.getAuthUserPoint);
+  router.get("/point/user", authMiddleware, pointResolver.getUserPoint);
   router.post(
     "/point/convert/voucher",
     authMiddleware,
     pointResolver.convertPointToVoucher
   );
-
 
   // Voucher routes
 
@@ -571,35 +572,9 @@ let routes = (app) => {
     authMiddleware,
     voucherResolver.getAuthUserInactiveVouchers
   );
-  router.get(
-    "/vouchers",
-    authMiddleware,
-    voucherResolver.getVouchers
-  );
-  router.get(
-    "/voucher",
-    authMiddleware,
-    voucherResolver.getVoucher
-  );
-  router.get(
-    "/vouchers/user/active",
-    authMiddleware,
-    voucherResolver.getUserActiveVouchers
-  );
-  router.get(
-    "/vouchers/user/inactive",
-    authMiddleware,
-    voucherResolver.getUserInactiveVouchers
-  );
-  router.put(
-    "/voucher/apply",
-    authMiddleware,
-    voucherResolver.applyVoucher
-  );
-
-
-
-
+  router.get("/vouchers", authMiddleware, voucherResolver.getVouchers);
+  router.get("/voucher", authMiddleware, voucherResolver.getVoucher);
+  router.put("/voucher/apply", authMiddleware, voucherResolver.applyVoucher);
 
   return app.use("/", router);
 };

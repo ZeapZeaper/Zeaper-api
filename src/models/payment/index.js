@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const timestamp = require("mongoose-timestamp");
+const { del } = require("request");
 
 const PaymentSchema = new mongoose.Schema({
   user: {
@@ -21,6 +22,8 @@ const PaymentSchema = new mongoose.Schema({
   },
  
   amount: { type: Number, required: true },
+  itemsTotal: { type: Number, required: true },
+  deliveryFee: { type: Number, required: true },
   currency: { type: String, required: true },
   reference: { type: String, required: true },
   paidAt: { type: String, required: false },

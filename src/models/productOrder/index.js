@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const timestamp = require("mongoose-timestamp");
 const { orderStatusEnums, currencyEnums } = require("../../helpers/constants");
+const { size } = require("lodash");
 
 const ProductOrderSchema = new mongoose.Schema({
   order: {
@@ -28,6 +29,15 @@ const ProductOrderSchema = new mongoose.Schema({
   },
   quantity: { type: Number, required: true },
   sku: { type: String, required: true },
+  size: { type: String, required: true },
+  color: { type: String, required: true },
+  images: [
+    {
+      link: { type: String, required: true },
+      name: { type: String, required: true },
+    },
+  ],
+
   bespokeColor: { type: String, required: false },
   bespokeInstruction: { type: String, required: false },
   bodyMeasurements: [
@@ -54,6 +64,7 @@ const ProductOrderSchema = new mongoose.Schema({
       enum: orderStatusEnums.map((status) => status.value),
     },
   },
+  confirmedAt: { type: String, required: false },
 
   amount: [
     {

@@ -122,7 +122,14 @@ const validateProductAvailability = async (product, quantity, sku) => {
 const calculateTotalBasketPrice = async (basket) => {
   const basketItems = basket.basketItems;
   if (basketItems.length === 0) {
-    return { total: 0, items: [], appliedVoucherAmount: 0 };
+    return {
+      total: 0,
+      itemsTotal: 0,
+      items: [],
+      appliedVoucherAmount: 0,
+      totalWithoutVoucher: 0,
+      deliveryFee: 0,
+    };
   }
   const voucher = await VoucherModel.findOne({
     _id: basket.voucher,
@@ -130,8 +137,9 @@ const calculateTotalBasketPrice = async (basket) => {
     isUsed: true,
   }).lean();
   const voucherAmount = voucher ? voucher.amount : 0;
+  const deliveryFee = basket?.deliveryFee || 0;
   return new Promise(async (resolve) => {
-    let total = 0;
+    let itemsTotal = 0;
     let items = [];
     for (let i = 0; i < basketItems.length; i++) {
       const item = basketItems[i];
@@ -140,23 +148,26 @@ const calculateTotalBasketPrice = async (basket) => {
 
       const totalPrice =
         (variation?.discount || variation.price) * item.quantity;
-      total += totalPrice;
+      itemsTotal += totalPrice;
       items.push({
         item: basketItems[i],
         quantity: item.quantity,
         totalPrice,
       });
     }
-    total -= voucherAmount;
-    if (total < 0) {
-      total = 0;
+    itemsTotal -= voucherAmount;
+    if (itemsTotal < 0) {
+      itemsTotal = 0;
     }
+    const total = itemsTotal + deliveryFee;
     resolve({
+      itemsTotal,
       total,
       items,
       appliedVoucherAmount: voucherAmount,
+      deliveryFee,
 
-      ...(voucher && { totalWithoutVoucher: total + voucherAmount }),
+      ...(voucher && { totalWithoutVoucher: itemsTotal + voucherAmount }),
     });
   });
 };

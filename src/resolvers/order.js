@@ -53,6 +53,18 @@ const buildProductOrders = async (order, basketItems, currency) => {
     const itemNo = index + 1;
     const quantity = item.quantity;
     const sku = item.sku;
+    const orderedVariations = product?.variations.find(
+      (variation) => variation.sku === sku
+    );
+    const size = orderedVariations?.size;
+    const color = orderedVariations?.colorValue;
+    const images =
+      product?.colors
+        .find((col) => col.value == color)
+        ?.images.map((image) => {
+          return { link: image.link, name: image.name };
+        }) || [];
+
     const bespokeColor = item.bespokeColor;
     const bodyMeasurements = item.bodyMeasurements;
     const bespokeInstruction = item.bespokeInstruction;
@@ -96,6 +108,9 @@ const buildProductOrders = async (order, basketItems, currency) => {
       status,
       amount,
       promo,
+      color,
+      images,
+      size,
     });
 
     const savedProductOrder = await productOrder.save();
@@ -272,28 +287,10 @@ const getAuthVendorProductOrders = async (req, res) => {
 
 const getOrders = async (req, res) => {
   try {
-    const orders = await OrderModel.find({})
+    const orders = await OrderModel.find(req.query)
 
-      .populate("deliveryAddress")
-      .populate("payment")
       .populate("user")
       .lean();
-    await OrderModel.populate(orders, {
-      path: "productOrders",
-  
-      populate: [
-        { path: "product" },
-        {
-          path: "user",
-          select: "firstName lastName",
-        },
-        {
-          path: "shop",
-          select: "shopName",
-        }
-
-      ],
-    });
 
     return res
       .status(200)
@@ -310,9 +307,22 @@ const getOrder = async (req, res) => {
     }
     const order = await OrderModel.findOne({ _id: order_id })
       .populate("productOrders")
-      .populate("productOrders.product")
-      .populate("productOrders.user")
       .populate("deliveryAddress")
+      .populate("payment")
+      .populate("user")
+      .populate({
+        path: "productOrders",
+        populate: [
+          { path: "product" },
+          {
+            path: "user",
+          },
+          {
+            path: "shop",
+          },
+        ],
+      })
+
       .lean();
 
     return res
@@ -336,7 +346,7 @@ const getProductOrders = async (req, res) => {
     if (!pageNumber) {
       return res.status(400).send({ error: "required pageNumber" });
     }
-    console.log("status", status);
+
     const query = {
       "status.value": status,
     };
@@ -387,6 +397,9 @@ const getProductOrder = async (req, res) => {
       _id: productOrder_id,
     })
       .populate("product")
+      .populate("shop")
+      .populate("user")
+
       .lean();
     if (!productOrder) {
       return res.status(400).send({ error: "Product Order not found" });
@@ -400,10 +413,54 @@ const getProductOrder = async (req, res) => {
     const deliveryAddress = await DeliveryAddressModel.findOne({
       _id: order.deliveryAddress,
     }).lean();
+    productOrder.order = order;
     productOrder.deliveryAddress = deliveryAddress;
+
     return res.status(200).send({
       data: productOrder,
       message: "Product Order fetched successfully",
+    });
+  } catch (error) {
+    res.status(400).send({ error: error.message });
+  }
+};
+const getProductOrderStatusHistory = async (req, res) => {
+  try {
+    const { productOrder_id } = req.query;
+    if (!productOrder_id) {
+      return res.status(400).send({ error: "required productOrder_id" });
+    }
+    const productOrder = await ProductOrderModel.findOne({
+      _id: productOrder_id,
+    }).lean();
+    if (!productOrder) {
+      return res.status(400).send({
+        error:
+          "Product Order not found. Ensure you provide a valid sub productOrder_id",
+      });
+    }
+    const statusOptions = orderStatusEnums;
+    const status = productOrder.status;
+    const statusIndex = statusOptions.findIndex(
+      (s) => s.value === status.value
+    );
+    const statusHistory = statusOptions.slice(0, statusIndex + 1);
+    // add date only when value is placed or confirmed
+    statusHistory.forEach((s) => {
+      if (s.value === "order placed") {
+        s.date = productOrder.createdAt;
+      }
+      if (s.value === "order confirmed") {
+        s.date = productOrder.confirmedAt;
+      }
+    });
+    const currentStatus = statusHistory[statusHistory.length - 1];
+    const nextStatusIndex =
+      statusOptions.findIndex((s) => s.value === currentStatus.value) + 1;
+    const nextStatus = statusOptions[nextStatusIndex];
+    return res.status(200).send({
+      data: { statusHistory, nextStatus, currentStatus },
+      message: "Product Order Status History fetched successfully",
     });
   } catch (error) {
     res.status(400).send({ error: error.message });
@@ -450,9 +507,18 @@ const updateProductOrderStatus = async (req, res) => {
         .send({ error: "You are not authorized to update this product order" });
     }
     const selectedStatus = orderStatusEnums.find((s) => s.value === status);
+    let confirmedAt = productOrder.confirmedAt;
+    // if selected status is placed, update confirmedAt to null
+    if (selectedStatus.value === "order placed") {
+      confirmedAt = null;
+    }
+    if (selectedStatus.value === "order confirmed") {
+      confirmedAt = new Date();
+    }
+
     const UpdatedProductOrder = await ProductOrderModel.findByIdAndUpdate(
       productOrder_id,
-      { status: selectedStatus },
+      { status: selectedStatus, confirmedAt },
       { new: true }
     );
     return res.status(200).send({ data: UpdatedProductOrder });
@@ -517,5 +583,6 @@ module.exports = {
   updateProductOrderStatus,
   getOrder,
   getProductOrder,
+  getProductOrderStatusHistory,
   cancelOrder,
 };

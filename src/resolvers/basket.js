@@ -176,7 +176,7 @@ const validateProductAvailability = async (
 };
 const getBaskets = async (req, res) => {
   try {
-    const baskets = await BasketModel.find()
+    const baskets = await BasketModel.find(req.query)
       .populate("user")
       .populate("basketItems.product")
       .lean();
@@ -486,9 +486,19 @@ const getBasketTotal = async (req, res) => {
     // use Promise to wait for the total to be calculated
     const basketTotal = await calculateTotalBasketPrice(basket);
     const totalAmount = basketTotal.total;
+    const itemTotalAmount = basketTotal.itemsTotal;
+    const deliveryFee = basketTotal.deliveryFee;
+
     const convertedAmount = await currencyCoversion(totalAmount, currency);
+    const convertedItemTotalAmount = await currencyCoversion(
+      itemTotalAmount,
+      currency
+    );
+    const convertedDeliveryFee = await currencyCoversion(deliveryFee, currency);
     const total = {
       total: convertedAmount,
+      itemsTotal: convertedItemTotalAmount,
+      deliveryFee: convertedDeliveryFee,
       currency,
     };
 

@@ -1,4 +1,4 @@
-const { codeGenerator } = require("../helpers/utils");
+const { codeGenerator, currencyCoversion } = require("../helpers/utils");
 const { getAuthUser } = require("../middleware/firebaseUserAuth");
 const BasketModel = require("../models/basket");
 const VoucherModel = require("../models/voucher");
@@ -51,6 +51,16 @@ const getAuthUserActiveVouchers = async (req, res) => {
       isUsed: false,
       expiryDate: { $gte: new Date() },
     });
+    const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
+    vouchers.map((voucher) => {
+      const amountInPreferredCurrency = currencyCoversion(
+        voucher.amount,
+        currency
+      );
+      voucher.amount = amountInPreferredCurrency;
+      voucher.currency = currency;
+      return voucher;
+    });
     return res.status(200).send({
       data: vouchers,
       message: "Vouchers fetched successfully",
@@ -69,6 +79,16 @@ const getAuthUserInactiveVouchers = async (req, res) => {
       user: authUser._id,
       $or: [{ isUsed: true }, { expiryDate: { $lt: new Date() } }],
     });
+    const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
+    vouchers.map((voucher) => {
+      const amountInPreferredCurrency = currencyCoversion(
+        voucher.amount,
+        currency
+      );
+      voucher.amount = amountInPreferredCurrency;
+      voucher.currency = currency;
+      return voucher;
+    });
     return res.status(200).send({
       data: vouchers,
       message: "Vouchers fetched successfully",
@@ -79,7 +99,7 @@ const getAuthUserInactiveVouchers = async (req, res) => {
 };
 const getVouchers = async (req, res) => {
   try {
-    const vouchers = await VoucherModel.find();
+    const vouchers = await VoucherModel.find(req.query);
     return res.status(200).send({
       data: vouchers,
       message: "Vouchers fetched successfully",
@@ -96,48 +116,23 @@ const getVoucher = async (req, res) => {
     }
     const voucher = await VoucherModel.findOne({
       code,
-    });
+    })
+      .populate("user")
+      .lean();
+    if (!voucher) {
+      return res.status(400).send({ error: "Voucher not found" });
+    }
+    const currency =
+      req.query.currency || voucher?.user?.prefferedCurrency || "NGN";
+    const amountInPreferredCurrency = currencyCoversion(
+      voucher.amount,
+      currency
+    );
+    voucher.amount = amountInPreferredCurrency;
+    voucher.currency = currency;
     return res.status(200).send({
       data: voucher,
       message: "Voucher fetched successfully",
-    });
-  } catch (error) {
-    res.status(400).send({ error: error.message });
-  }
-};
-const getUserActiveVouchers = async (req, res) => {
-  try {
-    const { user_id } = req.query;
-    if (!user_id) {
-      return res.status(400).send({ error: "required user_id" });
-    }
-    const vouchers = await VoucherModel.find({
-      user: user_id,
-      isUsed: false,
-      expiryDate: { $gte: new Date() },
-    });
-    return res.status(200).send({
-      data: vouchers,
-      message: "Vouchers fetched successfully",
-    });
-  } catch (error) {
-    res.status(400).send({ error: error.message });
-  }
-};
-
-const getUserInactiveVouchers = async (req, res) => {
-  try {
-    const { user_id } = req.query;
-    if (!user_id) {
-      return res.status(400).send({ error: "required user_id" });
-    }
-    const vouchers = await VoucherModel.find({
-      user: user_id,
-      $or: [{ isUsed: true }, { expiryDate: { $lt: new Date() } }],
-    });
-    return res.status(200).send({
-      data: vouchers,
-      message: "Vouchers fetched successfully",
     });
   } catch (error) {
     res.status(400).send({ error: error.message });
@@ -196,7 +191,5 @@ module.exports = {
   getAuthUserInactiveVouchers,
   getVouchers,
   getVoucher,
-  getUserActiveVouchers,
-  getUserInactiveVouchers,
   applyVoucher,
 };

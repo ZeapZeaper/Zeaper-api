@@ -83,7 +83,11 @@ const getReference = async (req, res) => {
 
     // convert amount to kobo or cent
     const amountDue = calculateTotal.total * 100;
+    const itemsTotalDue = calculateTotal.itemsTotal * 100;
+    const deliveryFeeDue = calculateTotal.deliveryFee * 100;
     const amount = currencyCoversion(amountDue, currency);
+    const itemsTotal = currencyCoversion(itemsTotalDue, currency);
+    const deliveryFee = currencyCoversion(deliveryFeeDue, currency);
 
     const user = basket.user;
     const fullName = user.firstName + " " + user.lastName;
@@ -136,6 +140,9 @@ const getReference = async (req, res) => {
       status: "pending",
       amount,
       currency,
+      itemsTotal,
+      deliveryFee,
+      
     });
 
     await payment.save();
@@ -297,6 +304,71 @@ const verifyPayment = async (req, res) => {
   }
 };
 
+const getPayments = async (req, res) => {
+  try {
+    const payments = await PaymentModel.find().populate("user").lean();
+    return res.status(200).send({
+      data: payments,
+      message: "Payments fetched successfully",
+    });
+  } catch (error) {
+    res.status(400).send({ error: error.message });
+  }
+};
+const getPayment = async (req, res) => {
+  try {
+    const { reference } = req.query;
+    if (!reference) {
+      return res.status(400).send({ error: "required reference" });
+    }
+    const payment = await PaymentModel.findOne({ reference }).lean().populate("user");
+    return res.status(200).send({
+      data: payment,
+      message: "Payment fetched successfully",
+    });
+  } catch (error) {
+    res.status(400).send({ error: error.message });
+  }
+};
+
+const getUserPayments = async (req, res) => {
+  try {
+    const { user_id } = req.query;
+    if (!user_id) {
+      return res.status(400).send({ error: "required user_id" });
+    }
+    const payments = await PaymentModel.find({ user: user_id }).lean();
+    return res.status(200).send({
+      data: payments,
+      message: "Payments fetched successfully",
+    });
+  } catch (error) {
+    res.status(400).send({ error: error.message });
+  }
+};
+
+const getUserPayment = async (req, res) => {
+  try {
+    const { user_id, reference } = req.query;
+    if (!user_id) {
+      return res.status(400).send({ error: "required user_id" });
+    }
+    if (!reference) {
+      return res.status(400).send({ error: "required reference" });
+    }
+    const payment = await PaymentModel.findOne({
+      user: user_id,
+      reference,
+    }).lean();
+    return res.status(200).send({
+      data: payment,
+      message: "Payment fetched successfully",
+    });
+  } catch (error) {
+    res.status(400).send({ error: error.message });
+  }
+};
+
 // const initialisePayment = async () => {
 //   try {
 //     const form = {
@@ -329,4 +401,8 @@ const verifyPayment = async (req, res) => {
 module.exports = {
   getReference,
   verifyPayment,
+  getPayments,
+  getPayment,
+  getUserPayments,
+  getUserPayment,
 };
