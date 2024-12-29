@@ -7,7 +7,9 @@ const OrderModel = require("../models/order");
 const ProductOrderModel = require("../models/productOrder");
 const ProductModel = require("../models/products");
 const ShopModel = require("../models/shop");
-const { currencyCoversion } = require("../helpers/utils");
+const { currencyCoversion, addWeekDays } = require("../helpers/utils");
+const { default: mongoose } = require("mongoose");
+const { add, min } = require("lodash");
 
 function getRandomInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));
@@ -334,10 +336,8 @@ const getOrder = async (req, res) => {
 };
 const getProductOrders = async (req, res) => {
   try {
-    const { status } = req.query;
-    if (!status) {
-      return res.status(400).send({ error: "required status" });
-    }
+    const { status, shop } = req.query;
+
     const limit = parseInt(req.query.limit);
     const pageNumber = parseInt(req.query.pageNumber);
     if (!limit) {
@@ -348,8 +348,10 @@ const getProductOrders = async (req, res) => {
     }
 
     const query = {
-      "status.value": status,
+      ...(status && { "status.value": status }),
+      ...(shop && { shop: mongoose.Types.ObjectId(shop) }),
     };
+
     const aggregate = [
       {
         $facet: {
@@ -482,6 +484,8 @@ const getOrderStatusOptions = async (req, res) => {
 const updateProductOrderStatus = async (req, res) => {
   try {
     const { productOrder_id, status } = req.body;
+    let expectedVendorCompletionDate = null;
+    let expectedDeliveryDate = null;
     if (!productOrder_id) {
       return res.status(400).send({ error: "required productOrder_id" });
     }
@@ -494,7 +498,10 @@ const updateProductOrderStatus = async (req, res) => {
     }
     const productOrder = await ProductOrderModel.findOne({
       _id: productOrder_id,
-    }).populate("shop");
+    })
+      .populate("shop")
+      .populate("product")
+      .lean();
 
     if (!productOrder) {
       return res.status(400).send({ error: "Product Order not found" });
@@ -509,16 +516,48 @@ const updateProductOrderStatus = async (req, res) => {
     const selectedStatus = orderStatusEnums.find((s) => s.value === status);
     let confirmedAt = productOrder.confirmedAt;
     // if selected status is placed, update confirmedAt to null
+
+    if (selectedStatus.value === "order confirmed") {
+      console.log("is order confirmed");
+      confirmedAt = new Date();
+      const productType = productOrder.product.productType;
+      const bespokes = ["bespokeCloth", "bespokeShoe"];
+      expectedVendorCompletionDate = {
+        min: new Date(),
+        // max will plus 2 working days to the current date
+        max: addWeekDays(new Date(), 2),
+      };
+      expectedDeliveryDate = {
+        min: addWeekDays(new Date(), 5),
+        max: addWeekDays(new Date(), 7),
+      };
+      if (bespokes.includes(productType)) {
+        expectedVendorCompletionDate = {
+          min: addWeekDays(new Date(), 20),
+          // max will plus 5 working days to the current date
+          max: addWeekDays(new Date(), 30),
+        };
+        expectedDeliveryDate = {
+          min: addWeekDays(new Date(), 30),
+          max: addWeekDays(new Date(), 40),
+        };
+      }
+    }
     if (selectedStatus.value === "order placed") {
       confirmedAt = null;
+      expectedVendorCompletionDate = null;
+      expectedDeliveryDate = null;
     }
-    if (selectedStatus.value === "order confirmed") {
-      confirmedAt = new Date();
-    }
+
 
     const UpdatedProductOrder = await ProductOrderModel.findByIdAndUpdate(
       productOrder_id,
-      { status: selectedStatus, confirmedAt },
+      {
+        status: selectedStatus,
+        confirmedAt,
+        expectedVendorCompletionDate,
+        expectedDeliveryDate,
+      },
       { new: true }
     );
     return res.status(200).send({ data: UpdatedProductOrder });

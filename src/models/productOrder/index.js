@@ -1,7 +1,8 @@
 const mongoose = require("mongoose");
 const timestamp = require("mongoose-timestamp");
 const { orderStatusEnums, currencyEnums } = require("../../helpers/constants");
-const { size } = require("lodash");
+const { size, min } = require("lodash");
+const e = require("express");
 
 const ProductOrderSchema = new mongoose.Schema({
   order: {
@@ -75,6 +76,14 @@ const ProductOrderSchema = new mongoose.Schema({
   promo: {
     promoId: { type: String, required: false },
     discountPercentage: { type: Number, required: false },
+  },
+  expectedVendorCompletionDate: {
+    min: { type: String, required: false },
+    max: { type: String, required: false },
+  },
+  expectedDeliveryDate: {
+    min: { type: String, required: false },
+    max: { type: String, required: false },
   },
   deliveryDate: { type: String, required: false },
   deliveryTime: { type: String, required: false },

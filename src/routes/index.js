@@ -26,6 +26,7 @@ const bodyMeasurementResolver = require("../resolvers/bodyMeasurement");
 const orderResolver = require("../resolvers/order");
 const pointResolver = require("../resolvers/point");
 const voucherResolver = require("../resolvers/voucher");
+const wishResolver = require("../resolvers/wish");
 
 const handleMoreFieldsUploads = uploadMultiple.fields([
   { name: "documents", maxCount: 5 },
@@ -575,6 +576,12 @@ let routes = (app) => {
   router.get("/vouchers", authMiddleware, voucherResolver.getVouchers);
   router.get("/voucher", authMiddleware, voucherResolver.getVoucher);
   router.put("/voucher/apply", authMiddleware, voucherResolver.applyVoucher);
+
+  // Wish routes
+  router.post("/wish/add", authMiddleware, wishResolver.addWish);
+  router.delete("/wish/remove", authMiddleware, wishResolver.removeWish);
+  router.get("/wish/auth/user", authMiddleware, wishResolver.getAuthUserWishes);
+  router.get("/wish/user", authMiddleware, wishResolver.getUserWishes);
 
   return app.use("/", router);
 };
