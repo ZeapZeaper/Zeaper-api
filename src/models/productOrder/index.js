@@ -105,6 +105,10 @@ const ProductOrderSchema = new mongoose.Schema({
     isCancelled: { type: Boolean, required: false, default: false },
     cancelledAt: { type: Date, required: false },
     reason: { type: String, required: false },
+    lastStatusBeforeCancel: {
+      name: { type: String, required: false },
+      value: { type: String, required: false },
+    },
   },
 });
 

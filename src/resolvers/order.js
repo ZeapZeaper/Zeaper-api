@@ -450,7 +450,11 @@ const getProductOrderStatusHistory = async (req, res) => {
       });
     }
     const statusOptions = orderStatusEnums;
-    const status = productOrder.status;
+    let status = productOrder.status;
+    const isCancelled = productOrder.cancel?.isCancelled;
+    if (isCancelled) {
+      status = productOrder.cancel.lastStatusBeforeCancel;
+    }
     const statusIndex = statusOptions.findIndex(
       (s) => s.value === status.value
     );
@@ -467,12 +471,19 @@ const getProductOrderStatusHistory = async (req, res) => {
         s.date = productOrder.deliveryDate;
       }
     });
-    const currentStatus = statusHistory[statusHistory.length - 1];
+    if (isCancelled) {
+      statusHistory.push({
+        name: "Order Cancelled",
+        value: "order cancelled",
+        date: productOrder.cancel.cancelledAt,
+      });
+    }
+    const currentStatus = productOrder.status;
 
     const nextStatusIndex =
       statusOptions.findIndex((s) => s.value === currentStatus.value) + 1;
     const nextStatus =
-      currentStatus?.value !== "order delivered"
+      currentStatus?.value !== "order delivered" && !isCancelled
         ? statusOptions[nextStatusIndex]
         : null;
     return res.status(200).send({
@@ -530,11 +541,9 @@ const updateProductOrderStatus = async (req, res) => {
       !authUser.superAdmin &&
       !authUser?.admin
     ) {
-      return res
-        .status(400)
-        .send({
-          error: `You are not authorized to update this order status to ${selectedStatus.name}`,
-        });
+      return res.status(400).send({
+        error: `You are not authorized to update this order status to ${selectedStatus.name}`,
+      });
     }
     const productOrder = await ProductOrderModel.findOne({
       _id: productOrder_id,
@@ -623,6 +632,10 @@ const updateProductOrderStatus = async (req, res) => {
     if (selectedStatus.value !== "order delivered") {
       deliveryDate = null;
     }
+    let cancel = productOrder.cancel;
+    if (productOrder.status.value === "order cancelled") {
+      cancel = null;
+    }
 
     const UpdatedProductOrder = await ProductOrderModel.findByIdAndUpdate(
       productOrder_id,
@@ -635,6 +648,7 @@ const updateProductOrderStatus = async (req, res) => {
         deliveryTrackingNumber,
         deliveryTrackingLink,
         deliveryDate,
+        cancel,
       },
       { new: true }
     );
@@ -684,7 +698,11 @@ const cancelOrder = async (req, res) => {
         .status(400)
         .send({ error: "You are not authorized to cancel this product order" });
     }
-    if (productOrder.status.value !== "order processing") {
+
+    if (
+      productOrder.status.value !== "order confirmed" &&
+      productOrder.status.value !== "order placed"
+    ) {
       return res.status(400).send({
         error:
           "You are not authorized to cancel this product order at the stage. Contact tech",
@@ -697,6 +715,7 @@ const cancelOrder = async (req, res) => {
       isCancelled: true,
       reason,
       cancelledAt: new Date(),
+      lastStatusBeforeCancel: productOrder.status,
     };
 
     const updatedStatus = await ProductOrderModel.findOneAndUpdate(
