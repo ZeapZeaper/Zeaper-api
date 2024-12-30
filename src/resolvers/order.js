@@ -512,9 +512,29 @@ const updateProductOrderStatus = async (req, res) => {
     if (!status) {
       return res.status(400).send({ error: "required status" });
     }
-    const valideStatus = orderStatusEnums.map((s) => s.value).includes(status);
-    if (!valideStatus) {
+    const selectedStatus = orderStatusEnums.find((s) => s.value === status);
+    if (!selectedStatus) {
       return res.status(400).send({ error: "Invalid status" });
+    }
+    if (selectedStatus.value === "order cancelled") {
+      return res
+        .status(400)
+        .send({ error: "You can't cancel an order using this endpoint" });
+    }
+    const authUser = await getAuthUser(req);
+    if (!authUser) {
+      return res.status(400).send({ error: "User not found" });
+    }
+    if (
+      !selectedStatus?.sellerAction &&
+      !authUser.superAdmin &&
+      !authUser?.admin
+    ) {
+      return res
+        .status(400)
+        .send({
+          error: `You are not authorized to update this order status to ${selectedStatus.name}`,
+        });
     }
     const productOrder = await ProductOrderModel.findOne({
       _id: productOrder_id,
@@ -527,21 +547,13 @@ const updateProductOrderStatus = async (req, res) => {
       return res.status(400).send({ error: "Product Order not found" });
     }
     const shopid = productOrder.shop.shopId;
-    const authUser = await getAuthUser(req);
+
     if (authUser.shopId !== shopid && !authUser.superAdmin && !authUser.admin) {
       return res
         .status(400)
         .send({ error: "You are not authorized to update this product order" });
     }
-    const selectedStatus = orderStatusEnums.find((s) => s.value === status);
-    if (!selectedStatus) {
-      return res.status(400).send({ error: "Invalid status" });
-    }
-    if (selectedStatus.value === "order cancelled") {
-      return res
-        .status(400)
-        .send({ error: "You can't cancel an order using this endpoint" });
-    }
+
     let confirmedAt = productOrder.confirmedAt;
     // if selected status is placed, update confirmedAt to null
 
@@ -693,12 +705,10 @@ const cancelOrder = async (req, res) => {
       { new: true }
     );
 
-    return res
-      .status(200)
-      .send({
-        data: updatedStatus,
-        message: "Order Item Cancelled successfully",
-      });
+    return res.status(200).send({
+      data: updatedStatus,
+      message: "Order Item Cancelled successfully",
+    });
   } catch (error) {
     res.status(400).send({ error: error.message });
   }

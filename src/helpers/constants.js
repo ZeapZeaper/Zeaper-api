@@ -834,14 +834,17 @@ const orderStatusEnums = [
   {
     name: "confirmed",
     value: "order confirmed",
+    sellerAction: true,
   },
   {
     name: "processing",
     value: "order processing",
+    sellerAction: true,
   },
   {
     name: "ready",
     value: "order ready for delivery",
+    sellerAction: true,
   },
   {
     name: "dispatched",
