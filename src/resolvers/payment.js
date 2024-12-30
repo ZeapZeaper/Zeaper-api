@@ -12,7 +12,6 @@ const DeliveryAddressModel = require("../models/deliveryAddresses");
 const { createOrder } = require("./order");
 const OrderModel = require("../models/order");
 const { addPointAfterSales } = require("./point");
-const { currencyEnums } = require("../helpers/constants");
 
 const secretKey =
   ENV === "dev"
@@ -142,7 +141,6 @@ const getReference = async (req, res) => {
       currency,
       itemsTotal,
       deliveryFee,
-      
     });
 
     await payment.save();
@@ -321,7 +319,9 @@ const getPayment = async (req, res) => {
     if (!reference) {
       return res.status(400).send({ error: "required reference" });
     }
-    const payment = await PaymentModel.findOne({ reference }).lean().populate("user");
+    const payment = await PaymentModel.findOne({ reference })
+      .lean()
+      .populate("user");
     return res.status(200).send({
       data: payment,
       message: "Payment fetched successfully",
@@ -398,6 +398,7 @@ const getUserPayment = async (req, res) => {
 // }).catch(error => {
 //     console.log("error", error)
 // })
+
 module.exports = {
   getReference,
   verifyPayment,

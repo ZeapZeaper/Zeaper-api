@@ -2,6 +2,7 @@ const ShopModel = require("../models/shop");
 const UserModel = require("../models/user");
 const { verifyUserId, verifyShopId } = require("../helpers/utils");
 const { getAuthUser } = require("../middleware/firebaseUserAuth");
+const ProductOrderModel = require("../models/productOrder");
 
 function getRandomInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));
@@ -40,37 +41,40 @@ const createShop = async (req, res) => {
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
     }
-   
-    if(req.body?.userId && !authUser.isAdmin && !authUser.isSuperAdmin && authUser.userId !== req.body?.userId){
-      return res.status(400).send({ error: "You are not authorized to perform this operation" });
+
+    if (
+      req.body?.userId &&
+      !authUser.isAdmin &&
+      !authUser.isSuperAdmin &&
+      authUser.userId !== req.body?.userId
+    ) {
+      return res
+        .status(400)
+        .send({ error: "You are not authorized to perform this operation" });
     }
 
-    let userId
-    let user
-    if(req.body?.userId){
+    let userId;
+    let user;
+    if (req.body?.userId) {
       user = await UserModel.findOne({ userId: req.body?.userId }).lean();
       if (!user) {
         return res.status(400).send({ error: "User not found" });
       }
+    } else {
+      user = authUser;
     }
-    else{
-       user = authUser;
-     
-    }
-    
 
-    userId = req.body?.userId|| user.userId;
+    userId = req.body?.userId || user.userId;
     const alreadyHasShop = await ShopModel.findOne({ userId });
-  
+
     if (alreadyHasShop) {
-     
       return res.status(400).send({ error: "User already has a shop" });
     }
 
     if (!user) {
       return res.status(400).send({ error: "User not found" });
     }
-    
+
     const shopExist = await ShopModel.findOne({
       shopName,
     });
@@ -92,9 +96,7 @@ const createShop = async (req, res) => {
       {
         userId,
       },
-      { shopId, shopEnabled: true,
-        isVendor: true
-       },
+      { shopId, shopEnabled: true, isVendor: true },
       { new: true }
     ).lean();
     if (!updatedUser) {
@@ -154,7 +156,7 @@ const getAuthUserShops = async (req, res) => {
 };
 const getShop = async (req, res) => {
   try {
-  const shopId = req.query.shopId;
+    const shopId = req.query.shopId;
     if (!shopId) {
       return res.status(400).send({ error: "shopId is required" });
     }
@@ -255,7 +257,7 @@ const deleteShop = async (req, res) => {
 const restoreShop = async (req, res) => {
   try {
     const { shopId } = req.body;
-  
+
     if (!shopId) {
       return res.status(400).send({ error: "shopId is required" });
     }
@@ -285,14 +287,96 @@ const restoreShop = async (req, res) => {
   }
 };
 
+const getAuthShopRevenues = async (req, res) => {
+  try {
+    const authUser = await getAuthUser(req);
+    if (!authUser) {
+      return res.status(400).send({ error: "User not found" });
+    }
+    const shop = await ShopModel.findOne({ shopId: authUser.shopId }).lean();
+    if (!shop) {
+      return res.status(400).send({ error: "Shop not found" });
+    }
+    const shopRevenuesQury = await ProductOrderModel.find({ shop: shop._id })
+      .populate("product")
+      .lean();
+    const shopRevenues = shopRevenuesQury.map((order) => {
+      const product = order.product;
+
+      const shopRevenue = order.shopRevenue;
+      const amount = order.amount.find((a) => a.currency === "NGN");
+      return {
+        purchaseDate: order.createdAt,
+        buyerPaid: amount,
+        shopRevenue,
+        purchasedProduct: {
+          title: product.title,
+          productId: product.productId,
+          productType: product.productType,
+          sku: order.sku,
+          images: order.images,
+        },
+      };
+    });
+    return res.status(200).send({
+      data: shopRevenues,
+      message: "Shop revenues fetched successfully",
+    });
+  } catch (error) {
+    res.status(400).send({ error: error.message });
+  }
+};
+const getShopRevenues = async (req, res) => {
+  try {
+    const { shopId } = req.query;
+    if (!shopId) {
+      return res.status(400).send({ error: "shopId is required" });
+    }
+
+    const shop = await ShopModel.findOne({ shopId }).lean();
+    if (!shop) {
+      return res.status(400).send({ error: "Shop not found" });
+    }
+    const shopRevenuesQury = await ProductOrderModel.find({ shop: shop._id })
+      .populate("product")
+      .lean();
+    const shopRevenues = shopRevenuesQury.map((order) => {
+      const product = order.product;
+
+      const shopRevenue = order.shopRevenue;
+      const amount = order.amount.find((a) => a.currency === "NGN");
+      return {
+        purchaseDate: order.createdAt,
+        buyerPaid: amount,
+        shopRevenue,
+        purchasedProduct: {
+          title: product.title,
+          productId: product.productId,
+          productType: product.productType,
+          sku: order.sku,
+          images: order.images,
+        },
+      };
+    });
+    return res.status(200).send({
+      data: shopRevenues,
+      message: "Shop revenues fetched successfully",
+    });
+  } catch (error) {
+    res.status(400).send({ error: error.message });
+  }
+};
+
 module.exports = {
   createShop,
   getShops,
   getShop,
-  getAuthUserShops ,
+  getAuthUserShops,
   updateShop,
   deleteShop,
   restoreShop,
   absoluteDeleteShop,
   generateUniqueShopId,
+  getAuthShopRevenues,
+  getShopRevenues,
 };

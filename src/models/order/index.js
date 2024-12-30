@@ -34,12 +34,8 @@ const OrderSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Vouchers",
     required: false,
-  },
-  cancel: {
-    isCancelled: { type: Boolean, required: false, default: false },
-    cancelledAt: { type: Date, required: false },
-    reason: { type: String, required: false },
-  },
+  }
+ 
 });
 
 OrderSchema.plugin(timestamp);

@@ -86,11 +86,26 @@ const ProductOrderSchema = new mongoose.Schema({
     max: { type: String, required: false },
   },
   deliveryDate: { type: String, required: false },
-  deliveryTime: { type: String, required: false },
   deliveryFee: { type: Number, required: false },
   deliveryCompany: { type: String, required: false },
   deliveryTrackingNumber: { type: String, required: false },
   deliveryTrackingLink: { type: String, required: false },
+  shopRevenue: {
+    currency: {
+      type: String,
+      required: true,
+      enum: currencyEnums,
+      default: "NGN",
+    },
+    value: { type: Number, required: true },
+    status: { type: String, required: false, default: "pending" },
+    reference: { type: String, required: false },
+  },
+  cancel: {
+    isCancelled: { type: Boolean, required: false, default: false },
+    cancelledAt: { type: Date, required: false },
+    reason: { type: String, required: false },
+  },
 });
 
 ProductOrderSchema.plugin(timestamp);

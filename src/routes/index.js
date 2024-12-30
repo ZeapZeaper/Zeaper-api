@@ -111,6 +111,17 @@ let routes = (app) => {
     shopResolver.getAuthUserShops
   );
   router.get("/shop", authMiddleware, shopResolver.getShop);
+  router.get(
+    "/shop/auth/revenues",
+    authMiddleware,
+    shopResolver.getAuthShopRevenues
+  );
+  router.get(
+    "/shop/revenues",
+    authMiddleware,
+    shopResolver.getShopRevenues
+  );
+
   router.put("/shop/update", authMiddleware, shopResolver.updateShop);
   router.put("/shop/delete", authMiddleware, shopResolver.deleteShop);
   router.delete(

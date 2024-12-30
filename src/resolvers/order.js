@@ -95,6 +95,12 @@ const buildProductOrders = async (order, basketItems, currency) => {
         value: currencyCoversion(amountDue, "GBP"),
       });
     }
+    const shopRevenue = {
+      currency: "NGN",
+      status: "pending",
+      // value is 75% of the amount due
+      value: amountDue * 0.75,
+    };
 
     const productOrder = new ProductOrderModel({
       order: order._id,
@@ -113,6 +119,7 @@ const buildProductOrders = async (order, basketItems, currency) => {
       color,
       images,
       size,
+      shopRevenue,
     });
 
     const savedProductOrder = await productOrder.save();
@@ -292,6 +299,7 @@ const getOrders = async (req, res) => {
     const orders = await OrderModel.find(req.query)
 
       .populate("user")
+      .populate("productOrders")
       .lean();
 
     return res
@@ -455,11 +463,18 @@ const getProductOrderStatusHistory = async (req, res) => {
       if (s.value === "order confirmed") {
         s.date = productOrder.confirmedAt;
       }
+      if (s.value === "order delivered") {
+        s.date = productOrder.deliveryDate;
+      }
     });
     const currentStatus = statusHistory[statusHistory.length - 1];
+
     const nextStatusIndex =
       statusOptions.findIndex((s) => s.value === currentStatus.value) + 1;
-    const nextStatus = statusOptions[nextStatusIndex];
+    const nextStatus =
+      currentStatus?.value !== "order delivered"
+        ? statusOptions[nextStatusIndex]
+        : null;
     return res.status(200).send({
       data: { statusHistory, nextStatus, currentStatus },
       message: "Product Order Status History fetched successfully",
@@ -486,6 +501,11 @@ const updateProductOrderStatus = async (req, res) => {
     const { productOrder_id, status } = req.body;
     let expectedVendorCompletionDate = null;
     let expectedDeliveryDate = null;
+    let deliveryDate = null;
+    let deliveryCompany = null;
+    let deliveryTrackingNumber = null;
+    let deliveryTrackingLink = null;
+
     if (!productOrder_id) {
       return res.status(400).send({ error: "required productOrder_id" });
     }
@@ -514,6 +534,14 @@ const updateProductOrderStatus = async (req, res) => {
         .send({ error: "You are not authorized to update this product order" });
     }
     const selectedStatus = orderStatusEnums.find((s) => s.value === status);
+    if (!selectedStatus) {
+      return res.status(400).send({ error: "Invalid status" });
+    }
+    if (selectedStatus.value === "order cancelled") {
+      return res
+        .status(400)
+        .send({ error: "You can't cancel an order using this endpoint" });
+    }
     let confirmedAt = productOrder.confirmedAt;
     // if selected status is placed, update confirmedAt to null
 
@@ -548,7 +576,41 @@ const updateProductOrderStatus = async (req, res) => {
       expectedVendorCompletionDate = null;
       expectedDeliveryDate = null;
     }
+    if (selectedStatus.value === "order dispatched") {
+      if (!req.body.deliveryCompany) {
+        return res.status(400).send({ error: "required deliveryCompany" });
+      }
+      deliveryCompany = req.body.deliveryCompany;
+      deliveryTrackingNumber = req.body.deliveryTrackingNumber;
+      deliveryTrackingLink = req.body.deliveryTrackingLink;
+    }
+    // nullify delivery company, tracking number and tracking link if status comes before order dispatched
+    // check if status comes before order dispatched
+    const dispatchedStatus = orderStatusEnums.find(
+      (s) => s.value === "order dispatched"
+    );
+    const dispatchedStatusIndex = orderStatusEnums.findIndex(
+      (s) => s.value === dispatchedStatus.value
+    );
+    const selectedStatusIndex = orderStatusEnums.findIndex(
+      (s) => s.value === selectedStatus.value
+    );
+    if (selectedStatusIndex < dispatchedStatusIndex) {
+      deliveryCompany = null;
+      deliveryTrackingNumber = null;
+      deliveryTrackingLink = null;
+    }
 
+    if (selectedStatus.value === "order delivered") {
+      if (!req.body.deliveryDate) {
+        return res.status(400).send({ error: "required deliveryDate" });
+      }
+      deliveryDate = new Date(req.body.deliveryDate);
+    }
+    // nullify delivery date if status is not order delivered
+    if (selectedStatus.value !== "order delivered") {
+      deliveryDate = null;
+    }
 
     const UpdatedProductOrder = await ProductOrderModel.findByIdAndUpdate(
       productOrder_id,
@@ -557,6 +619,10 @@ const updateProductOrderStatus = async (req, res) => {
         confirmedAt,
         expectedVendorCompletionDate,
         expectedDeliveryDate,
+        deliveryCompany,
+        deliveryTrackingNumber,
+        deliveryTrackingLink,
+        deliveryDate,
       },
       { new: true }
     );
@@ -567,46 +633,72 @@ const updateProductOrderStatus = async (req, res) => {
 };
 const cancelOrder = async (req, res) => {
   try {
-    const { order_id, reason } = req.body;
-    if (!order_id) {
-      return res.status(400).send({ error: "required order_id" });
+    const { productOrder_id, reason } = req.body;
+    if (!productOrder_id) {
+      return res
+        .status(400)
+        .send({ error: "required productOrder_id for the item" });
     }
     if (!reason) {
       return res.status(400).send({ error: "required reason" });
     }
-    const order = await OrderModel.findOne({ _id: order_id });
-    if (!order) {
-      return res.status(400).send({ error: "Order not found" });
+    const productOrder = await ProductOrderModel.findOne({
+      _id: productOrder_id,
+    }).lean();
+    if (!productOrder) {
+      return res.status(400).send({ error: "Product Order not found" });
     }
-    const productOrders = await ProductOrderModel.find({ order: order._id });
-    if (!productOrders || productOrders.length === 0) {
-      return res.status(400).send({ error: "Product Orders not found" });
+    if (productOrder.status.value === "order cancelled") {
+      return res.status(400).send({ error: "Product Order already cancelled" });
+    }
+
+    const authUser = await getAuthUser(req);
+    if (
+      productOrder.status.value !== "order placed" &&
+      !authUser.superAdmin &&
+      !authUser.admin
+    ) {
+      return res.status(400).send({
+        error:
+          "You are not authorized to cancel this product order at the stage. Contact support",
+      });
+    }
+    if (
+      productOrder.user !== authUser._id &&
+      !authUser.superAdmin &&
+      !authUser.admin
+    ) {
+      return res
+        .status(400)
+        .send({ error: "You are not authorized to cancel this product order" });
+    }
+    if (productOrder.status.value !== "order processing") {
+      return res.status(400).send({
+        error:
+          "You are not authorized to cancel this product order at the stage. Contact tech",
+      });
     }
     const cancelledStatus = orderStatusEnums.find(
       (s) => s.value === "order cancelled"
     );
-    const promises = productOrders.map(async (productOrder) => {
-      const updatedStatus = await ProductOrderModel.findOneAndUpdate(
-        { _id: productOrder._id },
-        { status: cancelledStatus },
-        { new: true }
-      );
-      return updatedStatus;
-    });
-    await Promise.all(promises);
     const cancel = {
       isCancelled: true,
       reason,
       cancelledAt: new Date(),
     };
-    const updatedOrder = await OrderModel.findOneAndUpdate(
-      { _id: order_id },
-      { cancel },
+
+    const updatedStatus = await ProductOrderModel.findOneAndUpdate(
+      { _id: productOrder._id },
+      { status: cancelledStatus, cancel },
       { new: true }
     );
+
     return res
       .status(200)
-      .send({ data: updatedOrder, message: "Order Cancelled successfully" });
+      .send({
+        data: updatedStatus,
+        message: "Order Item Cancelled successfully",
+      });
   } catch (error) {
     res.status(400).send({ error: error.message });
   }
