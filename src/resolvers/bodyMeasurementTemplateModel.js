@@ -1,16 +1,20 @@
-
+const { bodyMeasurementEnums } = require("../helpers/constants");
 const { validateBodyMeasurements } = require("../helpers/utils");
 const { getAuthUser } = require("../middleware/firebaseUserAuth");
 const BodyMeasurementTemplateModel = require("../models/bodyMeasurementTemplate");
 
-
-
 const addBodyMeasurementTemplate = async (req, res) => {
   try {
-    const { name, measurements, user_id } = req.body;
-    if (!name) {
-      return res.status(400).send({ error: "required name" });
+    const { templateName, measurements, user_id } = req.body;
+    if (!templateName) {
+      return res.status(400).send({ error: "required template name" });
     }
+    if (!measurements) {
+      return res
+        .status(400)
+        .send({ error: "required measurements and must be array" });
+    }
+
     const authUser = await getAuthUser(req);
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
@@ -25,15 +29,22 @@ const addBodyMeasurementTemplate = async (req, res) => {
           "You are not authorized to create Body Measurement Template for this user",
       });
     }
-    if (!validateBodyMeasurements(measurements)) {
+    const alreadyExist = await BodyMeasurementTemplateModel.findOne({
+      templateName,
+    });
+    if (alreadyExist) {
       return res.status(400).send({
-        error:
-          "Invalid measurements. Please provide valid measurements in the required schema",
+        error: "Body Measurement Template with this name already exist",
       });
     }
+    const validate = validateBodyMeasurements(measurements);
+    if (validate.error) {
+      return res.status(400).send({ error: validate.error });
+    }
+
     const bodyMeasurementTemplate = new BodyMeasurementTemplateModel({
       user: user_id || authUser._id,
-      name,
+      templateName,
       measurements,
     });
     const bodyMeasurementTemplateRes = await bodyMeasurementTemplate.save();
@@ -42,9 +53,10 @@ const addBodyMeasurementTemplate = async (req, res) => {
         .status(400)
         .send({ error: "Body Measurement Template not created" });
     }
-    return res
-      .status(200)
-      .send({ message: "Body Measurement Template created successfully" });
+    return res.status(200).send({
+      message: "Body Measurement Template created successfully",
+      data: bodyMeasurementTemplateRes,
+    });
   } catch (err) {
     return res.status(500).send({ error: err.message });
   }
@@ -125,13 +137,17 @@ const getBodyMeasurementTemplate = async (req, res) => {
 
 const updateBodyMeasurementTemplate = async (req, res) => {
   try {
-    const { name, measurements, user_id, template_id } = req.body;
-    if (!name) {
-      return res.status(400).send({ error: "required name" });
+    const { templateName, measurements, user_id } = req.body;
+    if (!templateName) {
+      return res.status(400).send({ error: "required template name" });
     }
-    if (!template_id) {
-      return res.status(400).send({ error: "required template_id" });
+    const exist = await BodyMeasurementTemplateModel.findOne({ templateName });
+    if (!exist) {
+      return res
+        .status(400)
+        .send({ error: "Body Measurement Template not found" });
     }
+
     const authUser = await getAuthUser(req);
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
@@ -154,8 +170,8 @@ const updateBodyMeasurementTemplate = async (req, res) => {
     }
     const bodyMeasurementTemplate =
       await BodyMeasurementTemplateModel.findOneAndUpdate(
-        { _id: template_id },
-        { name, measurements },
+        { templateName },
+        { templateName, measurements },
         { new: true }
       );
     if (!bodyMeasurementTemplate?._id) {
@@ -165,7 +181,7 @@ const updateBodyMeasurementTemplate = async (req, res) => {
     }
     return res
       .status(200)
-      .send({ message: "Body Measurement Template updated successfully" });
+      .send({ message: "Body Measurement Template updated successfully", data: bodyMeasurementTemplate });
   } catch (err) {
     return res.status(500).send({ error: err.message });
   }
@@ -205,12 +221,23 @@ const deleteBodyMeasurementTemplate = async (req, res) => {
     return res.status(500).send({ error: err.message });
   }
 };
-
+const getBodyMeasurementEums = async (req, res) => {
+  try {
+    const bodyMeasurementEums = bodyMeasurementEnums;
+    return res.status(200).send({
+      data: bodyMeasurementEums,
+      message: "Body Measurement Eums fetched successfully",
+    });
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
+};
 module.exports = {
   addBodyMeasurementTemplate,
   getBodyMeasurementTemplates,
   getAuthUserBodyMeasurementTemplates,
   getBodyMeasurementTemplate,
+  getBodyMeasurementEums,
   updateBodyMeasurementTemplate,
   deleteBodyMeasurementTemplate,
 };

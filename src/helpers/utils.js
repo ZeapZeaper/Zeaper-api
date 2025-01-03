@@ -9,7 +9,10 @@ const CryptoJS = require("crypto-js");
 const ProductModel = require("../models/products");
 const { error } = require("console");
 const VoucherModel = require("../models/voucher");
-const { nairaToOtherCurrencyEnums } = require("./constants");
+const {
+  nairaToOtherCurrencyEnums,
+  bodyMeasurementEnums,
+} = require("./constants");
 const algorithm = "aes-256-ctr";
 const ENCRYPTION_KEY = process.env.ZEAPCRYPTOKEY;
 //const ENCRYPTION_KEY = "emVhcCBmYXNoaW9uIGFwcCBpcyBvd25l==";
@@ -188,6 +191,13 @@ const validateBodyMeasurements = (bodyMeasurements) => {
       error = "One or more body measurements has no name";
       return { error };
     }
+    const validItem = bodyMeasurementEnums.find((m) => m.name === name);
+    if (!validItem) {
+      error = `One or more body measurements has an invalid name ${name}. Remember names are case sensitive. Valid names are ${bodyMeasurementEnums
+        .map((m) => m.name)
+        .join(", ")}`;
+      return { error };
+    }
 
     if (
       !measurements ||
@@ -197,11 +207,19 @@ const validateBodyMeasurements = (bodyMeasurements) => {
       error = `One or more measurements in ${measurement.name} has no measurement object`;
       return { error };
     }
+    const validItemFields = validItem.fields;
     measurement.measurements.forEach((m) => {
       const { field, value } = m;
 
       if (!field || field === "" || field === undefined) {
         error = `One or more measurements in ${name} has no field`;
+        return { error };
+      }
+      const validField = validItemFields.find((f) => f === field);
+      if (!validField) {
+        error = `One or more measurements in ${name} has an invalid field ${field}.Remember fields are case sensitive. Valid fields are ${validItemFields.join(
+          ", "
+        )}`;
         return { error };
       }
       if (!value || value === "" || value === undefined) {

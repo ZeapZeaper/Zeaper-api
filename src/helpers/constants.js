@@ -640,15 +640,16 @@ const productTypeEnums = [
   "bespokeShoe",
 ];
 
-const bodyMeasurementEnums = [
+const 
+bodyMeasurementEnums = [
   {
     name: "top",
-    measurements: [
+    fields: [
       "Burst",
       "Shoulder",
       "Shoulder to Burst",
       "Shoulder to Waist",
-      "Shoulder to Hips at back ",
+      "Shoulder to Hips at Back ",
       "Shoulder to Nipple",
       "Shoulder to Under Burst",
       "Nipple to Nipple",
@@ -674,7 +675,7 @@ const bodyMeasurementEnums = [
   },
   {
     name: "trouser",
-    measurements: [
+    fields: [
       "Waist",
       "Hips",
       "Thigh",
@@ -691,7 +692,7 @@ const bodyMeasurementEnums = [
   },
   {
     name: "short",
-    measurements: [
+    fields: [
       "Waist",
       "Hips",
       "Thigh",
@@ -706,7 +707,7 @@ const bodyMeasurementEnums = [
   },
   {
     name: "skirt",
-    measurements: [
+    fields: [
       "Waist",
       "Hips",
       "Thigh",
@@ -723,14 +724,14 @@ const bodyMeasurementEnums = [
   },
   {
     name: "dress",
-    measurements: [
+    fields: [
       "Burst",
       "Waist",
       "Hips",
       "Shoulder",
       "Shoulder to Burst",
       "Shoulder to Waist",
-      "Shoulder to Hips at back ",
+      "Shoulder to Hips at Back",
       "Shoulder to Nipple",
       "Shoulder to Under Burst",
       "Nipple to Nipple",
@@ -760,7 +761,7 @@ const bodyMeasurementEnums = [
   },
   {
     name: "jacket",
-    measurements: [
+    fields: [
       "Burst",
       "Waist",
       "Hips",
@@ -781,7 +782,7 @@ const bodyMeasurementEnums = [
   },
   {
     name: "suit",
-    measurements: [
+    fields: [
       "Burst",
       "Waist",
       "Hips",
@@ -802,7 +803,7 @@ const bodyMeasurementEnums = [
   },
   {
     name: "shoe",
-    measurements: [
+    fields: [
       "Length",
       "Width",
       "Height",
@@ -816,11 +817,11 @@ const bodyMeasurementEnums = [
   },
   {
     name: "hat",
-    measurements: ["Head Circumference", "Height", "Brim"],
+    fields: ["Head Circumference", "Height", "Brim"],
   },
   {
-    name: "african Agbada",
-    measurements: ["Back to Wrist", "Neck to Wrist", "Full Length", "cap"],
+    name: "african agbada",
+    fields: ["Back to Wrist", "Neck to Wrist", "Full Length", "cap"],
   },
 ];
 

@@ -1,21 +1,46 @@
+const { bodyMeasurementEnums } = require("../helpers/constants");
 const BodyMeasurementModel = require("../models/bodyMeasurement");
 const ProductModel = require("../models/products");
 
 const validateBodyMeasurement = (measurements) => {
+  let error;
   if (!measurements || !measurements.length) {
-    return false;
+    error = "Please provide a valid array of measurements";
+    return { error };
   }
   for (let i = 0; i < measurements.length; i++) {
     const measurement = measurements[i];
-    if (
-      !measurement.name ||
-      !measurement.fields ||
-      !measurement.fields.length ||
-      !Array.isArray(measurement.fields) ||
-      !measurement.fields.every((field) => typeof field === "string")
-    ) {
-      return false;
+    const { name, fields } = measurement;
+    if (!name) {
+      error = "One or more body measurements has no name";
+      return { error };
     }
+    const validItem = bodyMeasurementEnums.find((m) => m.name === name);
+    if (!validItem) {
+      error = `Invalid measurement name: ${name}. Note that names are case sensitive valid measurement names are ${bodyMeasurementEnums
+        .map((m) => m.name)
+        .join(", ")}`;
+      return { error };
+    }
+    if (
+      !fields ||
+      !fields.length ||
+      !Array.isArray(fields) ||
+      !fields.every((field) => typeof field === "string")
+    ) {
+      error = "Invalid fields. Please provide a valid fields array of strings";
+      return { error };
+    }
+    const validFields = validItem.fields;
+    if (!fields.every((field) => validFields.includes(field))) {
+      error = `Invalid fields. Note that fields are case sensitive  valid fields for ${name} are ${validFields.join(
+        ", "
+      )}`;
+      return { error };
+    }
+  }
+  if (error) {
+    return { error };
   }
   return true;
 };
@@ -30,11 +55,9 @@ const addBodyMeasurement = async (req, res) => {
     if (!measurements || !measurements.length) {
       return res.status(400).send({ error: "required measurements" });
     }
-    if (!validateBodyMeasurement(measurements)) {
-      return res.status(400).send({
-        error:
-          "Invalid measurements. Please provide valid measurements in the required schema. Ensure measurements is an array of objects with name and fields array of strings",
-      });
+    const validate = validateBodyMeasurement(measurements);
+    if (validate.error) {
+      return res.status(400).send({ error: validate.error });
     }
     const product = await ProductModel.findOne({ productId });
     if (!product) {
@@ -45,7 +68,6 @@ const addBodyMeasurement = async (req, res) => {
       productId,
     });
     if (existedProductBodyMeasurement) {
-       
       const updatedMeasurement = await BodyMeasurementModel.findOneAndUpdate(
         { productId },
         { measurements },
@@ -56,7 +78,7 @@ const addBodyMeasurement = async (req, res) => {
         message: "Measurement updated successfully",
       });
     }
-   
+
     const newBodyMeasurement = new BodyMeasurementModel({
       productId: productId,
       measurements,

@@ -7,7 +7,7 @@ const BodyMeasurementTemplateSchema = new mongoose.Schema({
     ref: "Users",
     required: true,
   },
-  name: { type: String, required: true },
+  templateName: { type: String, required: true },
   measurements: [
     {
       name: { type: String, required: true },

@@ -621,7 +621,7 @@ const updateProductOrderStatus = async (req, res) => {
       deliveryTrackingNumber = null;
       deliveryTrackingLink = null;
     }
-
+    const shopRevenue = productOrder.shopRevenue;
     if (selectedStatus.value === "order delivered") {
       if (!req.body.deliveryDate) {
         return res.status(400).send({ error: "required deliveryDate" });
@@ -631,10 +631,13 @@ const updateProductOrderStatus = async (req, res) => {
     // nullify delivery date if status is not order delivered
     if (selectedStatus.value !== "order delivered") {
       deliveryDate = null;
+      shopRevenue.status = "pending";
     }
     let cancel = productOrder.cancel;
+
     if (productOrder.status.value === "order cancelled") {
       cancel = null;
+      shopRevenue.status = "cancelled";
     }
 
     const UpdatedProductOrder = await ProductOrderModel.findByIdAndUpdate(
@@ -717,10 +720,12 @@ const cancelOrder = async (req, res) => {
       cancelledAt: new Date(),
       lastStatusBeforeCancel: productOrder.status,
     };
+    const shopRevenue = productOrder.shopRevenue;
+    shopRevenue.status = "cancelled";
 
     const updatedStatus = await ProductOrderModel.findOneAndUpdate(
       { _id: productOrder._id },
-      { status: cancelledStatus, cancel },
+      { status: cancelledStatus, cancel, shopRevenue },
       { new: true }
     );
 

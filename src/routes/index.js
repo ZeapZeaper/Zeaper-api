@@ -466,6 +466,11 @@ let routes = (app) => {
     bodyMeasurementTemplateResolver.addBodyMeasurementTemplate
   );
   router.get(
+    "/bodyMeasurementEnums",
+    authMiddleware,
+    bodyMeasurementTemplateResolver.getBodyMeasurementEums
+  );
+  router.get(
     "/bodyMeasurementTemplates",
     authMiddleware,
     bodyMeasurementTemplateResolver.getBodyMeasurementTemplates
