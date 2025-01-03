@@ -100,6 +100,7 @@ const ProductOrderSchema = new mongoose.Schema({
     value: { type: Number, required: true },
     status: { type: String, required: false, default: "pending" },
     reference: { type: String, required: false },
+    paidAt: { type: Date, required: false, default: null },
   },
   cancel: {
     isCancelled: { type: Boolean, required: false, default: false },

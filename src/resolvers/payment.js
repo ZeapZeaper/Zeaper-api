@@ -12,6 +12,7 @@ const DeliveryAddressModel = require("../models/deliveryAddresses");
 const { createOrder } = require("./order");
 const OrderModel = require("../models/order");
 const { addPointAfterSales } = require("./point");
+const ProductOrderModel = require("../models/productOrder");
 
 const secretKey =
   ENV === "dev"
@@ -398,6 +399,97 @@ const getUserPayment = async (req, res) => {
 // }).catch(error => {
 //     console.log("error", error)
 // })
+const payShop = async (req, res) => {
+  try {
+    const { productOrder_id, paidAt, reference } = req.body;
+    if (!productOrder_id) {
+      return res.status(400).send({ error: "required productOrder_id" });
+    }
+    if (!paidAt) {
+      return res.status(400).send({ error: "required paidAt" });
+    }
+    if (!reference) {
+      return res.status(400).send({ error: "required reference" });
+    }
+    const authUser = await getAuthUser(req);
+    if (!authUser.isAdmin && !authUser.isSuperAdmin) {
+      return res.status(400).send({
+        error: "You are not authorized to make payment to shop for this order",
+      });
+    }
+    const productOrder = await ProductOrderModel.findOne({
+      _id: productOrder_id,
+    }).lean();
+    if (!productOrder) {
+      return res.status(404).send({ error: "Product Order not found" });
+    }
+
+    const shopRevenue = productOrder.shopRevenue;
+    if (shopRevenue.status === "paid") {
+      return res.status(400).send({ error: "Shop revenue already paid" });
+    }
+    shopRevenue.status = "paid";
+    shopRevenue.paidAt = paidAt;
+    shopRevenue.reference = reference;
+    const updatedProductOrder = await ProductOrderModel.findOneAndUpdate(
+      { _id: productOrder_id },
+      { shopRevenue },
+      { new: true }
+    );
+    if (!updatedProductOrder) {
+      return res.status(400).send({ error: "unable to update shop revenue" });
+    }
+    return res.status(200).send({
+      data: updatedProductOrder,
+      message: "Shop revenue updated successfully",
+    });
+  } catch (error) {
+    res.status(400).send({ error: error.message });
+  }
+};
+const revertPayShop = async (req, res) => {
+  try {
+    const { productOrder_id } = req.body;
+    if (!productOrder_id) {
+      return res.status(400).send({ error: "required productOrder_id" });
+    }
+    const authUser = await getAuthUser(req);
+    if (!authUser.isAdmin && !authUser.isSuperAdmin) {
+      return res.status(400).send({
+        error:
+          "You are not authorized to revert payment to shop for this order",
+      });
+    }
+    const productOrder = await ProductOrderModel.findOne({
+      _id: productOrder_id,
+    }).lean();
+    if (!productOrder) {
+      return res.status(404).send({ error: "Product Order not found" });
+    }
+
+    const shopRevenue = productOrder.shopRevenue;
+    if (shopRevenue.status === "pending") {
+      return res.status(400).send({ error: "Shop revenue already pending" });
+    }
+    shopRevenue.status = "pending";
+    shopRevenue.paidAt = null;
+    shopRevenue.reference = null;
+    const updatedProductOrder = await ProductOrderModel.findOneAndUpdate(
+      { _id: productOrder_id },
+      { shopRevenue },
+      { new: true }
+    );
+    if (!updatedProductOrder) {
+      return res.status(400).send({ error: "unable to update shop revenue" });
+    }
+    return res.status(200).send({
+      data: updatedProductOrder,
+      message: "Shop revenue updated successfully",
+    });
+  } catch (error) {
+    res.status(400).send({ error: error.message });
+  }
+};
 
 module.exports = {
   getReference,
@@ -406,4 +498,6 @@ module.exports = {
   getPayment,
   getUserPayments,
   getUserPayment,
+  payShop,
+  revertPayShop,
 };

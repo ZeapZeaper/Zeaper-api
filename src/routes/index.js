@@ -116,11 +116,7 @@ let routes = (app) => {
     authMiddleware,
     shopResolver.getAuthShopRevenues
   );
-  router.get(
-    "/shop/revenues",
-    authMiddleware,
-    shopResolver.getShopRevenues
-  );
+  router.get("/shop/revenues", authMiddleware, shopResolver.getShopRevenues);
 
   router.put("/shop/update", authMiddleware, shopResolver.updateShop);
   router.put("/shop/delete", authMiddleware, shopResolver.deleteShop);
@@ -426,6 +422,12 @@ let routes = (app) => {
   router.get("/payment", authMiddleware, paymentResolver.getPayment);
 
   router.post("/payment/verify", authMiddleware, paymentResolver.verifyPayment);
+  router.put("/payment/shop", authMiddleware, paymentResolver.payShop);
+  router.put(
+    "/payment/revert/shop",
+    authMiddleware,
+    paymentResolver.revertPayShop
+  );
 
   // delivery address routes
   router.post(
