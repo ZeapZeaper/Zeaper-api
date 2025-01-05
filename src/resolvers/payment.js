@@ -423,6 +423,10 @@ const payShop = async (req, res) => {
     if (!productOrder) {
       return res.status(404).send({ error: "Product Order not found" });
     }
+    const status = productOrder.status.value;
+    if (status !== "order delivered") {
+      return res.status(400).send({ error: "Order not delivered" });
+    }
 
     const shopRevenue = productOrder.shopRevenue;
     if (shopRevenue.status === "paid") {
