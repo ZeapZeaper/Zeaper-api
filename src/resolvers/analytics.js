@@ -1,0 +1,117 @@
+const { orderStatusEnums } = require("../helpers/constants");
+const ProductOrderModel = require("../models/productOrder");
+const ShopModel = require("../models/shop");
+
+const getShopAnalytics = async (req, res) => {
+  try {
+    const data = {};
+    const { shopId } = req.query;
+    if (!shopId) {
+      return res.status(400).send({ error: "required shopId" });
+    }
+    const shop = await ShopModel.findOne({ shopId });
+    if (!shop) {
+      return res.status(400).send({ error: "Shop not found" });
+    }
+    // where status is not cancelled
+    const productOrders = await ProductOrderModel.find({
+      shop: shop._id,
+      status: { $ne: "cancelled" },
+    })
+      .populate("product")
+      .lean();
+
+    // count productSold by multiplying the length of productOrders by the quantity of each product
+    const productSold = productOrders.reduce((acc, productOrder) => {
+      const { quantity } = productOrder;
+      acc += quantity;
+      return acc;
+    }, 0);
+    data.productSold = productSold;
+
+    // group productSold by day of the week and count each group amount
+
+    // group productOrders by status.name and count each group
+    const statusOptions = orderStatusEnums.map((status) => status.name);
+
+    // convert statusOptions to object with default value of 0
+    const statusOptionsObject = statusOptions.reduce((acc, status) => {
+      acc[status] = 0;
+      return acc;
+    }, {});
+
+    const ordersCountByStatus = productOrders.reduce(
+      (acc, productOrder) => {
+        const { status } = productOrder;
+
+        if (!acc[status.name]) {
+          acc[status.name] = 0;
+        }
+        acc[status.name] += 1;
+        return acc;
+      },
+      {
+        ...statusOptionsObject,
+      }
+    );
+
+    data.ordersCountByStatus = ordersCountByStatus;
+    const products = productOrders.map((productOrder) => productOrder.product);
+    // group products by category.productGroup and count each group
+    const productGroups = products.map(
+      (product) => product.categories.productGroup
+    );
+    const productGroupsCount = productGroups.reduce(
+      (acc, productGroup) => {
+        if (!acc[productGroup]) {
+          acc[productGroup] = 0;
+        }
+        acc[productGroup] += 1;
+        return acc;
+      },
+      {
+        "Ready-Made": 0,
+        Bespoke: 0,
+      }
+    );
+    data.productGroupsCount = productGroupsCount;
+    const orderPaymentsPaidToShop = productOrders.filter(
+      (order) => order.shopRevenue.status === "paid"
+    );
+
+    const shopRevenuesByPaymentStatus = orderPaymentsPaidToShop.reduce(
+      (acc, order) => {
+        const { shopRevenue } = order;
+        const status = shopRevenue.status;
+        const value = shopRevenue.value;
+        if (!acc[status]) {
+          acc[status].value = 0;
+          acc[status].currency = "NGN";
+        }
+        acc[status].value += value;
+
+        return acc;
+      },
+      {
+        pending: {
+          currency: "NGN",
+          value: 0,
+        },
+        paid: {
+          currency: "NGN",
+          value: 0,
+        },
+      }
+    );
+    data.shopRevenuesByPaymentStatus = shopRevenuesByPaymentStatus;
+    return res
+      .status(200)
+      .send({ data, message: "Shop Analytics fetched successfully" });
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
+};
+
+module.exports = {
+  getShopAnalytics,
+};

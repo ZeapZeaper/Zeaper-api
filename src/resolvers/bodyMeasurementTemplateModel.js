@@ -3,7 +3,7 @@ const { validateBodyMeasurements } = require("../helpers/utils");
 const { getAuthUser } = require("../middleware/firebaseUserAuth");
 const BodyMeasurementTemplateModel = require("../models/bodyMeasurementTemplate");
 
-const addBodyMeasurementTemplate = async (req, res) => {
+const  addBodyMeasurementTemplate = async (req, res) => {
   try {
     const { templateName, measurements, user_id } = req.body;
     if (!templateName) {

@@ -27,6 +27,8 @@ const orderResolver = require("../resolvers/order");
 const pointResolver = require("../resolvers/point");
 const voucherResolver = require("../resolvers/voucher");
 const wishResolver = require("../resolvers/wish");
+const analyticsResolver = require("../resolvers/analytics");
+const bodyMeasurementGuideResolver = require("../resolvers/bodyMeasurementGuide");
 
 const handleMoreFieldsUploads = uploadMultiple.fields([
   { name: "documents", maxCount: 5 },
@@ -600,6 +602,32 @@ let routes = (app) => {
   router.delete("/wish/remove", authMiddleware, wishResolver.removeWish);
   router.get("/wish/auth/user", authMiddleware, wishResolver.getAuthUserWishes);
   router.get("/wish/user", authMiddleware, wishResolver.getUserWishes);
+
+  // Analytics routes
+  router.get(
+    "/analytics/shop",
+    authMiddleware,
+    analyticsResolver.getShopAnalytics
+  );
+
+  // Body Measurement Guide routes
+  router.get(
+    "/bodyMeasurementGuide/bespoke",
+    authMiddleware,
+    bodyMeasurementGuideResolver.getBodyMeasurementGuide
+  );
+  router.get(
+    "/bodyMeasurementGuide/fieldImages",
+    authMiddleware,
+    bodyMeasurementGuideResolver.getFieldImagesLibrary
+  );
+  router.put(
+    "/bodyMeasurementGuide/fieldImage/:fieldId",
+    authMiddleware,
+    authUserAdminMiddleware,
+    upload,
+    bodyMeasurementGuideResolver.updateFieldImage
+  );
 
   return app.use("/", router);
 };
