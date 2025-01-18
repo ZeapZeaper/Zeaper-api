@@ -3,7 +3,7 @@ const { validateBodyMeasurements } = require("../helpers/utils");
 const { getAuthUser } = require("../middleware/firebaseUserAuth");
 const BodyMeasurementTemplateModel = require("../models/bodyMeasurementTemplate");
 
-const  addBodyMeasurementTemplate = async (req, res) => {
+const addBodyMeasurementTemplate = async (req, res) => {
   try {
     const { templateName, measurements, user_id } = req.body;
     if (!templateName) {
@@ -22,6 +22,7 @@ const  addBodyMeasurementTemplate = async (req, res) => {
     if (
       !authUser.isAdmin &&
       !authUser.isSuperAdmin &&
+      user_id &&
       authUser._id.toString() !== user_id
     ) {
       return res.status(400).send({
@@ -31,6 +32,7 @@ const  addBodyMeasurementTemplate = async (req, res) => {
     }
     const alreadyExist = await BodyMeasurementTemplateModel.findOne({
       templateName,
+      user: user_id || authUser._id,
     });
     if (alreadyExist) {
       return res.status(400).send({
@@ -74,7 +76,7 @@ const getBodyMeasurementTemplates = async (req, res) => {
     }
     if (
       !authUser.isAdmin &&
-      !authUser.isSuperAdmin &&
+      !authUser.isSuperAdmin && user_id &&
       authUser._id.toString() !== user_id
     ) {
       return res.status(400).send({
@@ -181,7 +183,10 @@ const updateBodyMeasurementTemplate = async (req, res) => {
     }
     return res
       .status(200)
-      .send({ message: "Body Measurement Template updated successfully", data: bodyMeasurementTemplate });
+      .send({
+        message: "Body Measurement Template updated successfully",
+        data: bodyMeasurementTemplate,
+      });
   } catch (err) {
     return res.status(500).send({ error: err.message });
   }
