@@ -29,6 +29,7 @@ const voucherResolver = require("../resolvers/voucher");
 const wishResolver = require("../resolvers/wish");
 const analyticsResolver = require("../resolvers/analytics");
 const bodyMeasurementGuideResolver = require("../resolvers/bodyMeasurementGuide");
+const deliveryFeeResolver = require("../resolvers/deliveryFee");
 
 const handleMoreFieldsUploads = uploadMultiple.fields([
   { name: "documents", maxCount: 5 },
@@ -617,16 +618,46 @@ let routes = (app) => {
     bodyMeasurementGuideResolver.getBodyMeasurementGuide
   );
   router.get(
-    "/bodyMeasurementGuide/fieldImages",
+    "/bodyMeasurementGuide/bespoke/gallery",
     authMiddleware,
-    bodyMeasurementGuideResolver.getFieldImagesLibrary
+    bodyMeasurementGuideResolver.getFieldImagesGallery
   );
   router.put(
-    "/bodyMeasurementGuide/fieldImage/:fieldId",
+    "/bodyMeasurementGuide/bespoke/field/Image",
     authMiddleware,
     authUserAdminMiddleware,
     upload,
     bodyMeasurementGuideResolver.updateFieldImage
+  );
+  router.put(
+    "/bodyMeasurementGuide/bespoke/field/Image/delete",
+    authMiddleware,
+    authUserAdminMiddleware,
+    bodyMeasurementGuideResolver.deleteBodyMeasurementFieldImage
+  );
+  router.put(
+    "/bodyMeasurementGuide/bespoke/field/update",
+    authMiddleware,
+    authUserAdminMiddleware,
+    bodyMeasurementGuideResolver.editBodyMeasurementField
+  );
+  router.put(
+    "/bodyMeasurementGuide/bespoke/field/delete",
+    authMiddleware,
+    authUserAdminMiddleware,
+    bodyMeasurementGuideResolver.deleteBodyMeasurementField
+  );
+
+  // Delivery Fee routes
+  router.get(
+    "/deliveryFee",
+    authMiddleware,
+    deliveryFeeResolver.getDeliveryFee
+  );
+  router.put(
+    "/deliveryFee/update",
+    authMiddleware,
+    deliveryFeeResolver.updateDeliveryFee
   );
 
   return app.use("/", router);
