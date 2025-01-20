@@ -727,15 +727,15 @@ const validateBespokeVariations = (variations) => {
 
   return valid;
 };
-const addPreferredAmountAndCurrency = (products, preferredCurrency) => {
-  return products.map((product) => {
-    const variations = product.variations.map((variation) => {
+const addPreferredAmountAndCurrency = async (products, preferredCurrency) => {
+  const promises = products.map((product) => {
+    const variations = product.variations.map(async (variation) => {
       const { price, discount } = variation;
-      const priceInPreferredCurrency = currencyCoversion(
+      const priceInPreferredCurrency = await currencyCoversion(
         price,
         preferredCurrency
       );
-      const discountInPreferredCurrency = currencyCoversion(
+      const discountInPreferredCurrency = await currencyCoversion(
         discount,
         preferredCurrency
       );
@@ -751,11 +751,13 @@ const addPreferredAmountAndCurrency = (products, preferredCurrency) => {
       variations,
     };
   });
+  await Promise.all(promises);
+  return products;
 };
 
 module.exports = {
   getDynamicFilters,
-addPreferredAmountAndCurrency,
+  addPreferredAmountAndCurrency,
   getQuery,
   verifyColorsHasImages,
   validateVariations,

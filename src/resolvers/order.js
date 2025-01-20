@@ -77,6 +77,8 @@ const buildProductOrders = async (order, basketItems, currency) => {
     const promo = product.promo;
     const variation = product.variations.find((v) => v.sku === sku);
     const amountDue = (variation?.discount || variation.price) * quantity;
+    const usdValue = await currencyCoversion(amountDue, "USD");
+    const gbpValue = await currencyCoversion(amountDue, "GBP");
     const amount = [
       {
         currency: "NGN",
@@ -86,13 +88,13 @@ const buildProductOrders = async (order, basketItems, currency) => {
     if (currency === "USD") {
       amount.push({
         currency: "USD",
-        value: currencyCoversion(amountDue, "USD"),
+        value: usdValue,
       });
     }
     if (currency === "GBP") {
       amount.push({
         currency: "GBP",
-        value: currencyCoversion(amountDue, "GBP"),
+        value: gbpValue,
       });
     }
     const shopRevenue = {

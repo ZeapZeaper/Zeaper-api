@@ -52,15 +52,18 @@ const getAuthUserActiveVouchers = async (req, res) => {
       expiryDate: { $gte: new Date() },
     });
     const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
-    vouchers.map((voucher) => {
-      const amountInPreferredCurrency = currencyCoversion(
+    vouchers.map(async (voucher) => {
+      const amountInPreferredCurrency = await currencyCoversion(
         voucher.amount,
         currency
       );
+      console.log("amountInPreferredCurrency", amountInPreferredCurrency);
       voucher.amount = amountInPreferredCurrency;
       voucher.currency = currency;
       return voucher;
     });
+    await Promise.all(vouchers);
+    console.log;
     return res.status(200).send({
       data: vouchers,
       message: "Vouchers fetched successfully",
@@ -80,8 +83,8 @@ const getAuthUserInactiveVouchers = async (req, res) => {
       $or: [{ isUsed: true }, { expiryDate: { $lt: new Date() } }],
     });
     const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
-    vouchers.map((voucher) => {
-      const amountInPreferredCurrency = currencyCoversion(
+    vouchers.map(async (voucher) => {
+      const amountInPreferredCurrency = await currencyCoversion(
         voucher.amount,
         currency
       );
@@ -89,6 +92,7 @@ const getAuthUserInactiveVouchers = async (req, res) => {
       voucher.currency = currency;
       return voucher;
     });
+    await Promise.all(vouchers);
     return res.status(200).send({
       data: vouchers,
       message: "Vouchers fetched successfully",
@@ -124,7 +128,7 @@ const getVoucher = async (req, res) => {
     }
     const currency =
       req.query.currency || voucher?.user?.prefferedCurrency || "NGN";
-    const amountInPreferredCurrency = currencyCoversion(
+    const amountInPreferredCurrency = await currencyCoversion(
       voucher.amount,
       currency
     );

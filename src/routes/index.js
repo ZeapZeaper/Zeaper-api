@@ -30,6 +30,7 @@ const wishResolver = require("../resolvers/wish");
 const analyticsResolver = require("../resolvers/analytics");
 const bodyMeasurementGuideResolver = require("../resolvers/bodyMeasurementGuide");
 const deliveryFeeResolver = require("../resolvers/deliveryFee");
+const exchangeRateResolver = require("../resolvers/exchangeRate");
 
 const handleMoreFieldsUploads = uploadMultiple.fields([
   { name: "documents", maxCount: 5 },
@@ -660,6 +661,17 @@ let routes = (app) => {
     deliveryFeeResolver.updateDeliveryFee
   );
 
+  // Exchange Rate routes
+  router.get(
+    "/exchangeRate",
+    authMiddleware,
+    exchangeRateResolver.getExchangeRate
+  );
+  router.put(
+    "/exchangeRate/update",
+    authMiddleware,
+    exchangeRateResolver.updateExchangeRate
+  );
   return app.use("/", router);
 };
 

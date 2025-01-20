@@ -1070,7 +1070,7 @@ const getProduct = async (req, res) => {
     }
     const authUser = await getAuthUser(req);
     const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
-    const product = addPreferredAmountAndCurrency([productData], currency)[0];
+    const product = await addPreferredAmountAndCurrency([productData], currency)[0];
 
     return res.status(200).send({ data: product });
   } catch (err) {
@@ -1093,7 +1093,7 @@ const getProductById = async (req, res) => {
     }
     const authUser = await getAuthUser(req);
     const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
-    const product = addPreferredAmountAndCurrency([productData], currency)[0];
+    const product = await addPreferredAmountAndCurrency([productData], currency)[0];
     return res.status(200).send({ data: product });
   } catch (err) {
     return res.status(500).send({ error: err.message });
@@ -1113,7 +1113,7 @@ const getShopProducts = async (req, res) => {
 
     const authUser = await getAuthUser(req);
     const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
-    const products = addPreferredAmountAndCurrency(productsData, currency);
+    const products = await addPreferredAmountAndCurrency(productsData, currency);
     return res.status(200).send({ data: products });
   } catch (err) {
     return res.status(500).send({ error: err.message });
@@ -1134,7 +1134,7 @@ const getCategoryProducts = async (req, res) => {
     }
     const authUser = await getAuthUser(req);
     const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
-    const products = addPreferredAmountAndCurrency(productsData, currency);
+    const products = await addPreferredAmountAndCurrency(productsData, currency);
     const dynamicFilters = getDynamicFilters(products);
     const data = {
       products,
@@ -1257,7 +1257,7 @@ const getAuthShopProducts = async (req, res) => {
     const productQuery = await ProductModel.aggregate(aggregate).exec();
     const currency = req.query.currency || user?.prefferedCurrency || "NGN";
     const productsData = productQuery[0].products;
-    const products = addPreferredAmountAndCurrency(productsData, currency);
+    const products = await addPreferredAmountAndCurrency(productsData, currency);
     const totalCount = productQuery[0].totalCount[0]?.count || 0;
 
     // const updateProducts = products.map((product) => {
@@ -1326,7 +1326,7 @@ const getLiveProducts = async (req, res) => {
     const authUser = await getAuthUser(req);
     const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
     const productsData = productQuery[0].products;
-    const products = addPreferredAmountAndCurrency(productsData, currency);
+    const products = await addPreferredAmountAndCurrency(productsData, currency);
     const totalCount = productQuery[0].totalCount[0]?.count || 0;
     const dynamicFilters = getDynamicFilters(products);
     const data = {
@@ -1388,7 +1388,7 @@ const getPromoWithLiveProducts = async (req, res) => {
     const authUser = await getAuthUser(req);
     const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
     const productsData = productQuery[0].products;
-    const products = addPreferredAmountAndCurrency(productsData, currency);
+    const products = await addPreferredAmountAndCurrency(productsData, currency);
 
     const totalCount = productQuery[0].totalCount[0]?.count || 0;
     const dynamicFilters = getDynamicFilters(products);
@@ -1439,7 +1439,7 @@ const getNewestArrivals = async (req, res) => {
     const authUser = await getAuthUser(req);
     const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
     const productsData = productQuery[0].products;
-    const products = addPreferredAmountAndCurrency(productsData, currency);
+    const products = await addPreferredAmountAndCurrency(productsData, currency);
     const totalCount = productQuery[0].totalCount[0]?.count || 0;
     const dynamicFilters = getDynamicFilters(products);
     const data = {
@@ -1488,7 +1488,7 @@ const getMostPopular = async (req, res) => {
     const authUser = await getAuthUser(req);
     const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
     const productsData = productQuery[0].products;
-    const products = addPreferredAmountAndCurrency(productsData, currency);
+    const products = await addPreferredAmountAndCurrency(productsData, currency);
     const totalCount = productQuery[0].totalCount[0]?.count || 0;
     const dynamicFilters = getDynamicFilters(products);
     const data = {
@@ -1574,7 +1574,7 @@ const searchLiveProducts = async (req, res) => {
     const productsData = await ProductModel.aggregate(aggregate).exec();
     const authUser = await getAuthUser(req);
     const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
-    const products = addPreferredAmountAndCurrency(productsData, currency);
+    const products = await addPreferredAmountAndCurrency(productsData, currency);
     const dynamicFilters = getDynamicFilters(products);
     const data = {
       products,

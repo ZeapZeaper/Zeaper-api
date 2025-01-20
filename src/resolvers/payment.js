@@ -85,9 +85,11 @@ const getReference = async (req, res) => {
     const amountDue = calculateTotal.total * 100;
     const itemsTotalDue = calculateTotal.itemsTotal * 100;
     const deliveryFeeDue = calculateTotal.deliveryFee * 100;
-    const amount = currencyCoversion(amountDue, currency);
-    const itemsTotal = currencyCoversion(itemsTotalDue, currency);
-    const deliveryFee = currencyCoversion(deliveryFeeDue, currency);
+    console.log("deliveryFeeDue", deliveryFeeDue);
+    const amount = await currencyCoversion(amountDue, currency);
+    const itemsTotal = await currencyCoversion(itemsTotalDue, currency);
+    const deliveryFee = await currencyCoversion(deliveryFeeDue, currency);
+    console.log("deliveryFee", deliveryFee);
 
     const user = basket.user;
     const fullName = user.firstName + " " + user.lastName;
@@ -110,7 +112,15 @@ const getReference = async (req, res) => {
       }
       const updatePayment = await PaymentModel.findOneAndUpdate(
         { basketId },
-        { reference },
+        {
+          reference,
+          currency,
+          amount,
+          fullName,
+          email,
+          itemsTotal,
+          deliveryFee,
+        },
         { new: true }
       );
       if (!updatePayment) {

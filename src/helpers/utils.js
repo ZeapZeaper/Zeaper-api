@@ -9,10 +9,9 @@ const CryptoJS = require("crypto-js");
 const ProductModel = require("../models/products");
 const { error } = require("console");
 const VoucherModel = require("../models/voucher");
-const {
-  nairaToOtherCurrencyEnums,
-  bodyMeasurementEnums,
-} = require("./constants");
+const { bodyMeasurementEnums } = require("./constants");
+const DeliveryFeeModel = require("../models/deliveryFee");
+const ExchangeRateModel = require("../models/exchangeRate");
 const algorithm = "aes-256-ctr";
 const ENCRYPTION_KEY = process.env.ZEAPCRYPTOKEY;
 //const ENCRYPTION_KEY = "emVhcCBmYXNoaW9uIGFwcCBpcyBvd25l==";
@@ -140,7 +139,9 @@ const calculateTotalBasketPrice = async (basket) => {
     isUsed: true,
   }).lean();
   const voucherAmount = voucher ? voucher.amount : 0;
-  const deliveryFee = basket?.deliveryFee || 0;
+  const currentDeliveryFee = await DeliveryFeeModel.findOne({ default: true });
+  const deliveryrate = currentDeliveryFee ? currentDeliveryFee.fee : 0;
+  const deliveryFee = deliveryrate * basketItems.length;
   return new Promise(async (resolve) => {
     let itemsTotal = 0;
     let items = [];
@@ -244,19 +245,19 @@ const codeGenerator = (length) => {
   }
   return code;
 };
-const currencyCoversion = (amount, currency) => {
+const currencyCoversion = async (amount, currency) => {
   if (currency === "NGN") {
     return amount;
   }
-  const currencyRates = nairaToOtherCurrencyEnums;
+  const currencyRates = await ExchangeRateModel.find();
   let rate;
   if (currency === "USD") {
-    rate = currencyRates.USD;
+    rate = currencyRates.find((rate) => rate.currency === "USD").rate;
     const convertedAmount = amount * rate;
     return convertedAmount;
   }
   if (currency === "GBP") {
-    rate = currencyRates.GBP;
+    rate = currencyRates.find((rate) => rate.currency === "GBP").rate;
     const convertedAmount = amount * rate;
     return convertedAmount;
   }
