@@ -3,7 +3,7 @@ const ExchangeRateModel = require("../models/exchangeRate");
 
 const getExchangeRate = async (req, res) => {
   try {
-    const exchangeRate = await ExchangeRateModel.find();
+    const exchangeRate = await ExchangeRateModel.find().populate("logs.user", "firstName lastName imageUrl");
 
     return res.status(200).send({ data: exchangeRate });
   } catch (err) {
