@@ -650,7 +650,7 @@ bodyMeasurementEnums = [
       "Round off Shoulder",
       "Shoulder to Burst",
       "Shoulder to Waist",
-      "Shoulder to Hips at Back ",
+      "Shoulder to Hips at Back",
       "Shoulder to Nipple",
       "Shoulder to Under Burst",
       "Nipple to Nipple",

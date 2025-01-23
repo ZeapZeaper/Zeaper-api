@@ -11,6 +11,7 @@ const BodyMeasurementGuideSchema = new mongoose.Schema({
         name: { type: String, required: false },
       },
       description: { type: String, required: false },
+      gender: [{ type: String, required: false }],
     },
   ],
 });

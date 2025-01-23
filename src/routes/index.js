@@ -611,6 +611,16 @@ let routes = (app) => {
     authMiddleware,
     analyticsResolver.getShopAnalytics
   );
+  router.get(
+    "/analytics/products/general",
+    authMiddleware,
+    analyticsResolver.getGeneralProductAnalytics
+  );
+  router.get(
+    "/analytics/count",
+    authMiddleware,
+    analyticsResolver.getCountAnalytics
+  );
 
   // Body Measurement Guide routes
   router.get(
