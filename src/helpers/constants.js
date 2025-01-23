@@ -903,7 +903,6 @@ module.exports = {
   accessoryStyleEnums,
   accessorySizeEnums,
   promoStatusEnums,
-  bodyMeasurementEnums,
   orderStatusEnums,
   nairaToOtherCurrencyEnums,
   currencyEnums,

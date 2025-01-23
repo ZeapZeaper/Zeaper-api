@@ -1,5 +1,8 @@
-const { bodyMeasurementEnums } = require("../helpers/constants");
-const { validateBodyMeasurements } = require("../helpers/utils");
+const { get } = require("lodash");
+const {
+  validateBodyMeasurements,
+  getBodyMeasurementEnumsFromGuide,
+} = require("../helpers/utils");
 const { getAuthUser } = require("../middleware/firebaseUserAuth");
 const BodyMeasurementTemplateModel = require("../models/bodyMeasurementTemplate");
 
@@ -39,7 +42,8 @@ const addBodyMeasurementTemplate = async (req, res) => {
         error: "Body Measurement Template with this name already exist",
       });
     }
-    const validate = validateBodyMeasurements(measurements);
+    const bodyMeasurementEnums = await getBodyMeasurementEnumsFromGuide();
+    const validate = validateBodyMeasurements(measurements, bodyMeasurementEnums);
     if (validate.error) {
       return res.status(400).send({ error: validate.error });
     }
@@ -76,7 +80,8 @@ const getBodyMeasurementTemplates = async (req, res) => {
     }
     if (
       !authUser.isAdmin &&
-      !authUser.isSuperAdmin && user_id &&
+      !authUser.isSuperAdmin &&
+      user_id &&
       authUser._id.toString() !== user_id
     ) {
       return res.status(400).send({
@@ -164,7 +169,8 @@ const updateBodyMeasurementTemplate = async (req, res) => {
           "You are not authorized to update Body Measurement Template for this user",
       });
     }
-    if (!validateBodyMeasurements(measurements)) {
+    const bodyMeasurementEnums = await getBodyMeasurementEnumsFromGuide();
+    if (!validateBodyMeasurements(measurements, bodyMeasurementEnums)) {
       return res.status(400).send({
         error:
           "Invalid measurements. Please provide valid measurements in the required schema",
@@ -181,12 +187,10 @@ const updateBodyMeasurementTemplate = async (req, res) => {
         .status(400)
         .send({ error: "Body Measurement Template not updated" });
     }
-    return res
-      .status(200)
-      .send({
-        message: "Body Measurement Template updated successfully",
-        data: bodyMeasurementTemplate,
-      });
+    return res.status(200).send({
+      message: "Body Measurement Template updated successfully",
+      data: bodyMeasurementTemplate,
+    });
   } catch (err) {
     return res.status(500).send({ error: err.message });
   }
@@ -228,7 +232,7 @@ const deleteBodyMeasurementTemplate = async (req, res) => {
 };
 const getBodyMeasurementEums = async (req, res) => {
   try {
-    const bodyMeasurementEums = bodyMeasurementEnums;
+    const bodyMeasurementEums = await getBodyMeasurementEnumsFromGuide();
     return res.status(200).send({
       data: bodyMeasurementEums,
       message: "Body Measurement Eums fetched successfully",

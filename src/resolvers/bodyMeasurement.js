@@ -1,8 +1,9 @@
-const { bodyMeasurementEnums } = require("../helpers/constants");
+
+const { getBodyMeasurementEnumsFromGuide } = require("../helpers/utils");
 const BodyMeasurementModel = require("../models/bodyMeasurement");
 const ProductModel = require("../models/products");
 
-const validateBodyMeasurement = (measurements) => {
+const validateBodyMeasurement = (measurements, bodyMeasurementEnums) => {
   let error;
   if (!measurements || !measurements.length) {
     error = "Please provide a valid array of measurements";
@@ -55,7 +56,8 @@ const addBodyMeasurement = async (req, res) => {
     if (!measurements || !measurements.length) {
       return res.status(400).send({ error: "required measurements" });
     }
-    const validate = validateBodyMeasurement(measurements);
+    const bodyMeasurementEnums = await getBodyMeasurementEnumsFromGuide();
+    const validate = validateBodyMeasurement(measurements, bodyMeasurementEnums);
     if (validate.error) {
       return res.status(400).send({ error: validate.error });
     }

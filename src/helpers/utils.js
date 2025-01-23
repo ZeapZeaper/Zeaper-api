@@ -9,9 +9,9 @@ const CryptoJS = require("crypto-js");
 const ProductModel = require("../models/products");
 const { error } = require("console");
 const VoucherModel = require("../models/voucher");
-const { bodyMeasurementEnums } = require("./constants");
 const DeliveryFeeModel = require("../models/deliveryFee");
 const ExchangeRateModel = require("../models/exchangeRate");
+const BodyMeasurementGuideModel = require("../models/bodyMeasurementGuide");
 const algorithm = "aes-256-ctr";
 const ENCRYPTION_KEY = process.env.ZEAPCRYPTOKEY;
 //const ENCRYPTION_KEY = "emVhcCBmYXNoaW9uIGFwcCBpcyBvd25l==";
@@ -176,7 +176,7 @@ const calculateTotalBasketPrice = async (basket) => {
   });
 };
 
-const validateBodyMeasurements = (bodyMeasurements) => {
+const validateBodyMeasurements = (bodyMeasurements,bodyMeasurementEnums) => {
   let error;
   if (
     !bodyMeasurements ||
@@ -289,6 +289,20 @@ const addWeekDays = (startDate, count) =>
 //   });
 //   await Promise.all(promises);
 // }
+
+const getBodyMeasurementEnumsFromGuide = async () => {
+  const bodyMeasurementGuide = await BodyMeasurementGuideModel.find();
+  const bodyMeasurementEums = bodyMeasurementGuide.map((guide) => {
+    const name = guide.name;
+    const fields = guide.fields.map((field) => field.field);
+
+    return {
+      name,
+      fields,
+    };
+  });
+  return bodyMeasurementEums;
+};
 module.exports = {
   deleteLocalFile,
   numberWithCommas,
@@ -306,4 +320,5 @@ module.exports = {
   codeGenerator,
   currencyCoversion,
   addWeekDays,
+  getBodyMeasurementEnumsFromGuide,
 };

@@ -3,6 +3,7 @@ const {
   calculateTotalBasketPrice,
   validateBodyMeasurements,
   currencyCoversion,
+  getBodyMeasurementEnumsFromGuide,
 } = require("../helpers/utils");
 const { getAuthUser } = require("../middleware/firebaseUserAuth");
 const BasketModel = require("../models/basket");
@@ -51,7 +52,8 @@ const validateProductBodyMeasurements = async (product, bodyMeasurements) => {
           "required body measurements since product is bespoke and requires body measurements",
       };
     }
-    const validateMeasurements = validateBodyMeasurements(bodyMeasurements);
+    const bodyMeasurementEnums = await getBodyMeasurementEnumsFromGuide();
+    const validateMeasurements = validateBodyMeasurements(bodyMeasurements, bodyMeasurementEnums);
 
     if (validateMeasurements.error) {
       return {

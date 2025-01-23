@@ -22,10 +22,9 @@ const {
   accessoryTypeEnums,
   accessoryStyleEnums,
   accessorySizeEnums,
-  bodyMeasurementEnums,
   currencyEnums,
 } = require("../../helpers/constants");
-const { checkForDuplicates, deleteLocalFile } = require("../../helpers/utils");
+const { checkForDuplicates, deleteLocalFile, getBodyMeasurementEnumsFromGuide } = require("../../helpers/utils");
 const ShopModel = require("../../models/shop");
 const { v4: uuidv4 } = require("uuid");
 const sharp = require("sharp");
@@ -1641,6 +1640,7 @@ const getShopDraftProducts = async (req, res) => {
 };
 const getProductOptions = async (req, res) => {
   try {
+    const bodyMeasurementEnums = await getBodyMeasurementEnumsFromGuide();
     const nonClothMainEnums = ["FootWear", "Accessories"];
     const readyMadeClothesParams = {
       mainEnums: mainEnums.filter((m) => !nonClothMainEnums.includes(m)).sort(),
