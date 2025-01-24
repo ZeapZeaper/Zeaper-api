@@ -1,9 +1,11 @@
-const { orderStatusEnums } = require("../helpers/constants");
+const { orderStatusEnums, statusEnums } = require("../helpers/constants");
 const BasketModel = require("../models/basket");
 const OrderModel = require("../models/order");
 const ProductOrderModel = require("../models/productOrder");
 const ProductModel = require("../models/products");
+const ReviewModel = require("../models/review");
 const ShopModel = require("../models/shop");
+const UserModel = require("../models/user");
 
 const getProductStat = async (productOrders) => {
   const data = {};
@@ -61,11 +63,8 @@ const getProductStat = async (productOrders) => {
     }
   );
   data.productGroupsCount = productGroupsCount;
-  const orderPaymentsPaidToShop = productOrders.filter(
-    (order) => order.shopRevenue.status === "paid"
-  );
 
-  const shopRevenuesByPaymentStatus = orderPaymentsPaidToShop.reduce(
+  const shopRevenuesByPaymentStatus = productOrders.reduce(
     (acc, order) => {
       const { shopRevenue } = order;
       const status = shopRevenue.status;
@@ -121,7 +120,7 @@ const getShopAnalytics = async (req, res) => {
   }
 };
 
-const getGeneralProductAnalytics = async (req, res) => {
+const getProductOrderAnalytics = async (req, res) => {
   try {
     const productOrders = await ProductOrderModel.find({
       status: { $ne: "cancelled" },
@@ -158,7 +157,7 @@ const getProuctTypeLabel = (productType) => {
   return "OTH";
 };
 
-const getCountAnalytics = async (req, res) => {
+const getOrderCountAnalytics = async (req, res) => {
   try {
     const data = {};
     // get count of all orders
@@ -172,7 +171,40 @@ const getCountAnalytics = async (req, res) => {
       label: "Baskets",
       count: basketCount,
     };
-    const products = await ProductModel.find().select("productType");
+
+    return res.status(200).send({
+      data,
+      message: "Count Analytics fetched successfully",
+    });
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
+};
+const getProductOrdersCountByDate = async (req, res) => {
+  try {
+    const { fromDate, toDate } = req.query;
+    if (!fromDate || !toDate) {
+      return res.status(400).send({ error: "fromDate and toDate is required" });
+    }
+    const from = new Date(fromDate);
+    from.setUTCHours(0, 0, 0, 0);
+    const to = new Date(toDate);
+    to.setUTCHours(23, 59, 59, 999);
+    const productOrdersCount = await ProductOrderModel.find({
+      createdAt: { $gte: from, $lte: to },
+    }).countDocuments();
+    return res.status(200).send({
+      data: productOrdersCount,
+      message: "Product Orders Count fetched successfully",
+    });
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
+};
+const getProductAnalytics = async (req, res) => {
+  try {
+    const data = {};
+    const products = await ProductModel.find({}).lean();
     const productTypes = products.map((product) => product.productType);
     const productTypeCount = productTypes.reduce((acc, productType) => {
       if (!acc[productType]) {
@@ -188,11 +220,125 @@ const getCountAnalytics = async (req, res) => {
       };
     });
     data.productType = productTypeCountArray;
+    const totalProductCount = products.length;
+    data.totalProductCount = totalProductCount;
+    const productOrders = await ProductOrderModel.find()
+      .populate("product")
+      .lean();
+
+    // get most ordered products
+
+    const mostOrderedProducts = productOrders.reduce((acc, productOrder) => {
+      const { product, quantity } = productOrder;
+      if (!acc[product._id]) {
+        acc[product._id] = quantity;
+      }
+      acc[product._id] += quantity;
+      return acc;
+    }, {});
+    // arrange mostOrderedProducts in descending order
+    const mostOrderedProductsArray = Object.keys(mostOrderedProducts)
+      .map((key) => {
+        return {
+          product: products.find((p) => p._id.toString() === key),
+          quantity: mostOrderedProducts[key],
+        };
+      })
+      .sort((a, b) => b.quantity - a.quantity)
+      .slice(0, 5);
+    data.mostOrderedProducts = mostOrderedProductsArray;
+
+    // products with most ratings
+    const reviews = await ReviewModel.find(
+      {},
+      {
+        productId: 1,
+        rating: 1,
+      }
+    ).lean();
+    const mostRatedProductIds = reviews.reduce((acc, review) => {
+      const { productId, rating } = review;
+      if (!acc[productId]) {
+        acc[productId] = rating;
+      }
+      acc[productId] += rating;
+      return acc;
+    }, {});
+    console.log("mostRatedProductIds", mostRatedProductIds);
+    // arrange mostRatedProducts in descending order
+    const mostRatedProductsArray = Object.keys(mostRatedProductIds)
+      .map((key) => {
+        return {
+          product: key,
+          rating: mostRatedProductIds[key],
+        };
+      })
+      .sort((a, b) => b.rating - a.rating)
+      .slice(0, 5);
+    console.log("mostRatedProductsArray", mostRatedProductsArray);
+    const mostRatedProducts = mostRatedProductsArray.map((product) => {
+      const productDetails = products.find(
+        (p) => p.productId === product.product
+      );
+      return {
+        product: productDetails,
+        rating: product.rating,
+      };
+    });
+    data.mostRatedProducts = mostRatedProducts;
+    const statusEnumsObj = statusEnums.reduce((acc, status) => {
+      acc[status] = 0;
+      return acc;
+    }, {});
+    // count products by status
+    const productStatus = products.map((product) => product.status);
+    const productStatusCount = productStatus.reduce(
+      (acc, status) => {
+        if (!acc[status]) {
+          acc[status] = 0;
+        }
+        acc[status] += 1;
+        return acc;
+      },
+      {
+        ...statusEnumsObj,
+      }
+    );
+    const productStatusCountArray = Object.keys(productStatusCount).map(
+      (key) => {
+        return {
+          label: key,
+          count: productStatusCount[key],
+        };
+      }
+    );
+    data.productStatus = productStatusCountArray;
     return res.status(200).send({
       data,
-      message: "Count Analytics fetched successfully",
+      message: "Product Analytics fetched successfully",
     });
-    
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
+};
+const getUsersShopCountAnalytics = async (req, res) => {
+  try {
+    const data = {};
+    // get count of all users
+    const users = await UserModel.find({});
+    data.user = {
+      label: "Users",
+      count: users.length,
+    };
+    const shopCount = await ShopModel.countDocuments();
+    data.shop = {
+      label: "Shops",
+      count: shopCount,
+    };
+    return res.status(200).send({
+      data,
+      message: "Users Analytics fetched successfully",
+    });
   } catch (err) {
     return res.status(500).send({ error: err.message });
   }
@@ -200,6 +346,9 @@ const getCountAnalytics = async (req, res) => {
 
 module.exports = {
   getShopAnalytics,
-  getGeneralProductAnalytics,
-  getCountAnalytics,
+  getProductOrderAnalytics,
+  getOrderCountAnalytics,
+  getProductOrdersCountByDate,
+  getProductAnalytics,
+  getUsersShopCountAnalytics,
 };

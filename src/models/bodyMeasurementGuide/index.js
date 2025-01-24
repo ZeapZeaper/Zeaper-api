@@ -3,6 +3,7 @@ const timestamp = require("mongoose-timestamp");
 
 const BodyMeasurementGuideSchema = new mongoose.Schema({
   name: { type: String, required: true },
+  gender: { type: String, required: true },
   fields: [
     {
       field: { type: String, required: true },
@@ -11,7 +12,6 @@ const BodyMeasurementGuideSchema = new mongoose.Schema({
         name: { type: String, required: false },
       },
       description: { type: String, required: false },
-      gender: [{ type: String, required: false }],
     },
   ],
 });

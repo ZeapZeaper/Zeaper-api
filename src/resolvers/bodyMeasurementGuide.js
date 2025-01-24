@@ -63,7 +63,15 @@ const checkImageInUse = async (name) => {
 
 const getBodyMeasurementGuide = async (req, res) => {
   try {
-    const bodyMeasurementGuide = await BodyMeasurementGuideModel.find().lean();
+    const { gender } = req.query;
+    if (!gender) {
+      return res.status(400).send({
+        error: "gender field is required",
+      });
+    }
+    const bodyMeasurementGuide = await BodyMeasurementGuideModel.find({
+      gender,
+    }).lean();
     // update field.imageUrl from string to object with link and name properties and remove the old imageUrl property in the database and save
     // const promises = bodyMeasurementGuide.map(async (guide) => {
     //   const fields = guide.fields.map((field) => {
