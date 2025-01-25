@@ -184,8 +184,11 @@ const getBaskets = async (req, res) => {
       .lean();
     for (let i = 0; i < baskets.length; i++) {
       const basketCalc = await calculateTotalBasketPrice(baskets[i]);
+      console.log("basketCalc", basketCalc);
 
       baskets[i].appliedVoucherAmount = basketCalc.appliedVoucherAmount;
+      baskets[i].deliveryFee = basketCalc.deliveryFee;
+      baskets[i].itemsTotal = basketCalc.itemsTotal;
 
       baskets[i].total = basketCalc.total;
       const items = basketCalc.items;
