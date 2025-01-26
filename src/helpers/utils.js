@@ -152,11 +152,16 @@ const calculateTotalBasketPrice = async (basket) => {
 
       const totalPrice =
         (variation?.discount || variation.price) * item.quantity;
+
       itemsTotal += totalPrice;
       items.push({
         item: basketItems[i],
         quantity: item.quantity,
-        totalPrice,
+        actualAmount: totalPrice,
+        discount: variation.discount
+          ? variation.discount * item.quantity
+          : null,
+        originalAmount: variation?.price * item.quantity,
       });
     }
     itemsTotal -= voucherAmount;
@@ -176,7 +181,7 @@ const calculateTotalBasketPrice = async (basket) => {
   });
 };
 
-const validateBodyMeasurements = (bodyMeasurements,bodyMeasurementEnums) => {
+const validateBodyMeasurements = (bodyMeasurements, bodyMeasurementEnums) => {
   let error;
   if (
     !bodyMeasurements ||

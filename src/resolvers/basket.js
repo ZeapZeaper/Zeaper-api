@@ -53,7 +53,10 @@ const validateProductBodyMeasurements = async (product, bodyMeasurements) => {
       };
     }
     const bodyMeasurementEnums = await getBodyMeasurementEnumsFromGuide();
-    const validateMeasurements = validateBodyMeasurements(bodyMeasurements, bodyMeasurementEnums);
+    const validateMeasurements = validateBodyMeasurements(
+      bodyMeasurements,
+      bodyMeasurementEnums
+    );
 
     if (validateMeasurements.error) {
       return {
@@ -222,7 +225,49 @@ const getBasket = async (req, res) => {
     }
     const basket = await BasketModel.findOne({ user: user._id })
       .populate("voucher")
+      .populate("basketItems.product", "productId title variations colors")
       .lean();
+    if (!basket) {
+      return res.status(400).send({ error: "Basket not found" });
+    }
+    const basketCalc = await calculateTotalBasketPrice(basket);
+    console.log("basketCalc", basketCalc);
+    const subTotal = basketCalc.itemsTotal;
+    const deliveryFee = basketCalc.deliveryFee;
+    const total = basketCalc.total;
+    const appliedVoucherAmount = basketCalc.appliedVoucherAmount;
+    const totalWithoutVoucher =
+      basketCalc.totalWithoutVoucher || total + appliedVoucherAmount;
+    basket.appliedVoucherAmount = appliedVoucherAmount;
+    basket.deliveryFee = deliveryFee;
+    basket.subTotal = subTotal;
+    basket.total = total;
+    basket.totalWithoutVoucher = totalWithoutVoucher;
+    const items = basketCalc.items;
+    for (let i = 0; i < basket.basketItems.length; i++) {
+      const item = items.find(
+        (item) => item.item.sku === basket.basketItems[i].sku
+      );
+
+      basket.basketItems[i].actualAmount = item.actualAmount;
+      basket.basketItems[i].discountedAmount = item.discount;
+      basket.basketItems[i].originalAmount = item.originalAmount;
+
+      const title = basket.basketItems[i].product.title;
+      const productId = basket.basketItems[i].product.productId;
+      const sku = basket.basketItems[i].sku;
+      const colors = basket.basketItems[i].product.colors;
+      const variations = basket.basketItems[i].product.variations;
+      const variation = variations.find((v) => v.sku === sku);
+      const chosenColor = colors.find((c) => c.value === variation.colorValue);
+      const image = chosenColor?.images.find((image) => image.link !== "");
+      const color = chosenColor?.value;
+      basket.basketItems[i].color = color;
+      basket.basketItems[i].image = image?.link || {};
+      basket.basketItems[i].title = title;
+      basket.basketItems[i].productId = productId;
+      delete basket.basketItems[i].product;
+    }
 
     return res.status(200).send({
       message: basket ? "Basket fetched successfully" : "No basket found",
