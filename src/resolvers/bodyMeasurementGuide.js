@@ -204,7 +204,7 @@ const updateFieldImage = async (req, res) => {
 };
 const editBodyMeasurementField = async (req, res) => {
   try {
-    const { fieldId, field, description, gender } = req.body;
+    const { fieldId, field, description } = req.body;
     if (!fieldId) {
       return res.status(400).send({ error: "required fieldId" });
     }
@@ -214,20 +214,6 @@ const editBodyMeasurementField = async (req, res) => {
     if (!description) {
       return res.status(400).send({ error: "required description" });
     }
-    if (!gender) {
-      return res.status(400).send({
-        error: "gender field is required",
-      });
-    }
-
-    const genderOptions = ["male", "female"];
-    gender.map((item) => {
-      if (!genderOptions.includes(item)) {
-        return res.status(400).send({
-          error: "invalid gender option",
-        });
-      }
-    });
 
     const bodyMeasurementGuide = await BodyMeasurementGuideModel.findOne({
       "fields._id": fieldId,
@@ -240,7 +226,7 @@ const editBodyMeasurementField = async (req, res) => {
     );
     bodyMeasurementGuide.fields[fieldIndex].field = field;
     bodyMeasurementGuide.fields[fieldIndex].description = description;
-    bodyMeasurementGuide.fields[fieldIndex].gender = gender;
+
     await bodyMeasurementGuide.save();
     return res.status(200).send({ data: bodyMeasurementGuide });
   } catch (err) {

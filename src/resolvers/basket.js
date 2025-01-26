@@ -216,13 +216,20 @@ const getBaskets = async (req, res) => {
     return res.status(500).send({ error: err.message });
   }
 };
-
+const calcRate = (rate, currency, amount) => {
+  if ((currency = "NGN")) {
+    return amount;
+  }
+  amount * rate;
+};
 const getBasket = async (req, res) => {
   try {
     const user = await getAuthUser(req);
     if (!user) {
       return res.status(400).send({ error: "User not found, please login" });
     }
+    const currency = user.prefferedCurrency || "NGN";
+
     const basket = await BasketModel.findOne({ user: user._id })
       .populate("voucher")
       .populate("basketItems.product", "productId title variations colors")
@@ -230,14 +237,28 @@ const getBasket = async (req, res) => {
     if (!basket) {
       return res.status(400).send({ error: "Basket not found" });
     }
+    let rate = null;
+    if (currency !== "NGN") {
+      const currencyRates = await ExchangeRateModel.find();
+      rate = currencyRates.find((rate) => rate.currency === currency).rate;
+    }
+
     const basketCalc = await calculateTotalBasketPrice(basket);
-    console.log("basketCalc", basketCalc);
-    const subTotal = basketCalc.itemsTotal;
-    const deliveryFee = basketCalc.deliveryFee;
-    const total = basketCalc.total;
-    const appliedVoucherAmount = basketCalc.appliedVoucherAmount;
-    const totalWithoutVoucher =
-      basketCalc.totalWithoutVoucher || total + appliedVoucherAmount;
+
+    const subTotal = calcRate(rate, currency, basketCalc.itemsTotal);
+    const deliveryFee = calcRate(rate, currency, basketCalc.deliveryFee);
+    const total = calcRate(rate, currency, basketCalc.total);
+    const appliedVoucherAmount = calcRate(
+      rate,
+      currency,
+      basketCalc.appliedVoucherAmount
+    );
+    const totalWithoutVoucher = calcRate(
+      rate,
+      currency,
+      basketCalc.totalWithoutVoucher || total + appliedVoucherAmount
+    );
+    basket.currency = currency;
     basket.appliedVoucherAmount = appliedVoucherAmount;
     basket.deliveryFee = deliveryFee;
     basket.subTotal = subTotal;
@@ -248,10 +269,22 @@ const getBasket = async (req, res) => {
       const item = items.find(
         (item) => item.item.sku === basket.basketItems[i].sku
       );
-
-      basket.basketItems[i].actualAmount = item.actualAmount;
-      basket.basketItems[i].discountedAmount = item.discount;
-      basket.basketItems[i].originalAmount = item.originalAmount;
+      basket.basketItems[i].currency = currency;
+      basket.basketItems[i].actualAmount = calcRate(
+        rate,
+        currency,
+        item.actualAmount
+      );
+      basket.basketItems[i].discountedAmount = calcRate(
+        rate,
+        currency,
+        item.discount
+      );
+      basket.basketItems[i].originalAmount = calcRate(
+        rate,
+        currency,
+        item.originalAmount
+      );
 
       const title = basket.basketItems[i].product.title;
       const productId = basket.basketItems[i].product.productId;

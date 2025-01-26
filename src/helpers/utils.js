@@ -251,6 +251,9 @@ const codeGenerator = (length) => {
   return code;
 };
 const currencyCoversion = async (amount, currency) => {
+  if (amount === 0) {
+    return 0;
+  }
   if (currency === "NGN") {
     return amount;
   }
