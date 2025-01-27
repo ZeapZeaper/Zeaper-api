@@ -119,6 +119,7 @@ const issueVoucher = async (req, res) => {
         console.log("Failed to send push notification", sendPush);
       }
       const notifications = notification.notifications;
+     
       notifications.push({
         title,
         body,
@@ -127,6 +128,7 @@ const issueVoucher = async (req, res) => {
           "https://zeap.netlify.app/static/media/app_logo.620ff058fcbcd2428e3c.png",
       });
       notification.notifications = notifications;
+   
       await notification.save();
     } else {
       const newNotification = new NotificationModel({
