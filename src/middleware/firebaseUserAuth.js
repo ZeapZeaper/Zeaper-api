@@ -67,7 +67,7 @@ const authUserAdminMiddleware = async (request, response, next) => {
     return response.send({ message: "User not found" }).status(400);
   }
   
-  if (!user.isAdmin && !user.isSuperAdmin) {
+  if (!user.isAdmin && !user.superAdmin) {
     return response.status(400).json({ error: "You are not authorized to perform this operation" });
   }
   request.reqUser = user;

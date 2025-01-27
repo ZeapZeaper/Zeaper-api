@@ -45,7 +45,7 @@ const createShop = async (req, res) => {
     if (
       req.body?.userId &&
       !authUser.isAdmin &&
-      !authUser.isSuperAdmin &&
+      !authUser.superAdmin &&
       authUser.userId !== req.body?.userId
     ) {
       return res

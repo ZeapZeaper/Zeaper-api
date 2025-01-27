@@ -211,7 +211,7 @@ const addProductColorAndImages = async (req, res) => {
     if (
       user.shopId !== product.shopId &&
       !user?.isAdmin &&
-      !user?.isSuperAdmin
+      !user?.superAdmin
     ) {
       await deleLocalImages(files);
       return res
@@ -329,7 +329,7 @@ const addImagesToProductColor = async (req, res) => {
     if (
       user.shopId !== product.shopId &&
       !user?.isAdmin &&
-      !user?.isSuperAdmin
+      !user?.superAdmin
     ) {
       await deleLocalImages(files);
       return res
@@ -396,7 +396,7 @@ const deleteProductColor = async (req, res) => {
     if (
       user.shopId !== product.shopId &&
       !user?.isAdmin &&
-      !user?.isSuperAdmin
+      !user?.superAdmin
     ) {
       return res
         .status(400)
@@ -455,7 +455,7 @@ const deleteProductImage = async (req, res) => {
     if (
       user.shopId !== product.shopId &&
       !user?.isAdmin &&
-      !user?.isSuperAdmin
+      !user?.superAdmin
     ) {
       return res
         .status(400)
@@ -517,7 +517,7 @@ const setProductImageAsDefault = async (req, res) => {
     if (
       user.shopId !== product.shopId &&
       !user?.isAdmin &&
-      !user?.isSuperAdmin
+      !user?.superAdmin
     ) {
       return res
         .status(400)
@@ -603,7 +603,7 @@ const editProduct = async (req, res) => {
     if (
       user.shopId !== product.shopId &&
       !user?.isAdmin &&
-      !user?.isSuperAdmin
+      !user?.superAdmin
     ) {
       return res
         .status(400)
@@ -678,14 +678,14 @@ const deleteProducts = async (req, res) => {
     const shopId = shopIds[0];
     if (
       shopIds.some(
-        (id) => id !== shopId && !user?.isAdmin && !user?.isSuperAdmin
+        (id) => id !== shopId && !user?.isAdmin && !user?.superAdmin
       )
     ) {
       return res
         .status(400)
         .send({ error: "You can only delete products from the same shop" });
     }
-    if (user.shopId !== shopId && !user?.isAdmin && !user?.isSuperAdmin) {
+    if (user.shopId !== shopId && !user?.isAdmin && !user?.superAdmin) {
       return res.status(400).send({
         error: "You are not authorized to delete products from this shop",
       });
@@ -737,14 +737,14 @@ const restoreProducts = async (req, res) => {
     const shopId = shopIds[0];
     if (
       shopIds.some(
-        (id) => id !== shopId && !user?.isAdmin && !user?.isSuperAdmin
+        (id) => id !== shopId && !user?.isAdmin && !user?.superAdmin
       )
     ) {
       return res
         .status(400)
         .send({ error: "You can only restore products from the same shop" });
     }
-    if (user.shopId !== shopId && !user?.isAdmin && !user?.isSuperAdmin) {
+    if (user.shopId !== shopId && !user?.isAdmin && !user?.superAdmin) {
       return res.status(400).send({
         error: "You are not authorized to restore products from this shop",
       });
@@ -839,7 +839,7 @@ const createProduct = async (req, res) => {
       shopId &&
       user.shopId !== shopId &&
       !user?.isAdmin &&
-      !user?.isSuperAdmin
+      !user?.superAdmin
     ) {
       return res.status(400).send({
         error: "You are not authorized to create product for this shop",
@@ -926,7 +926,7 @@ const setProductStatus = async (req, res) => {
     if (
       user.shopId !== product.shopId &&
       !user?.isAdmin &&
-      !user?.isSuperAdmin
+      !user?.superAdmin
     ) {
       return res
         .status(400)
@@ -1181,7 +1181,7 @@ const getProducts = async (req, res) => {
       return res.status(400).send({ error: "sort value can only be 1 or -1" });
     }
     const user = await getAuthUser(req);
-    if (!user?.isAdmin && !user?.isSuperAdmin) {
+    if (!user?.isAdmin && !user?.superAdmin) {
       return res
         .status(400)
         .send({ error: "You are not authorized to view all products" });
@@ -1245,7 +1245,7 @@ const getAuthShopProducts = async (req, res) => {
       return res.status(400).send({ error: "sort value can only be 1 or -1" });
     }
     const user = await getAuthUser(req);
-    if (!user?.isAdmin && !user?.isSuperAdmin) {
+    if (!user?.isAdmin && !user?.superAdmin) {
       return res
         .status(400)
         .send({ error: "You are not authorized to view all products" });
@@ -1756,7 +1756,7 @@ const addProductVariation = async (req, res) => {
     if (
       user.shopId !== product.shopId &&
       !user?.isAdmin &&
-      !user?.isSuperAdmin
+      !user?.superAdmin
     ) {
       return res
         .status(400)
@@ -1845,7 +1845,7 @@ const editProductVariation = async (req, res) => {
     if (
       user.shopId !== product.shopId &&
       !user?.isAdmin &&
-      !user?.isSuperAdmin
+      !user?.superAdmin
     ) {
       return res
         .status(400)
@@ -1948,7 +1948,7 @@ const deleteProductVariation = async (req, res) => {
     if (
       user.shopId !== product.shopId &&
       !user?.isAdmin &&
-      !user?.isSuperAdmin
+      !user?.superAdmin
     ) {
       return res
         .status(400)

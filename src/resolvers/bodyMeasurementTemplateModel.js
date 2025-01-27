@@ -24,7 +24,7 @@ const addBodyMeasurementTemplate = async (req, res) => {
     }
     if (
       !authUser.isAdmin &&
-      !authUser.isSuperAdmin &&
+      !authUser.superAdmin &&
       user_id &&
       authUser._id.toString() !== user_id
     ) {
@@ -80,7 +80,7 @@ const getBodyMeasurementTemplates = async (req, res) => {
     }
     if (
       !authUser.isAdmin &&
-      !authUser.isSuperAdmin &&
+      !authUser.superAdmin &&
       user_id &&
       authUser._id.toString() !== user_id
     ) {
@@ -161,7 +161,7 @@ const updateBodyMeasurementTemplate = async (req, res) => {
     }
     if (
       !authUser.isAdmin &&
-      !authUser.isSuperAdmin &&
+      !authUser.superAdmin &&
       authUser._id.toString() !== user_id
     ) {
       return res.status(400).send({
@@ -208,7 +208,7 @@ const deleteBodyMeasurementTemplate = async (req, res) => {
     }
     if (
       !authUser.isAdmin &&
-      !authUser.isSuperAdmin &&
+      !authUser.superAdmin &&
       authUser._id.toString() !== user_id
     ) {
       return res.status(400).send({

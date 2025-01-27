@@ -31,6 +31,7 @@ const analyticsResolver = require("../resolvers/analytics");
 const bodyMeasurementGuideResolver = require("../resolvers/bodyMeasurementGuide");
 const deliveryFeeResolver = require("../resolvers/deliveryFee");
 const exchangeRateResolver = require("../resolvers/exchangeRate");
+const notificationResolver = require("../resolvers/notification");
 
 const handleMoreFieldsUploads = uploadMultiple.fields([
   { name: "documents", maxCount: 5 },
@@ -598,6 +599,7 @@ let routes = (app) => {
   router.get("/vouchers", authMiddleware, voucherResolver.getVouchers);
   router.get("/voucher", authMiddleware, voucherResolver.getVoucher);
   router.put("/voucher/apply", authMiddleware, voucherResolver.applyVoucher);
+  router.post("/voucher/issue", authMiddleware, voucherResolver.issueVoucher);
 
   // Wish routes
   router.post("/wish/add", authMiddleware, wishResolver.addWish);
@@ -698,6 +700,18 @@ let routes = (app) => {
     authMiddleware,
     exchangeRateResolver.updateExchangeRate
   );
+  // notifications routes
+  router.post(
+    "/notification/pushToken/register",
+    authMiddleware,
+    notificationResolver.registerPushToken
+  );
+  router.post(
+    "/notification/test",
+    authMiddleware,
+    notificationResolver.testPushNotification
+  );
+
   return app.use("/", router);
 };
 

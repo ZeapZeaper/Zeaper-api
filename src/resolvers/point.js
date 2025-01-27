@@ -84,7 +84,7 @@ const convertPointToVoucher = async (req, res) => {
     if (
       authUser._id !== user_id &&
       !authUser.isAdmin &&
-      !authUser.isSuperAdmin
+      !authUser.superAdmin
     ) {
       return res
         .status(400)

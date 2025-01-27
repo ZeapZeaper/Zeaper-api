@@ -20,7 +20,7 @@ const createComment = async (req, res) => {
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
     }
-    if (!authUser.isAdmin && !authUser.isSuperAdmin) {
+    if (!authUser.isAdmin && !authUser.superAdmin) {
       return res
         .status(400)
         .send({ error: "You are not authorized to create comment" });

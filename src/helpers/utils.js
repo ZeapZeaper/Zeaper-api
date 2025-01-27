@@ -311,6 +311,18 @@ const getBodyMeasurementEnumsFromGuide = async () => {
   });
   return bodyMeasurementEums;
 };
+const getDaysDifference = (date) => {
+  const today = new Date();
+  const diffTime = Math.abs(today - date);
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays;
+};
+const calcRate = (rate, currency, amount) => {
+  if ((currency = "NGN")) {
+    return amount;
+  }
+  amount * rate;
+};
 module.exports = {
   deleteLocalFile,
   numberWithCommas,
@@ -329,4 +341,6 @@ module.exports = {
   currencyCoversion,
   addWeekDays,
   getBodyMeasurementEnumsFromGuide,
+  getDaysDifference,
+  calcRate,
 };

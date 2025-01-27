@@ -1,6 +1,14 @@
-const { codeGenerator, currencyCoversion } = require("../helpers/utils");
+const { sendOneDevicePushNotification } = require("../helpers/push");
+const {
+  codeGenerator,
+  currencyCoversion,
+  getDaysDifference,
+  calcRate,
+} = require("../helpers/utils");
 const { getAuthUser } = require("../middleware/firebaseUserAuth");
 const BasketModel = require("../models/basket");
+const NotificationModel = require("../models/notification");
+const UserModel = require("../models/user");
 const VoucherModel = require("../models/voucher");
 
 const generateVoucherCode = async () => {
@@ -18,14 +26,17 @@ const generateVoucherCode = async () => {
   return voucherCode;
 };
 
-const generateVoucher = async (amount, user, source) => {
+const generateVoucher = async (amount, user, source, expireOn) => {
   try {
     const voucherCode = await generateVoucherCode();
 
-    // make expiryDate 30 days from now by 12:00am
-    const expiryDate = new Date();
-    expiryDate.setDate(expiryDate.getDate() + 30);
+    // make expiryDate 30 days from now by 12:00am if not specified
+    const expiryDate = expireOn ? new Date(expireOn) : new Date();
+    if (!expireOn) {
+      expiryDate.setDate(expiryDate.getDate() + 30);
+    }
     expiryDate.setHours(0, 0, 0, 0);
+    const currency = "NGN";
 
     const voucher = new VoucherModel({
       code: voucherCode,
@@ -33,9 +44,118 @@ const generateVoucher = async (amount, user, source) => {
       expiryDate,
       user,
       source,
+      currency,
     });
     await voucher.save();
     return voucher;
+  } catch (error) {
+    return { error: error.message };
+  }
+};
+const issueVoucher = async (req, res) => {
+  try {
+    const { amount, user_id, expiryDate } = req.body;
+    if (!amount) {
+      return res.status(400).send({ error: "required amount" });
+    }
+    if (!user_id) {
+      return res.status(400).send({ error: "required user_id" });
+    }
+    if (!expiryDate) {
+      return res.status(400).send({ error: "required expiryDate" });
+    }
+    if (new Date(expiryDate) <= new Date()) {
+      return res
+        .status(400)
+        .send({ error: "expiryDate must be greater than today" });
+    }
+    const authUser = await getAuthUser(req);
+    if (!authUser.superAdmin) {
+      return res.status(400).send({
+        error: "You dont have the required permission. Contact Super Admin",
+      });
+    }
+
+    const requestedUser = await UserModel.findById(user_id);
+
+    if (!requestedUser) {
+      return res.status(400).send({ error: "User not found" });
+    }
+
+    const user = requestedUser._id;
+
+    const source = "admin";
+    const voucher = await generateVoucher(amount, user, source, expiryDate);
+    if (voucher.error) {
+      return res.status(400).send({ error: voucher.error });
+    }
+    const currency = requestedUser.prefferedCurrency || "NGN";
+    let rate = null;
+    if (currency !== "NGN") {
+      const currencyRates = await ExchangeRateModel.find();
+      rate = currencyRates.find((rate) => rate.currency === currency).rate;
+    }
+    const notification = await NotificationModel.findOne({ user });
+    if (notification) {
+      const code = voucher.code;
+      const title = "Voucher Issued";
+      const body = `A voucher of ${currency} ${calcRate(
+        rate,
+        currency,
+        amount
+      )} has been issued to you. Use code ${code} to redeem before it expires in ${getDaysDifference(
+        new Date(voucher.expiryDate)
+      )} days`;
+      const image = "";
+      const sendPush = await sendOneDevicePushNotification(
+        notification.pushToken,
+        title,
+        body,
+        image
+      );
+      if (sendPush) {
+        console.log("Push notification sent");
+      } else {
+        console.log("Failed to send push notification", sendPush);
+      }
+      const notifications = notification.notifications;
+      notifications.push({
+        title,
+        body,
+        image:
+          image ||
+          "https://zeap.netlify.app/static/media/app_logo.620ff058fcbcd2428e3c.png",
+      });
+      notification.notifications = notifications;
+      await notification.save();
+    } else {
+      const newNotification = new NotificationModel({
+        user,
+        pushToken: "",
+        pushTokenDate: new Date(),
+        notifications: [
+          {
+            title: "Voucher Issued",
+            body: `A voucher of ${currency} ${calcRate(
+              rate,
+              currency,
+              amount
+            )} has been issued to you. Use code ${
+              voucher.code
+            } to redeem before it expires in ${getDaysDifference(
+              new Date(voucher.expiryDate)
+            )} days`,
+            image:
+              image ||
+              "https://zeap.netlify.app/static/media/app_logo.620ff058fcbcd2428e3c.png",
+          },
+        ],
+      });
+    }
+    return res.status(200).send({
+      data: voucher,
+      message: "Voucher issued successfully",
+    });
   } catch (error) {
     return { error: error.message };
   }
@@ -196,4 +316,5 @@ module.exports = {
   getVouchers,
   getVoucher,
   applyVoucher,
+  issueVoucher,
 };

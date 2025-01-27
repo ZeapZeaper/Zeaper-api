@@ -4,6 +4,7 @@ const {
   validateBodyMeasurements,
   currencyCoversion,
   getBodyMeasurementEnumsFromGuide,
+  calcRate,
 } = require("../helpers/utils");
 const { getAuthUser } = require("../middleware/firebaseUserAuth");
 const BasketModel = require("../models/basket");
@@ -187,7 +188,7 @@ const getBaskets = async (req, res) => {
       .lean();
     for (let i = 0; i < baskets.length; i++) {
       const basketCalc = await calculateTotalBasketPrice(baskets[i]);
-      console.log("basketCalc", basketCalc);
+
 
       baskets[i].appliedVoucherAmount = basketCalc.appliedVoucherAmount;
       baskets[i].deliveryFee = basketCalc.deliveryFee;
@@ -216,12 +217,7 @@ const getBaskets = async (req, res) => {
     return res.status(500).send({ error: err.message });
   }
 };
-const calcRate = (rate, currency, amount) => {
-  if ((currency = "NGN")) {
-    return amount;
-  }
-  amount * rate;
-};
+
 const getBasket = async (req, res) => {
   try {
     const user = await getAuthUser(req);

@@ -34,8 +34,9 @@ const createDeliveryAddress = async (req, res) => {
       return res.status(400).send({ error: "User not found" });
     }
     if (
+      user_id &&
       !authUser.isAdmin &&
-      !authUser.isSuperAdmin &&
+      !authUser.superAdmin &&
       authUser._id.toString() !== user_id
     ) {
       return res
@@ -77,7 +78,7 @@ const getDeliveryAddresses = async (req, res) => {
     const authUser = await getAuthUser(req);
     if (
       !authUser.isAdmin &&
-      !authUser.isSuperAdmin &&
+      !authUser.superAdmin &&
       authUser._id.toString() !== user_id
     ) {
       return res

@@ -72,7 +72,7 @@ const getReference = async (req, res) => {
     if (
       authUser._id.toString() !== basket.user._id.toString() &&
       !authUser.isAdmin &&
-      !authUser.isSuperAdmin
+      !authUser.superAdmin
     ) {
       return res.status(400).send({
         error: "You are not authorized to make payment for this basket",
@@ -422,7 +422,7 @@ const payShop = async (req, res) => {
       return res.status(400).send({ error: "required reference" });
     }
     const authUser = await getAuthUser(req);
-    if (!authUser.isAdmin && !authUser.isSuperAdmin) {
+    if (!authUser.isAdmin && !authUser.superAdmin) {
       return res.status(400).send({
         error: "You are not authorized to make payment to shop for this order",
       });
@@ -468,7 +468,7 @@ const revertPayShop = async (req, res) => {
       return res.status(400).send({ error: "required productOrder_id" });
     }
     const authUser = await getAuthUser(req);
-    if (!authUser.isAdmin && !authUser.isSuperAdmin) {
+    if (!authUser.isAdmin && !authUser.superAdmin) {
       return res.status(400).send({
         error:
           "You are not authorized to revert payment to shop for this order",

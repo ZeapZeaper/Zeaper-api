@@ -218,7 +218,7 @@ const createPromo = async (req, res) => {
       await deleLocalImages([req.file]);
       return res.status(400).send({ error: "User not found" });
     }
-    if (!user?.isAdmin && !user?.isSuperAdmin) {
+    if (!user?.isAdmin && !user?.superAdmin) {
       await deleLocalImages([req.file]);
       return res
         .status(400)
@@ -432,7 +432,7 @@ const updatePromo = async (req, res) => {
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
     }
-    if (!authUser?.isAdmin && !authUser?.isSuperAdmin) {
+    if (!authUser?.isAdmin && !authUser?.superAdmin) {
       return res
         .status(400)
         .send({ error: "You are not authorized to update promo" });
@@ -505,7 +505,7 @@ const deletePromo = async (req, res) => {
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
     }
-    if (!authUser?.isAdmin && !authUser?.isSuperAdmin) {
+    if (!authUser?.isAdmin && !authUser?.superAdmin) {
       return res
         .status(400)
         .send({ error: "You are not authorized to delete promo" });
@@ -641,7 +641,7 @@ const joinPromo = async (req, res) => {
     }
 
     //check if user can perform this action
-    if (!user?.isAdmin && !user?.isSuperAdmin) {
+    if (!user?.isAdmin && !user?.superAdmin) {
       const shop = await ShopModel.findOne({ shopId: product.shopId });
       if (!shop) {
         return res.status(400).send({ error: "Shop not found" });
@@ -716,7 +716,7 @@ const leavePromo = async (req, res) => {
     }
     const user = await getAuthUser(req);
     //check if user can perform this action
-    if (!user?.isAdmin && !user?.isSuperAdmin) {
+    if (!user?.isAdmin && !user?.superAdmin) {
       const shop = await ShopModel.findOne({ shopId: product.shopId });
       if (!shop) {
         return res.status(400).send({ error: "Shop not found" });
@@ -841,7 +841,7 @@ const activatePromo = async (req, res) => {
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
     }
-    if (!authUser?.isAdmin && !authUser?.isSuperAdmin) {
+    if (!authUser?.isAdmin && !authUser?.superAdmin) {
       return res
         .status(400)
         .send({ error: "You are not authorized to activate promo" });
@@ -917,7 +917,7 @@ const expirePromo = async (req, res) => {
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
     }
-    if (!authUser?.isAdmin && !authUser?.isSuperAdmin) {
+    if (!authUser?.isAdmin && !authUser?.superAdmin) {
       return res
         .status(400)
         .send({ error: "You are not authorized to expire promo" });
@@ -986,7 +986,7 @@ const schedulePromo = async (req, res) => {
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
     }
-    if (!authUser?.isAdmin && !authUser?.isSuperAdmin) {
+    if (!authUser?.isAdmin && !authUser?.superAdmin) {
       return res
         .status(400)
         .send({ error: "You are not authorized to schedule promo" });
