@@ -143,8 +143,26 @@ const getNotifications = async (req, res) => {
   }
 };
 
+// const deleteNotification = async (req, res) => {
+//   try {
+//     const{ notificationId } = req.body;
+//     const authUser = await getAuthUser(req);
+//     const userNotification = await NotificationModel.findOne({
+//       user: authUser._id,
+//     })
+//     if (!userNotification) {
+//       return res.status(400).send({ error: "Notification not found" });
+//     }
+//     const notifications = await userNotification.notifications;
+
+//   } catch (err) {
+//     return res.status(500).send({ error: err.message });
+//   }
+// };
+
 module.exports = {
   registerPushToken,
   testPushNotification,
   testMultiplePushNotification,
+  getNotifications,
 };

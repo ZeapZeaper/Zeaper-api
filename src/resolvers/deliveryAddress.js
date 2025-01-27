@@ -77,6 +77,7 @@ const getDeliveryAddresses = async (req, res) => {
 
     const authUser = await getAuthUser(req);
     if (
+      user_id &&
       !authUser.isAdmin &&
       !authUser.superAdmin &&
       authUser._id.toString() !== user_id
