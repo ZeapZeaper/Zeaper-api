@@ -121,6 +121,7 @@ const addShop = async (user) => {
 };
 
 const createUser = async (req, res) => {
+
   const { email, password, isVendor } = req.body;
   let firebaseUser = {};
   let newUser;
@@ -143,6 +144,7 @@ const createUser = async (req, res) => {
           .send({ error: "social must be a valid JSON string" });
       }
     }
+   
 
     if (email && !validator.validate(email)) {
       return res.status(400).send({ error: "email is invalid" });
@@ -156,6 +158,7 @@ const createUser = async (req, res) => {
         });
       }
     }
+  
     //const authUser = await getAuthUser(req);
     // if (authUser) {
 
@@ -185,8 +188,10 @@ const createUser = async (req, res) => {
     }
 
     const userId = await generateUniqueUserId();
+
     let social = {};
-    if (req.body.social) {
+    if (Object.keys(req.body.social).length > 0) {
+
       social = JSON.parse(req.body.social);
     }
 
@@ -199,6 +204,7 @@ const createUser = async (req, res) => {
       emailVerified: firebaseUser.emailVerified,
       social,
     };
+
     const user = new UserModel({ ...params });
     newUser = await user.save();
     if (!newUser) {
