@@ -46,6 +46,7 @@ const generateReference = async () => {
 const getReference = async (req, res) => {
   try {
     const { basketId, deliveryAddress_id } = req.query;
+
     if (!basketId) {
       return res.status(400).send({ error: "required basketId" });
     }
@@ -78,18 +79,18 @@ const getReference = async (req, res) => {
         error: "You are not authorized to make payment for this basket",
       });
     }
-    let payment = await PaymentModel.findOne({ basket: basket._id }).lean();
+    let payment = await PaymentModel.findOne({ basket: basket._id.toString() }).lean();
     const calculateTotal = await calculateTotalBasketPrice(basket);
 
     // convert amount to kobo or cent
     const amountDue = calculateTotal.total * 100;
     const itemsTotalDue = calculateTotal.itemsTotal * 100;
     const deliveryFeeDue = calculateTotal.deliveryFee * 100;
-    console.log("deliveryFeeDue", deliveryFeeDue);
+    
     const amount = await currencyCoversion(amountDue, currency);
     const itemsTotal = await currencyCoversion(itemsTotalDue, currency);
     const deliveryFee = await currencyCoversion(deliveryFeeDue, currency);
-    console.log("deliveryFee", deliveryFee);
+   
 
     const user = basket.user;
     const fullName = user.firstName + " " + user.lastName;
