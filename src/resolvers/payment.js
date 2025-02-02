@@ -111,7 +111,7 @@ const getReference = async (req, res) => {
         return res.status(400).send({ error: "Payment already made" });
       }
       const addDeliveryAddress = await BasketModel.findOneAndUpdate(
-        { basketId },
+        { basketId: basket.basketId },
         { deliveryAddress: deliveryAddress_id },
         { new: true }
       );
