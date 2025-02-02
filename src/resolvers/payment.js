@@ -103,7 +103,7 @@ const getReference = async (req, res) => {
     const reference = generateReference({
       firstName: user.firstName,
       lastName: user.lastName,
-      basketId,
+      basketId: basket.basketId,
     });
 
     if (payment) {
