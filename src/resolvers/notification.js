@@ -110,7 +110,7 @@ const testMultiplePushNotification = async (req, res) => {
     userNotifications.forEach((notification) => {
       pushTokens.push(notification.pushToken);
     });
-    
+
     const sendPush = await sendMultipleDevicePushNotification(
       pushTokens,
       title,
@@ -136,29 +136,62 @@ const getNotifications = async (req, res) => {
     const authUser = await getAuthUser(req);
     const userNotification = await NotificationModel.findOne({
       user: authUser._id,
-    }).lean();
+    })
+      .select("notifications")
+      .lean();
     return res.status(200).send({ data: userNotification });
   } catch (err) {
     return res.status(500).send({ error: err.message });
   }
 };
 
-// const deleteNotification = async (req, res) => {
-//   try {
-//     const{ notificationId } = req.body;
-//     const authUser = await getAuthUser(req);
-//     const userNotification = await NotificationModel.findOne({
-//       user: authUser._id,
-//     })
-//     if (!userNotification) {
-//       return res.status(400).send({ error: "Notification not found" });
-//     }
-//     const notifications = await userNotification.notifications;
+const getAdminsNotifications = async (req, res) => {
+  try {
+    const authUser = await getAuthUser(req);
+    if (!authUser.isAdmin && !authUser.superAdmin) {
+      return res.status(400).send({ error: "Unauthorized" });
+    }
+    const notifications = await NotificationModel.find({
+      isAdminPanel: true,
+    })
+      .select("notifications")
+      .lean();
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
+};
 
-//   } catch (err) {
-//     return res.status(500).send({ error: err.message });
-//   }
-// };
+const deleteNotification = async (req, res) => {
+  try {
+    const { notification_id, isAdminPanel } = req.body;
+    const authUser = await getAuthUser(req);
+    const query = {
+      ...(isAdminPanel && { isAdminPanel }),
+      ...(!isAdminPanel && { user: authUser._id }),
+    }
+  if(isAdminPanel && !authUser.isAdmin && !authUser.superAdmin){
+    return res.status(400).send({ error: "Unauthorized" });
+  }
+    const userNotification = await NotificationModel.findOne({
+      ...query
+    }).select("notifications");
+    if (!userNotification) {
+      return res.status(400).send({ error: "Notification not found" });
+    }
+    const notifications = userNotification.notifications;
+    const newNotifications = notifications.filter(
+      (notification) => notification._id !== notification_id
+    );
+    userNotification.notifications = newNotifications;
+    await userNotification.save();
+    return res
+      .status(200)
+      .send({ data: userNotification, message: "Notification deleted" });
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
+};
+const addNotification = async (param) => {}
 
 module.exports = {
   registerPushToken,

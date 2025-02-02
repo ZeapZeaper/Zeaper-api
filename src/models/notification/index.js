@@ -7,8 +7,9 @@ const NotificationSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Users",
-    required: true,
+    required: false,
   },
+  isAdminPanel: { type: Boolean, required: true, default: false },
   notifications: [
     {
       title: { type: String, required: true },

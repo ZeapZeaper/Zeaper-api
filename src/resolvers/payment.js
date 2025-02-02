@@ -20,48 +20,53 @@ const secretKey =
     : process.env.PAYSTACK_SECRET_LIVE_KEY;
 const environment = process.env.NODE_ENV;
 
-function getRandomInt(min, max) {
-  return min + Math.floor(Math.random() * (max - min + 1));
-}
-
-const generateReference = async () => {
-  let reference;
-  let found = true;
-  do {
-    const randomVal = getRandomInt(10000000000, 99999999999);
-    const code = codeGenerator(5);
-    reference = `${randomVal}${code}`;
-    const exist = await PaymentModel.findOne({ reference }).lean();
-
-    if (exist) {
-      found = true;
-    } else {
-      found = false;
-    }
-  } while (found);
-
-  return reference.toString();
+const generateReference = (param) => {
+  const { firstName, lastName, basketId } = param;
+  const firstChar = firstName.charAt(0).toUpperCase();
+  const lastChar = lastName.charAt(0).toUpperCase();
+  const ref = `${firstChar}${lastChar}/${basketId}`;
+  return ref;
 };
 
 const getReference = async (req, res) => {
   try {
     const { basketId, deliveryAddress_id } = req.query;
 
-    if (!basketId) {
-      return res.status(400).send({ error: "required basketId" });
-    }
     if (!deliveryAddress_id) {
       return res.status(400).send({ error: "required deliveryAddress_id" });
     }
 
     const authUser = await getAuthUser(req);
-    const currency = authUser.prefferedCurrency || "NGN";
-    const basket = await BasketModel.findOne({ basketId })
+    if (!authUser) {
+      return res.status(400).send({ error: "User not found" });
+    }
+
+    const basketQuery = {
+      ...(basketId && { basketId }),
+      ...(!basketId && { user: authUser._id }),
+    };
+
+    const basket = await BasketModel.findOne(basketQuery)
       .populate("user")
       .lean();
     if (!basket) {
       return res.status(404).send({ error: "Basket not found" });
     }
+    const user = basket.user;
+    if (
+      basketId &&
+      !authUser.isAdmin &&
+      !authUser.superAdmin &&
+      user._id !== authUser._id
+    ) {
+      return res.status(400).send({
+        error:
+          "You are not authorized to make payment for this basket. Ensure you are not sending basketId as query parameter as you are not an admin",
+      });
+    }
+
+    const currency = authUser.prefferedCurrency || "NGN";
+
     const deliveryAddress = await DeliveryAddressModel.findOne({
       _id: deliveryAddress_id,
       user: authUser._id,
@@ -79,23 +84,27 @@ const getReference = async (req, res) => {
         error: "You are not authorized to make payment for this basket",
       });
     }
-    let payment = await PaymentModel.findOne({ basket: basket._id.toString() }).lean();
+    let payment = await PaymentModel.findOne({
+      basket: basket._id.toString(),
+    }).lean();
     const calculateTotal = await calculateTotalBasketPrice(basket);
 
     // convert amount to kobo or cent
     const amountDue = calculateTotal.total * 100;
     const itemsTotalDue = calculateTotal.itemsTotal * 100;
     const deliveryFeeDue = calculateTotal.deliveryFee * 100;
-    
+
     const amount = await currencyCoversion(amountDue, currency);
     const itemsTotal = await currencyCoversion(itemsTotalDue, currency);
     const deliveryFee = await currencyCoversion(deliveryFeeDue, currency);
-   
 
-    const user = basket.user;
     const fullName = user.firstName + " " + user.lastName;
     const email = user.email;
-    const reference = payment?.reference || (await generateReference());
+    const reference = generateReference({
+      firstName: user.firstName,
+      lastName: user.lastName,
+      basketId,
+    });
 
     if (payment) {
       if (payment.status === "success") {

@@ -1,3 +1,4 @@
+const { uniq } = require("lodash");
 const mongoose = require("mongoose");
 const timestamp = require("mongoose-timestamp");
 
@@ -6,6 +7,7 @@ const BasketSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Users",
     required: true,
+    unique: true,
   },
   basketId: { type: String, required: true },
   voucher : {
