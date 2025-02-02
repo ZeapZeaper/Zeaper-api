@@ -292,6 +292,7 @@ const deleteBodyMeasurementFieldImage = async (req, res) => {
     return res.status(500).send({ error: err.message });
   }
 };
+const deleteBodyMeasurementGuide = async (req, res) => {}
 
 module.exports = {
   getBodyMeasurementGuide,

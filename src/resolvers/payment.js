@@ -84,7 +84,7 @@ const getReference = async (req, res) => {
         error: "You are not authorized to make payment for this basket",
       });
     }
-    let payment = await PaymentModel.findOne({
+    const payment = await PaymentModel.findOne({
       basket: basket._id.toString(),
     }).lean();
     const calculateTotal = await calculateTotalBasketPrice(basket);
@@ -151,7 +151,7 @@ const getReference = async (req, res) => {
       });
     }
 
-    payment = new PaymentModel({
+    const newPayment = new PaymentModel({
       reference,
       user: user._id,
       fullName,
@@ -164,7 +164,7 @@ const getReference = async (req, res) => {
       deliveryFee,
     });
 
-    await payment.save();
+    await newPayment.save();
     return res.status(200).send({
       data: { reference, amount, currency, fullName, email },
       message: "Reference fetched successfully",
