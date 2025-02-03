@@ -236,6 +236,9 @@ const editBodyMeasurementField = async (req, res) => {
 const deleteBodyMeasurementField = async (req, res) => {
   try {
     const { fieldId } = req.body;
+    if (!fieldId) {
+      return res.status(400).send({ error: "required fieldId" });
+    }
     const bodyMeasurementGuide = await BodyMeasurementGuideModel.findOne({
       "fields._id": fieldId,
     });
@@ -292,7 +295,130 @@ const deleteBodyMeasurementFieldImage = async (req, res) => {
     return res.status(500).send({ error: err.message });
   }
 };
-const deleteBodyMeasurementGuide = async (req, res) => {}
+const deleteBodyMeasurementGuide = async (req, res) => {
+  try {
+    const { bodyMeasurementGuide_id } = req.body;
+    if (!bodyMeasurementGuide_id) {
+      return res
+        .status(400)
+        .send({ error: "required bodyMeasurementGuide_id" });
+    }
+    const bodyMeasurementGuide =
+      await BodyMeasurementGuideModel.findByIdAndDelete(
+        bodyMeasurementGuide_id
+      );
+    if (!bodyMeasurementGuide) {
+      return res
+        .status(404)
+        .send({ error: "Body Measurement Guide not found" });
+    }
+    return res.status(200).send({
+      data: bodyMeasurementGuide,
+      message: "Body Measurement Guide deleted successfully",
+    });
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
+};
+const updateBodyMeasurementGuideName = async (req, res) => {
+  try {
+    const { bodyMeasurementGuide_id, name } = req.body;
+    if (!bodyMeasurementGuide_id) {
+      return res
+        .status(400)
+        .send({ error: "required bodyMeasurementGuide_id" });
+    }
+    if (!name) {
+      return res.status(400).send({ error: "required name" });
+    }
+    const bodyMeasurementGuide = await BodyMeasurementGuideModel.findById(
+      bodyMeasurementGuide_id
+    );
+    if (!bodyMeasurementGuide) {
+      return res
+        .status(404)
+        .send({ error: "Body Measurement Guide not found" });
+    }
+    bodyMeasurementGuide.name = name;
+    await bodyMeasurementGuide.save();
+    return res.status(200).send({ data: bodyMeasurementGuide });
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
+};
+const addBodyMeasurementGuideField = async (req, res) => {
+  try {
+    const { bodyMeasurementGuide_id, field, description } = req.body;
+    if (!bodyMeasurementGuide_id) {
+      return res
+        .status(400)
+        .send({ error: "required bodyMeasurementGuide_id" });
+    }
+    if (!field) {
+      return res.status(400).send({ error: "required field" });
+    }
+    if (!description) {
+      return res.status(400).send({ error: "required description" });
+    }
+    const bodyMeasurementGuide = await BodyMeasurementGuideModel.findById(
+      bodyMeasurementGuide_id
+    );
+    if (!bodyMeasurementGuide) {
+      return res
+        .status(404)
+        .send({ error: "Body Measurement Guide not found" });
+    }
+    // check if field already exists
+
+    const fieldExists = bodyMeasurementGuide.fields.find(
+      (f) => f.field.trim().toLowerCase() === field.trim().toLowerCase()
+    );
+    if (fieldExists) {
+      return res.status(400).send({ error: "Field already exists" });
+    }
+    const newField = {
+      field,
+      imageUrl: { link: "", name: "" },
+      description,
+    };
+    bodyMeasurementGuide.fields.push(newField);
+    await bodyMeasurementGuide.save();
+    return res.status(200).send({ data: bodyMeasurementGuide });
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
+};
+
+const addBodyMeasurementGuide = async (req, res) => {
+  try {
+    const { name, gender } = req.body;
+    if (!name) {
+      return res.status(400).send({ error: "required name" });
+    }
+    if (!gender) {
+      return res.status(400).send({ error: "required gender" });
+    }
+    if (gender !== "male" && gender !== "female") {
+      return res.status(400).send({ error: "gender must be male or female" });
+    }
+    // check if name already exists
+    const nameExists = await BodyMeasurementGuideModel.findOne({
+      name,
+    });
+    if (nameExists) {
+      return res.status(400).send({ error: "Name already exists" });
+    }
+    const bodyMeasurementGuide = new BodyMeasurementGuideModel({
+      name,
+      gender,
+      fields: [],
+    });
+    await bodyMeasurementGuide.save();
+    return res.status(200).send({ data: bodyMeasurementGuide });
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
+};
 
 module.exports = {
   getBodyMeasurementGuide,
@@ -301,4 +427,8 @@ module.exports = {
   editBodyMeasurementField,
   deleteBodyMeasurementField,
   deleteBodyMeasurementFieldImage,
+  deleteBodyMeasurementGuide,
+  updateBodyMeasurementGuideName,
+  addBodyMeasurementGuideField,
+  addBodyMeasurementGuide,
 };

@@ -676,6 +676,31 @@ let routes = (app) => {
     authUserAdminMiddleware,
     bodyMeasurementGuideResolver.deleteBodyMeasurementField
   );
+  router.delete(
+    "/bodyMeasurementGuide/bespoke/delete",
+    authMiddleware,
+    authUserAdminMiddleware,
+    bodyMeasurementGuideResolver.deleteBodyMeasurementGuide
+  );
+  router.put(
+    "/bodyMeasurementGuide/bespoke/name/update",
+    authMiddleware,
+    authUserAdminMiddleware,
+    bodyMeasurementGuideResolver.updateBodyMeasurementGuideName
+  );
+  router.put(
+    "/bodyMeasurementGuide/bespoke/field/add",
+    authMiddleware,
+    authUserAdminMiddleware,
+    bodyMeasurementGuideResolver.addBodyMeasurementGuideField
+  );
+  router.post(
+    "/bodyMeasurementGuide/bespoke/add",
+    authMiddleware,
+    authUserAdminMiddleware,
+    bodyMeasurementGuideResolver.addBodyMeasurementGuide
+  );
+
 
   // Delivery Fee routes
   router.get(

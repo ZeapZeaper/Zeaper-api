@@ -168,12 +168,12 @@ const deleteNotification = async (req, res) => {
     const query = {
       ...(isAdminPanel && { isAdminPanel }),
       ...(!isAdminPanel && { user: authUser._id }),
+    };
+    if (isAdminPanel && !authUser.isAdmin && !authUser.superAdmin) {
+      return res.status(400).send({ error: "Unauthorized" });
     }
-  if(isAdminPanel && !authUser.isAdmin && !authUser.superAdmin){
-    return res.status(400).send({ error: "Unauthorized" });
-  }
     const userNotification = await NotificationModel.findOne({
-      ...query
+      ...query,
     }).select("notifications");
     if (!userNotification) {
       return res.status(400).send({ error: "Notification not found" });
@@ -191,11 +191,44 @@ const deleteNotification = async (req, res) => {
     return res.status(500).send({ error: err.message });
   }
 };
-const addNotification = async (param) => {}
+const addNotification = async (param) => {
+  try {
+    const { title, body, image, isAdminPanel, user_id } = param;
+    if (!title) {
+      return { error: "required title" };
+    }
+    if (!body) {
+      return { error: "required body" };
+    }
+    if (isAdminPanel && !user_id) {
+      return { error: "required user_id" };
+    }
+    let userNotification;
+    if (isAdminPanel) {
+      userNotification = await NotificationModel.findOne({
+        isAdminPanel: true,
+      });
+    }
+    if (!isAdminPanel) {
+      userNotification = await NotificationModel.findOne({ user: user_id });
+    }
+    const notifications = userNotification.notifications;
+    notifications.push({ title, body, image });
+    userNotification.notifications = notifications;
+    await userNotification.save();
+    return { data: userNotification };
+  } catch (err) {
+    return { error: err.message };
+  }
+};
 
 module.exports = {
   registerPushToken,
   testPushNotification,
   testMultiplePushNotification,
   getNotifications,
+  getAdminsNotifications,
+  deleteNotification,
+  addNotification,
+  
 };

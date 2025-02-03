@@ -20,12 +20,13 @@ const PaymentSchema = new mongoose.Schema({
     required: true,
     default: "pending",
   },
- 
+
   amount: { type: Number, required: true },
   itemsTotal: { type: Number, required: true },
   deliveryFee: { type: Number, required: true },
   currency: { type: String, required: true },
-  reference: { type: String, required: true },
+  reference: { type: String, required: true, unique: true },
+
   paidAt: { type: String, required: false },
   channel: { type: String, required: false },
   transactionDate: { type: String, required: false },
@@ -35,7 +36,6 @@ const PaymentSchema = new mongoose.Schema({
   gatewayResponse: { type: String, required: false },
   fees: { type: Number, required: false },
   log: { type: Object, required: false },
-
 });
 
 PaymentSchema.plugin(timestamp);

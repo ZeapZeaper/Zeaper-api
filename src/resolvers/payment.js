@@ -31,7 +31,7 @@ const generateReference = (param) => {
 const getReference = async (req, res) => {
   try {
     const { basketId, deliveryAddress_id } = req.query;
-
+    let paymentStatus = "pending";
     if (!deliveryAddress_id) {
       return res.status(400).send({ error: "required deliveryAddress_id" });
     }
@@ -84,6 +84,7 @@ const getReference = async (req, res) => {
         error: "You are not authorized to make payment for this basket",
       });
     }
+
     const payment = await PaymentModel.findOne({
       basket: basket._id.toString(),
     }).lean();
@@ -105,10 +106,80 @@ const getReference = async (req, res) => {
       lastName: user.lastName,
       basketId: basket.basketId,
     });
+    verifyPaystack(reference, async (error, body) => {
+      const response = JSON.parse(body);
+      if (response.status === true) {
+        const {
+          amount,
+          status,
+          paidAt,
+          channel,
+          currency,
+          transaction_date,
+          log,
+          fees,
+          gateway_response,
+          authorization,
+        } = response.data;
+        const { card_type, bank, country_code } = authorization;
 
+        if (status === "success") {
+          paymentStatus = "success";
+          const updatedPayment = await PaymentModel.findOneAndUpdate(
+            { reference },
+            {
+              amount,
+              status,
+              paidAt,
+              channel,
+              currency,
+              transactionDate: transaction_date,
+              log,
+              fees,
+              cardType: card_type,
+              bank,
+              countryCode: country_code,
+              gatewayResponse: gateway_response,
+            },
+            { new: true }
+          );
+
+          // 1000 naira = 10 points
+          // round down to the nearest 1000
+          const pointToAdd = Math.floor(amount / 1000) * 10;
+          const existingOrder = await OrderModel.findOne({
+            payment: updatedPayment._id,
+          }).lean();
+          if (!existingOrder) {
+            const order = await createOrder({
+              payment: updatedPayment,
+              user: updatedPayment.user,
+            });
+            if (order.error) {
+              return res.status(400).send({ error: order.error });
+            }
+            const addPoints = await addPointAfterSales(
+              updatedPayment.user,
+              pointToAdd
+            );
+          }
+          return res.status(200).send({
+            message: "Payment already made",
+            data: {
+              reference,
+              amount,
+              currency,
+              fullName,
+              email,
+              paymentStatus,
+            },
+          });
+        }
+      }
+    });
     if (payment) {
       if (payment.status === "success") {
-        return res.status(400).send({ error: "Payment already made" });
+        paymentStatus = "success";
       }
       const addDeliveryAddress = await BasketModel.findOneAndUpdate(
         { basketId: basket.basketId },
@@ -146,6 +217,7 @@ const getReference = async (req, res) => {
           amount,
           fullName,
           email,
+          paymentStatus,
         },
         message: "Reference fetched successfully",
       });
@@ -166,7 +238,7 @@ const getReference = async (req, res) => {
 
     await newPayment.save();
     return res.status(200).send({
-      data: { reference, amount, currency, fullName, email },
+      data: { reference, amount, currency, fullName, email, paymentStatus },
       message: "Reference fetched successfully",
     });
   } catch (error) {
@@ -234,7 +306,7 @@ const verifyPayment = async (req, res) => {
         reject(error.message);
       }
       const response = JSON.parse(body);
-      console.log("response", response);
+
       if (response.status !== true) {
         return res.status(400).send({
           error: "Payment not successful",
