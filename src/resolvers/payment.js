@@ -32,6 +32,7 @@ const getReference = async (req, res) => {
   try {
     const { basketId, deliveryAddress_id } = req.query;
     let paymentStatus = "pending";
+    let orderId = null;
     if (!deliveryAddress_id) {
       return res.status(400).send({ error: "required deliveryAddress_id" });
     }
@@ -150,6 +151,7 @@ const getReference = async (req, res) => {
           const existingOrder = await OrderModel.findOne({
             payment: updatedPayment._id,
           }).lean();
+          orderId = existingOrder.orderId 
           if (!existingOrder) {
             const order = await createOrder({
               payment: updatedPayment,
@@ -158,11 +160,13 @@ const getReference = async (req, res) => {
             if (order.error) {
               return res.status(400).send({ error: order.error });
             }
+            orderId = order.orderId
             const addPoints = await addPointAfterSales(
               updatedPayment.user,
               pointToAdd
             );
           }
+         
           return res.status(200).send({
             message: "Payment already made",
             data: {
@@ -172,6 +176,7 @@ const getReference = async (req, res) => {
               fullName,
               email,
               paymentStatus,
+              orderId,
             },
           });
         }
@@ -218,6 +223,7 @@ const getReference = async (req, res) => {
           fullName,
           email,
           paymentStatus,
+          orderId,
         },
         message: "Reference fetched successfully",
       });
@@ -238,7 +244,7 @@ const getReference = async (req, res) => {
 
     await newPayment.save();
     return res.status(200).send({
-      data: { reference, amount, currency, fullName, email, paymentStatus },
+      data: { reference, amount, currency, fullName, email, paymentStatus, orderId },
       message: "Reference fetched successfully",
     });
   } catch (error) {
