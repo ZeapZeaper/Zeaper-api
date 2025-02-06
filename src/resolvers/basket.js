@@ -189,7 +189,6 @@ const getBaskets = async (req, res) => {
     for (let i = 0; i < baskets.length; i++) {
       const basketCalc = await calculateTotalBasketPrice(baskets[i]);
 
-
       baskets[i].appliedVoucherAmount = basketCalc.appliedVoucherAmount;
       baskets[i].deliveryFee = basketCalc.deliveryFee;
       baskets[i].itemsTotal = basketCalc.itemsTotal;
@@ -403,8 +402,16 @@ const addProductToBasket = async (req, res) => {
     }
 
     const basketItems = basket.basketItems;
-    const itemIndex = basketItems.findIndex((item) => item.sku === sku);
+    const itemIndex = basketItems.findIndex((item) => {
+  
+      console.log("product._id", product._id);
+      return (
+        item.product.toString() === product._id.toString() && item.sku === sku
+      );
+    });
+
     if (itemIndex !== -1) {
+      console.log("itemIndex", itemIndex);
       basketItems[itemIndex].quantity += quantity;
       basketItems[itemIndex].bespokeColor = bespokeColor;
       basketItems[itemIndex].bodyMeasurements = bodyMeasurements;
