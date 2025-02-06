@@ -299,8 +299,12 @@ const addWeekDays = (startDate, count) =>
 // }
 
 const getBodyMeasurementEnumsFromGuide = async () => {
-  const bodyMeasurementGuide = await BodyMeasurementGuideModel.find();
-  const bodyMeasurementEums = bodyMeasurementGuide.map((guide) => {
+  const bodyMeasurementGuide = await BodyMeasurementGuideModel.find().lean();
+
+  const maleBodyMeasurementGuide = bodyMeasurementGuide.filter(
+    (guide) => guide.gender === "male"
+  );
+  const maleBodyMeasurementEums = maleBodyMeasurementGuide.map((guide) => {
     const name = guide.name;
     const fields = guide.fields.map((field) => field.field);
 
@@ -309,7 +313,49 @@ const getBodyMeasurementEnumsFromGuide = async () => {
       fields,
     };
   });
-  return bodyMeasurementEums;
+  const femaleBodyMeasurementGuide = bodyMeasurementGuide.filter(
+    (guide) => guide.gender === "female"
+  );
+  const femaleBodyMeasurementEums = femaleBodyMeasurementGuide.map((guide) => {
+    const name = guide.name;
+    const fields = guide.fields.map((field) => field.field);
+
+    return {
+      name,
+      fields,
+    };
+  });
+  const data = {
+    cloth: [
+      {
+        gender: "male",
+        value: [...maleBodyMeasurementEums]
+          .sort((a, b) => a.name.localeCompare(b.name))
+          .filter((m) => m.name !== "shoe"),
+      },
+      {
+        gender: "female",
+        value: [...femaleBodyMeasurementEums]
+          .sort((a, b) => a.name.localeCompare(b.name))
+          .filter((m) => m.name !== "shoe"),
+      },
+    ],
+    shoe: [
+      {
+        gender: "male",
+        value: [...maleBodyMeasurementEums]
+          .sort((a, b) => a.name.localeCompare(b.name))
+          .filter((m) => m.name === "shoe"),
+      },
+      {
+        gender: "female",
+        value: [...femaleBodyMeasurementEums]
+          .sort((a, b) => a.name.localeCompare(b.name))
+          .filter((m) => m.name === "shoe"),
+      },
+    ],
+  };
+  return data;
 };
 const getDaysDifference = (date) => {
   const today = new Date();

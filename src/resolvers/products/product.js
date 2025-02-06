@@ -24,7 +24,11 @@ const {
   accessorySizeEnums,
   currencyEnums,
 } = require("../../helpers/constants");
-const { checkForDuplicates, deleteLocalFile, getBodyMeasurementEnumsFromGuide } = require("../../helpers/utils");
+const {
+  checkForDuplicates,
+  deleteLocalFile,
+  getBodyMeasurementEnumsFromGuide,
+} = require("../../helpers/utils");
 const ShopModel = require("../../models/shop");
 const { v4: uuidv4 } = require("uuid");
 const sharp = require("sharp");
@@ -208,11 +212,7 @@ const addProductColorAndImages = async (req, res) => {
     }
 
     const user = await getAuthUser(req);
-    if (
-      user.shopId !== product.shopId &&
-      !user?.isAdmin &&
-      !user?.superAdmin
-    ) {
+    if (user.shopId !== product.shopId && !user?.isAdmin && !user?.superAdmin) {
       await deleLocalImages(files);
       return res
         .status(400)
@@ -326,11 +326,7 @@ const addImagesToProductColor = async (req, res) => {
       return res.status(400).send({ error: "color not found" });
     }
     const user = await getAuthUser(req);
-    if (
-      user.shopId !== product.shopId &&
-      !user?.isAdmin &&
-      !user?.superAdmin
-    ) {
+    if (user.shopId !== product.shopId && !user?.isAdmin && !user?.superAdmin) {
       await deleLocalImages(files);
       return res
         .status(400)
@@ -393,11 +389,7 @@ const deleteProductColor = async (req, res) => {
       return res.status(400).send({ error: "product not found" });
     }
     const user = await getAuthUser(req);
-    if (
-      user.shopId !== product.shopId &&
-      !user?.isAdmin &&
-      !user?.superAdmin
-    ) {
+    if (user.shopId !== product.shopId && !user?.isAdmin && !user?.superAdmin) {
       return res
         .status(400)
         .send({ error: "You are not authorized to edit this product" });
@@ -452,11 +444,7 @@ const deleteProductImage = async (req, res) => {
       return res.status(400).send({ error: "product not found" });
     }
     const user = await getAuthUser(req);
-    if (
-      user.shopId !== product.shopId &&
-      !user?.isAdmin &&
-      !user?.superAdmin
-    ) {
+    if (user.shopId !== product.shopId && !user?.isAdmin && !user?.superAdmin) {
       return res
         .status(400)
         .send({ error: "You are not authorized to edit this product" });
@@ -514,11 +502,7 @@ const setProductImageAsDefault = async (req, res) => {
       return res.status(400).send({ error: "product not found" });
     }
     const user = await getAuthUser(req);
-    if (
-      user.shopId !== product.shopId &&
-      !user?.isAdmin &&
-      !user?.superAdmin
-    ) {
+    if (user.shopId !== product.shopId && !user?.isAdmin && !user?.superAdmin) {
       return res
         .status(400)
         .send({ error: "You are not authorized to edit this product" });
@@ -600,11 +584,7 @@ const editProduct = async (req, res) => {
       return res.status(400).send({ error: "description is required" });
     }
     const user = await getAuthUser(req);
-    if (
-      user.shopId !== product.shopId &&
-      !user?.isAdmin &&
-      !user?.superAdmin
-    ) {
+    if (user.shopId !== product.shopId && !user?.isAdmin && !user?.superAdmin) {
       return res
         .status(400)
         .send({ error: "You are not authorized to edit this product" });
@@ -677,9 +657,7 @@ const deleteProducts = async (req, res) => {
     const shopIds = products.map((product) => product.shopId);
     const shopId = shopIds[0];
     if (
-      shopIds.some(
-        (id) => id !== shopId && !user?.isAdmin && !user?.superAdmin
-      )
+      shopIds.some((id) => id !== shopId && !user?.isAdmin && !user?.superAdmin)
     ) {
       return res
         .status(400)
@@ -736,9 +714,7 @@ const restoreProducts = async (req, res) => {
     const shopIds = products.map((product) => product.shopId);
     const shopId = shopIds[0];
     if (
-      shopIds.some(
-        (id) => id !== shopId && !user?.isAdmin && !user?.superAdmin
-      )
+      shopIds.some((id) => id !== shopId && !user?.isAdmin && !user?.superAdmin)
     ) {
       return res
         .status(400)
@@ -923,11 +899,7 @@ const setProductStatus = async (req, res) => {
       });
     }
     const user = await getAuthUser(req);
-    if (
-      user.shopId !== product.shopId &&
-      !user?.isAdmin &&
-      !user?.superAdmin
-    ) {
+    if (user.shopId !== product.shopId && !user?.isAdmin && !user?.superAdmin) {
       return res
         .status(400)
         .send({ error: "You are not authorized to edit this product" });
@@ -1102,7 +1074,7 @@ const getProductById = async (req, res) => {
       currency
     );
     const product = addCurrency[0];
-    console.log("product", product);
+
     return res.status(200).send({ data: product });
   } catch (err) {
     return res.status(500).send({ error: err.message });
@@ -1641,6 +1613,7 @@ const getShopDraftProducts = async (req, res) => {
 const getProductOptions = async (req, res) => {
   try {
     const bodyMeasurementEnums = await getBodyMeasurementEnumsFromGuide();
+
     const nonClothMainEnums = ["FootWear", "Accessories"];
     const readyMadeClothesParams = {
       mainEnums: mainEnums.filter((m) => !nonClothMainEnums.includes(m)).sort(),
@@ -1672,9 +1645,7 @@ const getProductOptions = async (req, res) => {
       fitEnums: fitEnums.sort(),
       brandEnums: brandEnums.sort(),
       colorEnums: colorEnums.sort((a, b) => a.name.localeCompare(b.name)),
-      bodyMeasurementEnums: bodyMeasurementEnums
-        .sort((a, b) => a.name.localeCompare(b.name))
-        .filter((m) => m.name !== "shoe"),
+      bodyMeasurementEnums: bodyMeasurementEnums?.cloth,
     };
     const readyMadeShoeParams = {
       genderEnums: genderEnums.sort(),
@@ -1706,9 +1677,7 @@ const getProductOptions = async (req, res) => {
       colorEnums: colorEnums.sort((a, b) => a.name.localeCompare(b.name)),
       heelHeightEnums: heelHightEnums.sort(),
       heelTypeEnums: heelTypeEnums.sort(),
-      bodyMeasurementEnums: bodyMeasurementEnums
-        .sort((a, b) => a.name.localeCompare(b.name))
-        .filter((m) => m.name === "shoe"),
+      bodyMeasurementEnums: bodyMeasurementEnums?.shoe,
     };
     const accessoriesParams = {
       genderEnums: genderEnums.sort(),
@@ -1753,11 +1722,7 @@ const addProductVariation = async (req, res) => {
       return res.status(400).send({ error: "product not found" });
     }
     const user = await getAuthUser(req);
-    if (
-      user.shopId !== product.shopId &&
-      !user?.isAdmin &&
-      !user?.superAdmin
-    ) {
+    if (user.shopId !== product.shopId && !user?.isAdmin && !user?.superAdmin) {
       return res
         .status(400)
         .send({ error: "You are not authorized to edit this product" });
@@ -1842,11 +1807,7 @@ const editProductVariation = async (req, res) => {
       return res.status(400).send({ error: "product not found" });
     }
     const user = await getAuthUser(req);
-    if (
-      user.shopId !== product.shopId &&
-      !user?.isAdmin &&
-      !user?.superAdmin
-    ) {
+    if (user.shopId !== product.shopId && !user?.isAdmin && !user?.superAdmin) {
       return res
         .status(400)
         .send({ error: "You are not authorized to edit this product" });
@@ -1945,11 +1906,7 @@ const deleteProductVariation = async (req, res) => {
       return res.status(400).send({ error: "product not found" });
     }
     const user = await getAuthUser(req);
-    if (
-      user.shopId !== product.shopId &&
-      !user?.isAdmin &&
-      !user?.superAdmin
-    ) {
+    if (user.shopId !== product.shopId && !user?.isAdmin && !user?.superAdmin) {
       return res
         .status(400)
         .send({ error: "You are not authorized to edit this product" });

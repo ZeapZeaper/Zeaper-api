@@ -6,6 +6,7 @@ const { v4: uuidv4 } = require("uuid");
 const sharp = require("sharp");
 const { deleteLocalFile, deleLocalImages } = require("../helpers/utils");
 const { error } = require("console");
+const BodyMeasurementGuideFieldModel = require("../models/BodyMeasurementGuideField");
 
 //saving image to firebase storage
 const addImage = async (req, filename) => {
@@ -419,6 +420,15 @@ const addBodyMeasurementGuide = async (req, res) => {
     return res.status(500).send({ error: err.message });
   }
 };
+const getBodyMeasurementGuideFields = async (req, res) => {
+  try {
+    const bodyMeasurementGuideFields =
+      await BodyMeasurementGuideFieldModel.find().lean();
+    return res.status(200).send({ data: bodyMeasurementGuideFields });
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
+};
 
 module.exports = {
   getBodyMeasurementGuide,
@@ -431,4 +441,5 @@ module.exports = {
   updateBodyMeasurementGuideName,
   addBodyMeasurementGuideField,
   addBodyMeasurementGuide,
+  getBodyMeasurementGuideFields,
 };

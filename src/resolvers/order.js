@@ -10,6 +10,13 @@ const ShopModel = require("../models/shop");
 const { currencyCoversion, addWeekDays } = require("../helpers/utils");
 const { default: mongoose } = require("mongoose");
 const { add, min } = require("lodash");
+const {
+  addNotification,
+  sendPushAllAdmins,
+  notifyShop,
+  sendPushOneDevice,
+} = require("./notification");
+const NotificationModel = require("../models/notification");
 
 function getRandomInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));
@@ -125,7 +132,14 @@ const buildProductOrders = async (order, basketItems, currency) => {
     });
 
     const savedProductOrder = await productOrder.save();
-
+    //handle shop notifications
+    if (savedProductOrder && shop) {
+      const title = "New Order";
+      const body = `You have a new order with order ID - ${orderId} and item number - ${itemNo}`;
+      const image = null;
+      const notifyShopParam = { shop_id: shop, title, body, image };
+      const notify = await notifyShop(notifyShopParam);
+    }
     productOrders.push(savedProductOrder._id);
   });
 
@@ -246,6 +260,28 @@ const createOrder = async (param) => {
     // delete basket
     await BasketModel.findOneAndDelete({ _id: basket._id });
   }
+  const title = "Order Placed";
+  const body = `Your order with order ID ${orderId} has been placed successfully`;
+  const image = null;
+  const pushAllAdmins = await sendPushAllAdmins(title, body, image);
+  const userNotification = await NotificationModel.findOne({
+    user,
+  });
+  const pushToken = userNotification.pushToken;
+  if (pushToken) {
+    const push = await sendPushOneDevice(pushToken, title, body, image);
+  }
+  const notificationParam = {
+    title,
+    body,
+    image,
+    isAdminPanel: false,
+    user_id: user,
+  };
+  const addUserNotification = await addNotification(notificationParam);
+  notificationParam.isAdminPanel = true;
+  notificationParam.user_id = null;
+  const addAdminNotification = await addNotification(notificationParam);
 
   return {
     order: updateOrder,
@@ -642,6 +678,9 @@ const updateProductOrderStatus = async (req, res) => {
       shopRevenue.status = "cancelled";
     }
 
+    if (shopRevenue.status === "cancelled") {
+      shopRevenue.status = "pending";
+    }
     const UpdatedProductOrder = await ProductOrderModel.findByIdAndUpdate(
       productOrder_id,
       {
@@ -654,9 +693,38 @@ const updateProductOrderStatus = async (req, res) => {
         deliveryTrackingLink,
         deliveryDate,
         cancel,
+        shopRevenue,
       },
       { new: true }
     );
+
+    const user = productOrder.user;
+    const title = "Order Status Update";
+    let body = `Item no ${productOrder?.itemNo} in your order with order ID - ${productOrder.orderId} has been updated to ${selectedStatus.name}`;
+    const image = productOrder.images[0].link;
+
+    const userNotification = await NotificationModel.findOne({
+      user,
+    });
+    const pushToken = userNotification.pushToken;
+    if (pushToken) {
+      const push = await sendPushOneDevice(pushToken, title, body, image);
+    }
+    const notificationParam = {
+      title,
+      body,
+      image,
+      isAdminPanel: false,
+      user_id: user,
+    };
+    const addUserNotification = await addNotification(notificationParam);
+    notificationParam.isAdminPanel = true;
+    notificationParam.user_id = null;
+    notificationParam.body = `Item no ${productOrder?.itemNo}  in order with order ID - ${productOrder.orderId} has been updated to ${selectedStatus.name}`;
+
+    const addAdminNotification = await addNotification(notificationParam);
+    const pushAllAdmins = await sendPushAllAdmins(title, body, image);
+
     return res.status(200).send({ data: UpdatedProductOrder });
   } catch (error) {
     res.status(400).send({ error: error.message });
@@ -730,6 +798,31 @@ const cancelOrder = async (req, res) => {
       { status: cancelledStatus, cancel, shopRevenue },
       { new: true }
     );
+    const user = productOrder.user;
+    const title = "Order Status Update";
+    let body = `An item in your order with order ID - ${productOrder.orderId} with item number - ${productOrder.itemNo} has been cancelled`;
+    const image = productOrder.images[0].link;
+
+    const userNotification = await NotificationModel.findOne({
+      user,
+    });
+    const pushToken = userNotification.pushToken;
+    if (pushToken) {
+      const push = await sendPushOneDevice(pushToken, title, body, image);
+    }
+    const notificationParam = {
+      title,
+      body,
+      image,
+      isAdminPanel: false,
+      user_id: user,
+    };
+    const addUserNotification = await addNotification(notificationParam);
+    notificationParam.isAdminPanel = true;
+    notificationParam.user_id = null;
+    body = `An item in order with order ID - ${productOrder.orderId} with item number - ${productOrder.itemNo} has been cancelled`;
+    const addAdminNotification = await addNotification(notificationParam);
+    const pushAllAdmins = await sendPushAllAdmins(title, body, image);
 
     return res.status(200).send({
       data: updatedStatus,

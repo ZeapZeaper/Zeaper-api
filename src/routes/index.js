@@ -651,6 +651,11 @@ let routes = (app) => {
     authMiddleware,
     bodyMeasurementGuideResolver.getFieldImagesGallery
   );
+  router.get(
+    "/bodyMeasurementGuide/bespoke/fields",
+    authMiddleware,
+    bodyMeasurementGuideResolver.getBodyMeasurementGuideFields
+  );
   router.put(
     "/bodyMeasurementGuide/bespoke/field/Image",
     authMiddleware,
@@ -735,6 +740,21 @@ let routes = (app) => {
     "/notification/test",
     authMiddleware,
     notificationResolver.testPushNotification
+  );
+  router.get(
+    "/notification/inbox",
+    authMiddleware,
+    notificationResolver.getNotifications
+  );
+  router.get(
+    "/notification/inbox/admins",
+    authMiddleware,
+    notificationResolver.getAdminsNotifications
+  );
+  router.put(
+    "/notification/inbox/delete",
+    authMiddleware,
+    notificationResolver.deleteNotification
   );
 
   return app.use("/", router);
