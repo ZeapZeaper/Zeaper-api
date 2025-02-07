@@ -1,4 +1,5 @@
 const { messaging } = require("../config/firebase");
+const NotificationModel = require("../models/notification");
 
 const sendOneDevicePushNotification = async (token, title, body, image) => {
   const message = {
@@ -21,7 +22,32 @@ const sendOneDevicePushNotification = async (token, title, body, image) => {
     })
     .catch((error) => {
       console.log("Error sending message:", error);
+      if (
+        error.code === "messaging/invalid-argument" ||
+        error.code === "messaging/registration-token-not-registered"
+      ) {
+        removeToken(token);
+      }
     });
+};
+
+const removeToken = async (token) => {
+  console.log("removeToken", token);
+  const userNotifications = await NotificationModel.findOne({
+    pushToken: token,
+  })
+    .select("pushToken")
+    .lean();
+  if (userNotifications) {
+    const pushToken = userNotifications.pushToken;
+    const modifiedToken = pushToken.filter((item) => item !== token);
+    await NotificationModel.findOneAndUpdate(
+      { pushToken: token },
+      { $set: { pushToken: modifiedToken } },
+      { new: true }
+    );
+  }
+  return { success: true };
 };
 
 const sendMultipleDevicePushNotification = async (
@@ -54,6 +80,11 @@ const sendMultipleDevicePushNotification = async (
           }
         });
         console.log("List of tokens that caused failures: " + failedTokens);
+        if (failedTokens.length > 0) {
+          failedTokens.forEach(async (token) => {
+            await removeToken(token);
+          });
+        }
       }
       return response;
     })

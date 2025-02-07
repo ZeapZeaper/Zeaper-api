@@ -336,6 +336,7 @@ const notifyShop = async (param) => {
   }
 };
 
+
 module.exports = {
   registerPushToken,
   testPushNotification,
