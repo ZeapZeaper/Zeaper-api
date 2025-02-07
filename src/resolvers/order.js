@@ -15,6 +15,7 @@ const {
   sendPushAllAdmins,
   notifyShop,
   sendPushOneDevice,
+  sendPushMultipleDevice,
 } = require("./notification");
 const NotificationModel = require("../models/notification");
 
@@ -268,8 +269,8 @@ const createOrder = async (param) => {
     user,
   });
   const pushToken = userNotification.pushToken;
-  if (pushToken) {
-    const push = await sendPushOneDevice(pushToken, title, body, image);
+  if (pushToken?.length > 0) {
+    const push = await sendPushMultipleDevice(pushToken, title, body, image);
   }
   const notificationParam = {
     title,
@@ -708,7 +709,7 @@ const updateProductOrderStatus = async (req, res) => {
     });
     const pushToken = userNotification.pushToken;
     if (pushToken) {
-      const push = await sendPushOneDevice(pushToken, title, body, image);
+      const push = await sendPushMultipleDevice(pushToken, title, body, image);
     }
     const notificationParam = {
       title,
@@ -718,9 +719,22 @@ const updateProductOrderStatus = async (req, res) => {
       user_id: user,
     };
     const addUserNotification = await addNotification(notificationParam);
+    // for shop
+    const shop_id = productOrder.shop;
+    if (shop_id) {
+      if (selectedStatus.value === "order confirmed") {
+        const expectedVendorCompletionDate =
+          UpdatedProductOrder.expectedVendorCompletionDate;
+        body = `You have successfully confirmed an order with order ID - ${productOrder.orderId} and item number - ${productOrder.itemNo}. This order is expected to be completed between ${expectedVendorCompletionDate.min} and ${expectedVendorCompletionDate.max}`;
+      }
+
+      const notifyShopParam = { shop_id, title, body, image };
+      const notify = await notifyShop(notifyShopParam);
+    }
     notificationParam.isAdminPanel = true;
     notificationParam.user_id = null;
     notificationParam.body = `Item no ${productOrder?.itemNo}  in order with order ID - ${productOrder.orderId} has been updated to ${selectedStatus.name}`;
+    body = `Item no ${productOrder?.itemNo}  in order with order ID - ${productOrder.orderId} has been updated to ${selectedStatus.name}`;
 
     const addAdminNotification = await addNotification(notificationParam);
     const pushAllAdmins = await sendPushAllAdmins(title, body, image);
@@ -808,7 +822,7 @@ const cancelOrder = async (req, res) => {
     });
     const pushToken = userNotification.pushToken;
     if (pushToken) {
-      const push = await sendPushOneDevice(pushToken, title, body, image);
+      const push = await sendPushMultipleDevice(pushToken, title, body, image);
     }
     const notificationParam = {
       title,

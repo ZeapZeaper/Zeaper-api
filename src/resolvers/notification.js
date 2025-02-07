@@ -32,16 +32,20 @@ const registerPushToken = async (req, res) => {
     // check if existing token. if yes, updste, if no, create
     const user = authUser._id;
     const pushTokenDate = new Date();
-    const existingToken = await NotificationModel.findOne({ user });
-    if (existingToken) {
-      existingToken.pushToken = pushToken;
-      existingToken.pushTokenDate = pushTokenDate;
-      await existingToken.save();
-      return res.status(200).send({ data: existingToken });
+    const userToken = await NotificationModel.findOne({ user });
+    if (userToken) {
+      const existed = userToken.pushToken.find((token) => token === pushToken);
+      if (existed) {
+        return res.status(200).send({ data: userToken });
+      }
+      userToken.pushToken.push(pushToken);
+      userToken.pushTokenDate = pushTokenDate;
+      await userToken.save();
+      return res.status(200).send({ data: userTokenToken });
     }
     const notification = new NotificationModel({
       user,
-      pushToken,
+      pushToken: [pushToken],
       pushTokenDate,
     });
     await notification.save();
@@ -131,15 +135,15 @@ const sendPushAllAdmins = async (title, body, image) => {
       $or: [{ isAdmin: true, superAdmin: true }],
     }).lean();
 
-    const pushTokens = [];
     const adminsIds = adminsAndSuperAdmins.map((admin) => admin._id);
     const userNotifications = await NotificationModel.find({
       user: { $in: adminsIds },
     }).lean();
-    userNotifications.forEach((notification) => {
-      pushTokens.push(notification.pushToken);
-    });
 
+    const pushTokens = userNotifications
+      .map((notification) => notification.pushToken)
+      .flat();
+    console.log("pushTokens", pushTokens);
     const sendPush = await sendMultipleDevicePushNotification(
       pushTokens,
       title,
@@ -241,7 +245,7 @@ const deleteNotification = async (req, res) => {
       ...(isAdminPanel && { isAdminPanel }),
       ...(!isAdminPanel && { user: authUser._id }),
     };
-   
+
     if (isAdminPanel && !authUser.isAdmin && !authUser.superAdmin) {
       return res.status(400).send({ error: "Unauthorized" });
     }
@@ -319,7 +323,7 @@ const notifyShop = async (param) => {
     });
     const pushToken = userNotification.pushToken;
     if (pushToken) {
-      const push = await sendPushOneDevice(pushToken, title, body, image);
+      const push = await sendPushMultipleDevice(pushToken, title, body, image);
     }
     const param = { title, body, image, isAdminPanel: false, user_id: user };
     const addUserNotification = await addNotification(param);

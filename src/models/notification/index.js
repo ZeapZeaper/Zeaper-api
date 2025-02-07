@@ -1,8 +1,9 @@
+const { uniq } = require("lodash");
 const mongoose = require("mongoose");
 const timestamp = require("mongoose-timestamp");
 
 const NotificationSchema = new mongoose.Schema({
-  pushToken: { type: String, required: false },
+  pushToken: [{ type: String, required: false, unique: true }],
   pushTokenDate: { type: Date, required: false },
   user: {
     type: mongoose.Schema.Types.ObjectId,
@@ -14,7 +15,7 @@ const NotificationSchema = new mongoose.Schema({
     {
       title: { type: String, required: true },
       body: { type: String, required: true },
-      image : { type: String, required: false },
+      image: { type: String, required: false },
       createdAt: { type: Date, required: true, default: Date.now },
     },
   ],
