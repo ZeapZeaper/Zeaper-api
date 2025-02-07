@@ -19,7 +19,7 @@ const verifyFCMToken = async (fcmToken) => {
 
 const registerPushToken = async (req, res) => {
   try {
-    console.log("registerPushToken");
+   
     const { pushToken } = req.body;
     if (!pushToken) {
       return res.status(400).send({ error: "required pushToken" });
@@ -35,9 +35,8 @@ const registerPushToken = async (req, res) => {
     const pushTokenDate = new Date();
     const userToken = await NotificationModel.findOne({ user });
     if (userToken) {
-      console.log("userToken", userToken);
       const existed = userToken.pushToken.find((token) => token === pushToken);
-      console.log("existed", existed);
+
       if (existed) {
         return res.status(200).send({ data: userToken });
       }

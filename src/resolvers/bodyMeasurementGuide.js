@@ -120,7 +120,7 @@ const getFieldImagesGallery = async (req, res) => {
 
 const updateFieldImage = async (req, res) => {
   try {
-    const { fieldId, existingLink } = req.body;
+    const { fieldId, existingLink, gender } = req.body;
 
     if (!req.file && !existingLink) {
       return res.status(400).send({ error: "no file uploaded" });
@@ -130,10 +130,18 @@ const updateFieldImage = async (req, res) => {
       await deleLocalImages([req.file]);
       return res.status(400).send({ error: "Only one image is required" });
     }
+    if (!gender) {
+      if (req.file) {
+        await deleLocalImages([req.file]);
+      }
+      return res.status(400).send({ error: "gender is required" });
+    }
 
     const bodyMeasurementGuide = await BodyMeasurementGuideModel.findOne({
       "fields._id": fieldId,
+      gender,
     });
+
     if (!bodyMeasurementGuide) {
       return res.status(404).send({ error: "Field not found" });
     }
@@ -148,7 +156,6 @@ const updateFieldImage = async (req, res) => {
       const imageUrlName = exist.fields.find(
         (field) => field.imageUrl.link === existingLink
       ).imageUrl.name;
-      console.log("imageUrlName", imageUrlName);
 
       const fieldIndex = bodyMeasurementGuide.fields.findIndex(
         (field) => field._id.toString() === fieldId
@@ -205,7 +212,7 @@ const updateFieldImage = async (req, res) => {
 };
 const editBodyMeasurementField = async (req, res) => {
   try {
-    const { fieldId, field, description } = req.body;
+    const { fieldId, field, description, gender } = req.body;
     if (!fieldId) {
       return res.status(400).send({ error: "required fieldId" });
     }
@@ -215,9 +222,13 @@ const editBodyMeasurementField = async (req, res) => {
     if (!description) {
       return res.status(400).send({ error: "required description" });
     }
+    if (!gender) {
+      return res.status(400).send({ error: "required gender" });
+    }
 
     const bodyMeasurementGuide = await BodyMeasurementGuideModel.findOne({
       "fields._id": fieldId,
+      gender,
     });
     if (!bodyMeasurementGuide) {
       return res.status(404).send({ error: "Field not found" });
@@ -236,12 +247,16 @@ const editBodyMeasurementField = async (req, res) => {
 };
 const deleteBodyMeasurementField = async (req, res) => {
   try {
-    const { fieldId } = req.body;
+    const { fieldId, gender } = req.body;
     if (!fieldId) {
       return res.status(400).send({ error: "required fieldId" });
     }
+    if (!gender) {
+      return res.status(400).send({ error: "required gender" });
+    }
     const bodyMeasurementGuide = await BodyMeasurementGuideModel.findOne({
       "fields._id": fieldId,
+      gender,
     });
     if (!bodyMeasurementGuide) {
       return res.status(404).send({ error: "Field not found" });
@@ -269,9 +284,13 @@ const deleteBodyMeasurementField = async (req, res) => {
 
 const deleteBodyMeasurementFieldImage = async (req, res) => {
   try {
-    const { fieldId } = req.body;
+    const { fieldId, gender } = req.body;
+    if (!gender) {
+      return res.status(400).send({ error: "required gender" });
+    }
     const bodyMeasurementGuide = await BodyMeasurementGuideModel.findOne({
       "fields._id": fieldId,
+      gender,
     });
     if (!bodyMeasurementGuide) {
       return res.status(404).send({ error: "Field not found" });
