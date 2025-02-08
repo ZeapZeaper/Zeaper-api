@@ -246,17 +246,25 @@ const createUser = async (req, res) => {
       data.shop = shop;
       data.user = newUser;
     }
-    const welcomeEmailTemplate = await EmailTemplateModel.findOne({
-      name: "welcome",
+    const welcomeUserEmailTemplate = await EmailTemplateModel.findOne({
+      name: "welcome-user",
     }).lean();
 
     const param = {
       from: "admin@zeaper.com",
       to: [email],
-      subject: welcomeEmailTemplate?.subject || "Welcome",
-      body: welcomeEmailTemplate?.body || "Welcome to Zeap",
+      subject: welcomeUserEmailTemplate?.subject || "Welcome",
+      body: welcomeUserEmailTemplate?.body || "Welcome to Zeap",
     };
-    const mail = await sendEmail(param);
+    const userMail = await sendEmail(param);
+    if (isVendor && shopId) {
+      const welcomeShopEmailTemplate = await EmailTemplateModel.findOne({
+        name: "welcome-shop",
+      }).lean();
+      param.body = welcomeShopEmailTemplate?.body || "Welcome to Zeap";
+      param.subject = welcomeShopEmailTemplate?.subject || "Welcome";
+      const shopMail = await sendEmail(param);
+    }
     return res.status(200).send({
       data,
       message:
@@ -337,7 +345,7 @@ const createUserWithGoogleOrApple = async (req, res) => {
 
     const newPoint = await point.save();
     const welcomeEmailTemplate = await EmailTemplateModel.findOne({
-      name: "welcome",
+      name: "welcome-user",
     }).lean();
 
     const param = {
