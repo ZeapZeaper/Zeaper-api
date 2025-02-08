@@ -25,7 +25,7 @@ const generateReference = (param) => {
   const { firstName, lastName, basketId } = param;
   const firstChar = firstName.charAt(0).toUpperCase();
   const lastChar = lastName.charAt(0).toUpperCase();
-  const ref = `${firstChar}${lastChar}/${basketId}`;
+  const ref = `${firstChar}${lastChar}-${basketId}`;
   return ref;
 };
 
