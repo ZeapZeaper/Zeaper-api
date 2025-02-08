@@ -68,6 +68,7 @@ const {
   addVariationToBespokeShoe,
   validateBespokeShoes,
 } = require("./bespokeShoes");
+const { notifyShop } = require(".././notification");
 
 //saving image to firebase storage
 const addImage = async (destination, filename) => {
@@ -866,6 +867,7 @@ const createProduct = async (req, res) => {
 const setProductStatus = async (req, res) => {
   try {
     const { productId, status, rejectionReasons } = req.body;
+
     if (!productId) {
       return res.status(400).send({ error: "productId is required" });
     }
@@ -898,6 +900,7 @@ const setProductStatus = async (req, res) => {
         error: "You can only set product status to live if it is under review",
       });
     }
+
     const user = await getAuthUser(req);
     if (user.shopId !== product.shopId && !user?.isAdmin && !user?.superAdmin) {
       return res
@@ -910,16 +913,18 @@ const setProductStatus = async (req, res) => {
     ) {
       return res.status(400).send({ error: "rejectionReason(s) is required" });
     }
+
     const productType = product.productType;
     if (status === "under review" && productType === "readyMadeCloth") {
       const verify = await validateReadyMadeClothes(product);
-      if (verify) {
+
+      if (verify.error) {
         return res.status(400).send({ error: verify.error });
       }
     }
     if (status === "under review" && productType === "readyMadeShoe") {
       const verify = await validateReadyMadeShoes(product);
-      if (verify) {
+      if (verify.error) {
         return res.status(400).send({ error: verify.error });
       }
     }
@@ -950,7 +955,16 @@ const setProductStatus = async (req, res) => {
       },
       { new: true }
     ).exec();
+    const title = "Product Status Update";
+    const body = `Your product with productId ${productId} has been set to ${status}`;
+    const image = updatedProduct?.colors[0]?.images[0]?.link;
+    const shop_id = updatedProduct?.shop.toString();
 
+    if (shop_id) {
+      const notifyShopParam = { shop_id, title, body, image };
+
+      const notify = await notifyShop(notifyShopParam);
+    }
     return res.status(200).send({
       data: updatedProduct,
       message: "product status updated successfully",

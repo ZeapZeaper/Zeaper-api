@@ -9,7 +9,6 @@ const ProductModel = require("../models/products");
 const ShopModel = require("../models/shop");
 const { currencyCoversion, addWeekDays } = require("../helpers/utils");
 const { default: mongoose } = require("mongoose");
-const { add, min } = require("lodash");
 const {
   addNotification,
   sendPushAllAdmins,
@@ -138,7 +137,7 @@ const buildProductOrders = async (order, basketItems, currency) => {
       const title = "New Order";
       const body = `You have a new order with order ID - ${orderId} and item number - ${itemNo}`;
       const image = null;
-      const notifyShopParam = { shop_id: shop, title, body, image };
+      const notifyShopParam = { shop_id: shop.toString(), title, body, image };
       const notify = await notifyShop(notifyShopParam);
     }
     productOrders.push(savedProductOrder._id);
@@ -720,7 +719,7 @@ const updateProductOrderStatus = async (req, res) => {
     };
     const addUserNotification = await addNotification(notificationParam);
     // for shop
-    const shop_id = productOrder.shop;
+    const shop_id = productOrder.shop.toString();
     if (shop_id) {
       if (selectedStatus.value === "order confirmed") {
         const expectedVendorCompletionDate =
@@ -837,7 +836,11 @@ const cancelOrder = async (req, res) => {
     body = `An item in order with order ID - ${productOrder.orderId} with item number - ${productOrder.itemNo} has been cancelled`;
     const addAdminNotification = await addNotification(notificationParam);
     const pushAllAdmins = await sendPushAllAdmins(title, body, image);
-
+    const shop_id = productOrder.shop.toString();
+    if (shop_id) {
+      const notifyShopParam = { shop_id, title, body, image };
+      const notify = await notifyShop(notifyShopParam);
+    }
     return res.status(200).send({
       data: updatedStatus,
       message: "Order Item Cancelled successfully",

@@ -13,6 +13,7 @@ const { createOrder } = require("./order");
 const OrderModel = require("../models/order");
 const { addPointAfterSales } = require("./point");
 const ProductOrderModel = require("../models/productOrder");
+const { notifyShop } = require("./notification");
 
 const secretKey =
   ENV === "dev"
@@ -151,7 +152,7 @@ const getReference = async (req, res) => {
           const existingOrder = await OrderModel.findOne({
             payment: updatedPayment._id,
           }).lean();
-          orderId = existingOrder.orderId 
+          orderId = existingOrder.orderId;
           if (!existingOrder) {
             const order = await createOrder({
               payment: updatedPayment,
@@ -160,13 +161,13 @@ const getReference = async (req, res) => {
             if (order.error) {
               return res.status(400).send({ error: order.error });
             }
-            orderId = order.orderId
+            orderId = order.orderId;
             const addPoints = await addPointAfterSales(
               updatedPayment.user,
               pointToAdd
             );
           }
-         
+
           return res.status(200).send({
             message: "Payment already made",
             data: {
@@ -244,7 +245,15 @@ const getReference = async (req, res) => {
 
     await newPayment.save();
     return res.status(200).send({
-      data: { reference, amount, currency, fullName, email, paymentStatus, orderId },
+      data: {
+        reference,
+        amount,
+        currency,
+        fullName,
+        email,
+        paymentStatus,
+        orderId,
+      },
       message: "Reference fetched successfully",
     });
   } catch (error) {
@@ -540,6 +549,15 @@ const payShop = async (req, res) => {
     );
     if (!updatedProductOrder) {
       return res.status(400).send({ error: "unable to update shop revenue" });
+    }
+    const shop_id = productOrder.shop.toString();
+    if (shop_id) {
+      const title = "Payment Received for Order";
+      const itemNo = productOrder.itemNo;
+      const body = `Payment received for item no ${itemNo} in the order - ${productOrder.orderId}`;
+      const image = productOrder.images[0].link;
+      const notifyShopParam = { shop_id, title, body, image };
+      const notify = await notifyShop(notifyShopParam);
     }
     return res.status(200).send({
       data: updatedProductOrder,

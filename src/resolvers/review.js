@@ -2,6 +2,7 @@ const { getAuthUser } = require("../middleware/firebaseUserAuth");
 const ProductModel = require("../models/products");
 const ReviewModel = require("../models/review");
 const ShopModel = require("../models/shop");
+const { notifyShop } = require("./notification");
 
 const createReview = async (req, res) => {
   try {
@@ -55,6 +56,14 @@ const createReview = async (req, res) => {
     };
     const reviewInstance = new ReviewModel(reviewData);
     await reviewInstance.save();
+    const shop_id = shop._id.toString();
+    if (shop_id) {
+      const title = "New Review";
+      const body = `A new review has been added to your product - ${product.title}`;
+      const image = product?.colors[0]?.images[0]?.link;
+      const notifyShopParam = { shop_id, title, body, image };
+      const notify = await notifyShop(notifyShopParam);
+    }
     res
       .status(201)
       .send({ data: reviewInstance, message: "Review created successfully" });
@@ -114,15 +123,8 @@ const getReview = async (req, res) => {
 
 const updateReview = async (req, res) => {
   try {
-    const {
-      _id,
-      productId,
-      rating,
-      title,
-      review,
-      displayName,
-      imageMatch,
-    } = req.body;
+    const { _id, productId, rating, title, review, displayName, imageMatch } =
+      req.body;
     if (!_id) {
       return res.status(400).send({ error: "_id is required" });
     }

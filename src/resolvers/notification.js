@@ -19,7 +19,6 @@ const verifyFCMToken = async (fcmToken) => {
 
 const registerPushToken = async (req, res) => {
   try {
-   
     const { pushToken } = req.body;
     if (!pushToken) {
       return res.status(400).send({ error: "required pushToken" });
@@ -315,6 +314,7 @@ const addNotification = async (param) => {
 };
 const notifyShop = async (param) => {
   try {
+    
     const { shop_id, title, body, image } = param;
     const shop = await ShopModel.findById(shop_id).lean().select("user");
     const user = shop.user;
@@ -325,11 +325,11 @@ const notifyShop = async (param) => {
       user,
     });
     const pushToken = userNotification.pushToken;
-    if (pushToken) {
+    if (pushToken.length > 0) {
       const push = await sendPushMultipleDevice(pushToken, title, body, image);
     }
-    const param = { title, body, image, isAdminPanel: false, user_id: user };
-    const addUserNotification = await addNotification(param);
+    const notificationParam = { title, body, image, isAdminPanel: false, user_id: user };
+    const addUserNotification = await addNotification(notificationParam);
     return {
       data: { push, notificationBox: addUserNotification },
       message: "User notified",
