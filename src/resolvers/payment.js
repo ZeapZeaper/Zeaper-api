@@ -108,6 +108,7 @@ const getReference = async (req, res) => {
       lastName: user.lastName,
       basketId: basket.basketId,
     });
+
     verifyPaystack(reference, async (error, body) => {
       const response = JSON.parse(body);
       if (response.status === true) {
@@ -183,6 +184,7 @@ const getReference = async (req, res) => {
         }
       }
     });
+
     if (payment) {
       if (payment.status === "success") {
         paymentStatus = "success";
@@ -200,7 +202,6 @@ const getReference = async (req, res) => {
       const updatePayment = await PaymentModel.findOneAndUpdate(
         { basketId },
         {
-          reference,
           currency,
           amount,
           fullName,
@@ -272,7 +273,6 @@ const verifyPaystack = (ref, mycallback) => {
     },
   };
   const callback = (error, response, body) => {
-    console.log("error", error);
     return mycallback(error, body);
   };
   request(options, callback);
