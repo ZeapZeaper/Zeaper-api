@@ -32,6 +32,7 @@ const bodyMeasurementGuideResolver = require("../resolvers/bodyMeasurementGuide"
 const deliveryFeeResolver = require("../resolvers/deliveryFee");
 const exchangeRateResolver = require("../resolvers/exchangeRate");
 const notificationResolver = require("../resolvers/notification");
+const emailTemplateResolver = require("../resolvers/emailTemplate");
 
 const handleMoreFieldsUploads = uploadMultiple.fields([
   { name: "documents", maxCount: 5 },
@@ -756,6 +757,29 @@ let routes = (app) => {
     authMiddleware,
     notificationResolver.deleteNotification
   );
+
+
+  // Email Template routes
+  router.post(
+    "/emailTemplate/add",
+    authMiddleware,
+    emailTemplateResolver.addEmailTemplate
+  );
+
+  router.get(
+    "/emailTemplates",
+    authMiddleware,
+    emailTemplateResolver.getEmailTemplates
+  );
+
+  router.get(
+    "/emailTemplate",
+    authMiddleware,
+    emailTemplateResolver.getEmailTemplate
+  );
+
+
+
 
   return app.use("/", router);
 };

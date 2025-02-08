@@ -16,6 +16,8 @@ const { generateUniqueShopId } = require("./shop");
 const { getAuthUser } = require("../middleware/firebaseUserAuth");
 const { sendOTP, verifyOTP } = require("../helpers/sms");
 const PointModel = require("../models/points");
+const { sendEmail } = require("../helpers/emailer");
+const EmailTemplateModel = require("../models/emailTemplate");
 
 //saving image to firebase storage
 const addImage = async (req, filename) => {
@@ -121,7 +123,6 @@ const addShop = async (user) => {
 };
 
 const createUser = async (req, res) => {
-
   const { email, password, isVendor } = req.body;
   let firebaseUser = {};
   let newUser;
@@ -144,7 +145,6 @@ const createUser = async (req, res) => {
           .send({ error: "social must be a valid JSON string" });
       }
     }
-   
 
     if (email && !validator.validate(email)) {
       return res.status(400).send({ error: "email is invalid" });
@@ -158,7 +158,7 @@ const createUser = async (req, res) => {
         });
       }
     }
-  
+
     //const authUser = await getAuthUser(req);
     // if (authUser) {
 
@@ -191,7 +191,6 @@ const createUser = async (req, res) => {
 
     let social = {};
     if (Object.keys(req.body.social).length > 0) {
-
       social = JSON.parse(req.body.social);
     }
 
@@ -247,7 +246,17 @@ const createUser = async (req, res) => {
       data.shop = shop;
       data.user = newUser;
     }
+    const welcomeEmailTemplate = await EmailTemplateModel.findOne({
+      name: "welcome",
+    }).lean();
 
+    const param = {
+      from: "admin@zeaper.com",
+      to: [email],
+      subject: welcomeEmailTemplate?.subject || "Welcome",
+      body: welcomeEmailTemplate?.body || "Welcome to Zeap",
+    };
+    const mail = await sendEmail(param);
     return res.status(200).send({
       data,
       message:
@@ -327,7 +336,17 @@ const createUserWithGoogleOrApple = async (req, res) => {
     });
 
     const newPoint = await point.save();
+    const welcomeEmailTemplate = await EmailTemplateModel.findOne({
+      name: "welcome",
+    }).lean();
 
+    const param = {
+      from: "admin@zeaper.com",
+      to: [email],
+      subject: welcomeEmailTemplate?.subject || "Welcome",
+      body: welcomeEmailTemplate?.body || "Welcome to Zeap",
+    };
+    const mail = await sendEmail(param);
     return res
       .status(200)
       .send({ data: newUser, message: "User created successfully" });
