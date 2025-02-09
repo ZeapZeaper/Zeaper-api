@@ -26,7 +26,8 @@ const PaymentSchema = new mongoose.Schema({
   deliveryFee: { type: Number, required: true },
   currency: { type: String, required: true },
   reference: { type: String, required: true, unique: true },
-
+  appliedVoucherAmount: { type: Number, required: true },
+  total: { type: Number, required: true },
   paidAt: { type: String, required: false },
   channel: { type: String, required: false },
   transactionDate: { type: String, required: false },

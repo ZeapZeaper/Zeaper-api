@@ -25,7 +25,8 @@ const generateReference = (param) => {
   const { firstName, lastName, basketId } = param;
   const firstChar = firstName.charAt(0).toUpperCase();
   const lastChar = lastName.charAt(0).toUpperCase();
-  const ref = `${firstChar}${lastChar}-${basketId}`;
+  const today = new Date();
+  const ref = `${firstChar}${lastChar}-${basketId}-${today.getTime()}`;
   return ref;
 };
 
@@ -90,16 +91,101 @@ const getReference = async (req, res) => {
     const payment = await PaymentModel.findOne({
       basket: basket._id.toString(),
     }).lean();
+    if (payment) {
+      verifyPaystack(payment?.reference, async (error, body) => {
+        const response = JSON.parse(body);
+        if (response.status === true) {
+          const {
+            amount,
+            status,
+            paidAt,
+            channel,
+            currency,
+            transaction_date,
+            log,
+            fees,
+            gateway_response,
+            authorization,
+          } = response.data;
+          const { card_type, bank, country_code } = authorization;
+
+          if (status === "success") {
+            paymentStatus = "success";
+            const updatedPayment = await PaymentModel.findOneAndUpdate(
+              { reference },
+              {
+                amount,
+                status,
+                paidAt,
+                channel,
+                currency,
+                transactionDate: transaction_date,
+                log,
+                fees,
+                cardType: card_type,
+                bank,
+                countryCode: country_code,
+                gatewayResponse: gateway_response,
+              },
+              { new: true }
+            );
+
+            // 1000 naira = 10 points
+            // round down to the nearest 1000
+            const pointToAdd = Math.floor(amount / 1000) * 10;
+            const existingOrder = await OrderModel.findOne({
+              payment: updatedPayment._id,
+            }).lean();
+            orderId = existingOrder.orderId;
+            if (!existingOrder) {
+              const order = await createOrder({
+                payment: updatedPayment,
+                user: updatedPayment.user,
+              });
+              if (order.error) {
+                return res.status(400).send({ error: order.error });
+              }
+              orderId = order.orderId;
+              const addPoints = await addPointAfterSales(
+                updatedPayment.user,
+                pointToAdd
+              );
+            }
+
+            return res.status(200).send({
+              message: "Payment already made",
+              data: {
+                reference,
+                amount,
+                currency,
+                fullName,
+                email,
+                paymentStatus,
+                orderId,
+              },
+            });
+          }
+        }
+      });
+    }
     const calculateTotal = await calculateTotalBasketPrice(basket);
 
     // convert amount to kobo or cent
     const amountDue = calculateTotal.total * 100;
     const itemsTotalDue = calculateTotal.itemsTotal * 100;
     const deliveryFeeDue = calculateTotal.deliveryFee * 100;
+    const appliedVoucherAmountDue = calculateTotal.appliedVoucherAmount * 100;
+    const totalDue = calculateTotal.total * 100;
+    console.log("calculateTotal", calculateTotal);
 
     const amount = await currencyCoversion(amountDue, currency);
     const itemsTotal = await currencyCoversion(itemsTotalDue, currency);
     const deliveryFee = await currencyCoversion(deliveryFeeDue, currency);
+    const appliedVoucherAmount = await currencyCoversion(
+      appliedVoucherAmountDue,
+      currency
+    );
+    const total = await currencyCoversion(totalDue, currency);
 
     const fullName = user.firstName + " " + user.lastName;
     const email = user.email;
@@ -107,82 +193,6 @@ const getReference = async (req, res) => {
       firstName: user.firstName,
       lastName: user.lastName,
       basketId: basket.basketId,
-    });
-
-    verifyPaystack(reference, async (error, body) => {
-      const response = JSON.parse(body);
-      if (response.status === true) {
-        const {
-          amount,
-          status,
-          paidAt,
-          channel,
-          currency,
-          transaction_date,
-          log,
-          fees,
-          gateway_response,
-          authorization,
-        } = response.data;
-        const { card_type, bank, country_code } = authorization;
-
-        if (status === "success") {
-          paymentStatus = "success";
-          const updatedPayment = await PaymentModel.findOneAndUpdate(
-            { reference },
-            {
-              amount,
-              status,
-              paidAt,
-              channel,
-              currency,
-              transactionDate: transaction_date,
-              log,
-              fees,
-              cardType: card_type,
-              bank,
-              countryCode: country_code,
-              gatewayResponse: gateway_response,
-            },
-            { new: true }
-          );
-
-          // 1000 naira = 10 points
-          // round down to the nearest 1000
-          const pointToAdd = Math.floor(amount / 1000) * 10;
-          const existingOrder = await OrderModel.findOne({
-            payment: updatedPayment._id,
-          }).lean();
-          orderId = existingOrder.orderId;
-          if (!existingOrder) {
-            const order = await createOrder({
-              payment: updatedPayment,
-              user: updatedPayment.user,
-            });
-            if (order.error) {
-              return res.status(400).send({ error: order.error });
-            }
-            orderId = order.orderId;
-            const addPoints = await addPointAfterSales(
-              updatedPayment.user,
-              pointToAdd
-            );
-          }
-
-          return res.status(200).send({
-            message: "Payment already made",
-            data: {
-              reference,
-              amount,
-              currency,
-              fullName,
-              email,
-              paymentStatus,
-              orderId,
-            },
-          });
-        }
-      }
     });
 
     if (payment) {
@@ -208,6 +218,8 @@ const getReference = async (req, res) => {
           email,
           itemsTotal,
           deliveryFee,
+          total,
+          appliedVoucherAmount,
         },
         { new: true }
       );
@@ -242,6 +254,8 @@ const getReference = async (req, res) => {
       currency,
       itemsTotal,
       deliveryFee,
+      total,
+      appliedVoucherAmount,
     });
 
     await newPayment.save();
