@@ -200,7 +200,7 @@ const getReference = async (req, res) => {
           .send({ error: "Delivery Address not added to basket" });
       }
       const updatePayment = await PaymentModel.findOneAndUpdate(
-        { basketId },
+        { basket: basket._id.toString() },
         {
           currency,
           amount,
