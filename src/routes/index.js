@@ -525,12 +525,7 @@ let routes = (app) => {
     authUserAdminMiddleware,
     orderResolver.getOrders
   );
-  router.get(
-    "/order",
-    authMiddleware,
-    authUserAdminMiddleware,
-    orderResolver.getOrder
-  );
+  router.get("/order", orderResolver.getOrder);
   router.get(
     "/orders/authUser/buyer/order",
     authMiddleware,
@@ -707,7 +702,6 @@ let routes = (app) => {
     bodyMeasurementGuideResolver.addBodyMeasurementGuide
   );
 
-
   // Delivery Fee routes
   router.get(
     "/deliveryFee",
@@ -758,7 +752,6 @@ let routes = (app) => {
     notificationResolver.deleteNotification
   );
 
-
   // Email Template routes
   router.post(
     "/emailTemplate/add",
@@ -777,9 +770,6 @@ let routes = (app) => {
     authMiddleware,
     emailTemplateResolver.getEmailTemplate
   );
-
-
-
 
   return app.use("/", router);
 };
