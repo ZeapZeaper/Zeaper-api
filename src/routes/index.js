@@ -569,6 +569,11 @@ let routes = (app) => {
     orderResolver.updateProductOrderStatus
   );
   router.put("/order/cancel", authMiddleware, orderResolver.cancelOrder);
+  router.post(
+    "/order/reciept/download",
+    authMiddleware,
+    orderResolver.downloadReciept
+  );
 
   // point routes
 

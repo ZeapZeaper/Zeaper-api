@@ -25,6 +25,7 @@ const generatePdf = async (param) => {
     await page.goto(website_url, { waitUntil: "networkidle0" });
   } else if (type === "file") {
     //Get HTML content from HTML file
+   
     const html = fs.readFileSync(
       path.join(root + "/templates/index.html"),
       "utf-8"
@@ -39,6 +40,7 @@ const generatePdf = async (param) => {
   // To reflect CSS used for screens instead of print
   await page.emulateMediaType("screen");
 
+
   // Downlaod the PDF
   const pdf = await page.pdf({
     // if you want to save the pdf in a file then use path
@@ -49,6 +51,7 @@ const generatePdf = async (param) => {
     printBackground: true,
     format: "A4",
   });
+ 
 
   // Close the browser instance
   await browser.close();

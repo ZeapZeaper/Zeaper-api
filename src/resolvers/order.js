@@ -17,6 +17,8 @@ const {
   sendPushMultipleDevice,
 } = require("./notification");
 const NotificationModel = require("../models/notification");
+const generatePdf = require("../helpers/pdf");
+const { ENV } = require("../config");
 
 function getRandomInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));
@@ -849,6 +851,78 @@ const cancelOrder = async (req, res) => {
     res.status(400).send({ error: error.message });
   }
 };
+const downloadReciept = async (req, res) => {
+  try {
+    const url =
+      ENV === "prod"
+        ? process.env.DOC_DOWNLOAD_URL_PROD
+        : process.env.DOC_DOWNLOAD_URL_DEV;
+    const { order_id, fileName, socketId } = req.body;
+
+    if (!order_id) {
+      return res.status(400).send({ error: "order_id is required" });
+    }
+
+    if (!socketId) {
+      return res.status(400).send({ error: "Socket id is required" });
+    }
+
+    const io = req.app.get("io");
+    const sockets = req.app.get("sockets");
+
+    const thisSocketId = sockets[socketId];
+    console.log("thisSocketId", thisSocketId);
+    const socketInstance = io.to(thisSocketId);
+
+    socketInstance.emit("downloadProgress", {
+      progress: 0,
+      status: "Getting ready...",
+    });
+
+    socketInstance.emit("downloadProgress", {
+      progress: 10,
+      status: "Getting receipt...",
+    });
+    const order = await OrderModel.findOne({ _id: order_id.toString() });
+    if (!order) {
+      return res.status(400).send({
+        error:
+          "Encountered an error while verifying receipt to be attached. Please try again later or contact support if this continues",
+      });
+    }
+
+    let pdf;
+
+    socketInstance.emit("downloadProgress", {
+      progress: 20,
+      status: "Generating PDF...",
+    });
+    const website_url = `${url}/${order_id}`;
+    console.log("website_url", website_url);
+    pdf = await generatePdf({
+      type: "url",
+      website_url,
+    });
+
+    const today = new Date();
+    const pdfFilename = fileName
+      ? `${fileName}.pdf`
+      : `${type}-${id}-${today.getFullYear()}-${today.getMonth()}-${today.getDate()}.pdf`;
+
+    socketInstance.emit("downloadProgress", {
+      progress: 90,
+      status: "Sending PDF...",
+    });
+    
+    return res.status(200).send({
+      pdf,
+      fileName: pdfFilename,
+      message: "Downloaded successfully",
+    });
+  } catch (error) {
+    return res.status(500).send({ error: error.message });
+  }
+};
 
 module.exports = {
   createOrder,
@@ -862,4 +936,5 @@ module.exports = {
   getProductOrder,
   getProductOrderStatusHistory,
   cancelOrder,
+  downloadReciept,
 };
