@@ -155,7 +155,7 @@ const getReference = async (req, res) => {
             return res.status(200).send({
               message: "Payment already made",
               data: {
-                reference,
+                reference : payment.reference,
                 amount,
                 currency,
                 fullName,
