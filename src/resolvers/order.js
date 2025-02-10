@@ -19,6 +19,10 @@ const {
 const NotificationModel = require("../models/notification");
 const generatePdf = require("../helpers/pdf");
 const { ENV } = require("../config");
+const url =
+  ENV === "prod"
+    ? process.env.DOC_DOWNLOAD_URL_PROD
+    : process.env.DOC_DOWNLOAD_URL_DEV;
 
 function getRandomInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));
@@ -112,7 +116,7 @@ const buildProductOrders = async (order, basketItems, currency) => {
       // value is 75% of the amount due
       value: amountDue * 0.75,
     };
-
+console.log("creating product order");
     const productOrder = new ProductOrderModel({
       order: order._id,
       orderId,
@@ -131,6 +135,7 @@ const buildProductOrders = async (order, basketItems, currency) => {
       images,
       size,
       shopRevenue,
+      user: order.user,
     });
 
     const savedProductOrder = await productOrder.save();
@@ -230,24 +235,21 @@ const createOrder = async (param) => {
     };
   }
   const currency = payment.currency;
+  console.log("buildProductOrders");
   const productOrders = await buildProductOrders(
     savedOrder,
     basketItems,
     currency
   );
   if (!productOrders || productOrders.length === 0) {
+    console.log("Payment successful but product orders not created. Please contact support");
     return {
       error:
         "Payment successful but product orders not created. Please contact support",
     };
   }
 
-  if (!productOrders || productOrders.length === 0) {
-    return {
-      error:
-        "Payment successful but product orders not created. Please contact support",
-    };
-  }
+  
   const updateOrder = await OrderModel.findOneAndUpdate(
     { _id: savedOrder._id },
     { productOrders },
@@ -269,7 +271,7 @@ const createOrder = async (param) => {
   const userNotification = await NotificationModel.findOne({
     user,
   });
-  const pushToken = userNotification.pushToken;
+  const pushToken = userNotification?.pushToken || []
   if (pushToken?.length > 0) {
     const push = await sendPushMultipleDevice(pushToken, title, body, image);
   }
@@ -374,6 +376,13 @@ const getOrder = async (req, res) => {
       })
 
       .lean();
+
+    // const website_url = `${url}/${order_id}`;
+    // console.log("website_url", website_url);
+    // const pdf = await generatePdf({
+    //   type: "url",
+    //   website_url,
+    // });
 
     return res
       .status(200)
@@ -853,10 +862,6 @@ const cancelOrder = async (req, res) => {
 };
 const downloadReciept = async (req, res) => {
   try {
-    const url =
-      ENV === "prod"
-        ? process.env.DOC_DOWNLOAD_URL_PROD
-        : process.env.DOC_DOWNLOAD_URL_DEV;
     const { order_id, fileName, socketId } = req.body;
 
     if (!order_id) {
@@ -875,12 +880,12 @@ const downloadReciept = async (req, res) => {
     const socketInstance = io.to(thisSocketId);
 
     socketInstance.emit("downloadProgress", {
-      progress: 0,
+      progress: 10,
       status: "Getting ready...",
     });
 
     socketInstance.emit("downloadProgress", {
-      progress: 10,
+      progress: 20,
       status: "Getting receipt...",
     });
     const order = await OrderModel.findOne({ _id: order_id.toString() });
@@ -894,7 +899,7 @@ const downloadReciept = async (req, res) => {
     let pdf;
 
     socketInstance.emit("downloadProgress", {
-      progress: 20,
+      progress: 50,
       status: "Generating PDF...",
     });
     const website_url = `${url}/${order_id}`;
@@ -913,7 +918,7 @@ const downloadReciept = async (req, res) => {
       progress: 90,
       status: "Sending PDF...",
     });
-    
+
     return res.status(200).send({
       pdf,
       fileName: pdfFilename,
