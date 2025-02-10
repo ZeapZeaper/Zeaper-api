@@ -220,6 +220,7 @@ const getReference = async (req, res) => {
           deliveryFee,
           total,
           appliedVoucherAmount,
+          reference,
         },
         { new: true }
       );
