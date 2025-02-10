@@ -717,8 +717,8 @@ const updateProductOrderStatus = async (req, res) => {
     const userNotification = await NotificationModel.findOne({
       user,
     });
-    const pushToken = userNotification.pushToken;
-    if (pushToken) {
+    const pushToken = userNotification?.pushToken || [];
+    if (pushToken?.length > 0) {
       const push = await sendPushMultipleDevice(pushToken, title, body, image);
     }
     const notificationParam = {
