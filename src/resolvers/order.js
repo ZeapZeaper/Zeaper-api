@@ -242,14 +242,15 @@ const createOrder = async (param) => {
     currency
   );
   if (!productOrders || productOrders.length === 0) {
-    console.log("Payment successful but product orders not created. Please contact support");
+    console.log(
+      "Payment successful but product orders not created. Please contact support"
+    );
     return {
       error:
         "Payment successful but product orders not created. Please contact support",
     };
   }
 
-  
   const updateOrder = await OrderModel.findOneAndUpdate(
     { _id: savedOrder._id },
     { productOrders },
@@ -266,12 +267,12 @@ const createOrder = async (param) => {
   }
   const title = "Order Placed";
   const body = `Your order with order ID ${orderId} has been placed successfully`;
-  const image = null;
+  const image = productOrders[0].images[0].link;
   const pushAllAdmins = await sendPushAllAdmins(title, body, image);
   const userNotification = await NotificationModel.findOne({
     user,
   });
-  const pushToken = userNotification?.pushToken || []
+  const pushToken = userNotification?.pushToken || [];
   if (pushToken?.length > 0) {
     const push = await sendPushMultipleDevice(pushToken, title, body, image);
   }
@@ -283,9 +284,12 @@ const createOrder = async (param) => {
     user_id: user,
   };
   const addUserNotification = await addNotification(notificationParam);
-  notificationParam.isAdminPanel = true;
-  notificationParam.user_id = null;
-  const addAdminNotification = await addNotification(notificationParam);
+
+  const addAdminNotification = await addNotification({
+    ...notificationParam,
+    isAdminPanel: true,
+    user_id: null,
+  });
 
   return {
     order: updateOrder,

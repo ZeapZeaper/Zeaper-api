@@ -11,6 +11,7 @@ const BasketModel = require("../models/basket");
 const BodyMeasurementModel = require("../models/bodyMeasurement");
 
 const BodyMeasurementTemplateModel = require("../models/bodyMeasurementTemplate");
+const ProductOrderModel = require("../models/productOrder");
 const ProductModel = require("../models/products");
 
 function getRandomInt(min, max) {
@@ -207,7 +208,7 @@ const getBaskets = async (req, res) => {
         baskets[i].totalWithoutVoucher = basketCalc.totalWithoutVoucher;
       }
     }
-    const user = await getAuthUser(req);
+   
 
     return res
       .status(200)
@@ -403,7 +404,6 @@ const addProductToBasket = async (req, res) => {
 
     const basketItems = basket.basketItems;
     const itemIndex = basketItems.findIndex((item) => {
-  
       console.log("product._id", product._id);
       return (
         item.product.toString() === product._id.toString() && item.sku === sku

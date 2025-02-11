@@ -208,11 +208,15 @@ const testMultiplePushNotification = async (req, res) => {
 const getNotifications = async (req, res) => {
   try {
     const authUser = await getAuthUser(req);
-    const userNotification = await NotificationModel.findOne({
+    const userNotification = (await NotificationModel.findOne({
       user: authUser._id,
     })
       .select("notifications")
-      .lean();
+      .lean()) || { notifications: [] };
+    const sortedNotifications = userNotification.notifications.sort((a, b) => {
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+    userNotification.notifications = sortedNotifications || [];
     return res.status(200).send({ data: userNotification });
   } catch (err) {
     return res.status(500).send({ error: err.message });
@@ -225,11 +229,15 @@ const getAdminsNotifications = async (req, res) => {
     if (!authUser.isAdmin && !authUser.superAdmin) {
       return res.status(400).send({ error: "Unauthorized" });
     }
-    const notifications = await NotificationModel.findOne({
+    const notifications = (await NotificationModel.findOne({
       isAdminPanel: true,
     })
       .select("notifications")
-      .lean();
+      .lean()) || { notifications: [] };
+    const sortedNotifications = notifications.notifications.sort((a, b) => {
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+    notifications.notifications = sortedNotifications || [];
     return res.status(200).send({ data: notifications });
   } catch (err) {
     return res.status(500).send({ error: err.message });
@@ -302,6 +310,12 @@ const addNotification = async (param) => {
     if (!isAdminPanel) {
       userNotification = await NotificationModel.findOne({ user: user_id });
     }
+    if (!userNotification && user_id) {
+      userNotification = new NotificationModel({
+        user: user_id,
+      });
+      await userNotification.save();
+    }
 
     const notifications = userNotification.notifications;
     notifications.push({ title, body, image });
@@ -314,7 +328,6 @@ const addNotification = async (param) => {
 };
 const notifyShop = async (param) => {
   try {
-    
     const { shop_id, title, body, image } = param;
     const shop = await ShopModel.findById(shop_id).lean().select("user");
     const user = shop.user;
@@ -328,7 +341,13 @@ const notifyShop = async (param) => {
     if (pushToken.length > 0) {
       const push = await sendPushMultipleDevice(pushToken, title, body, image);
     }
-    const notificationParam = { title, body, image, isAdminPanel: false, user_id: user };
+    const notificationParam = {
+      title,
+      body,
+      image,
+      isAdminPanel: false,
+      user_id: user,
+    };
     const addUserNotification = await addNotification(notificationParam);
     return {
       data: { push, notificationBox: addUserNotification },
