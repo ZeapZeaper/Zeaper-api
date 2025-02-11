@@ -10,6 +10,26 @@ const { v4: uuidv4 } = require("uuid");
 const sharp = require("sharp");
 const ShopModel = require("../models/shop");
 const { addPreferredAmountAndCurrency } = require("./products/productHelpers");
+const { type } = require("os");
+
+// saving video to firebase storage
+const addVideo = async (req, filename) => {
+  let url = {};
+  if (filename) {
+    const source = path.join(root + "/uploads/" + filename);
+    const storage = await storageRef.upload(source, {
+      public: true,
+      destination: `/promo/${filename}`,
+      metadata: {
+        firebaseStorageDownloadTokens: uuidv4(),
+      },
+    });
+    url = { link: storage[0].metadata.mediaLink, name: filename ,type:"video"};
+    const deleteSourceFile = await deleteLocalFile(source);
+    return url;
+  }
+  return url;
+};
 //saving image to firebase storage
 const addImage = async (req, filename) => {
   let url = {};
@@ -31,7 +51,7 @@ const addImage = async (req, filename) => {
         },
       }
     );
-    url = { link: storage[0].metadata.mediaLink, name: filename };
+    url = { link: storage[0].metadata.mediaLink, name: filename, type:"image" };
     const deleteSourceFile = await deleteLocalFile(source);
     const deleteResizedFile = await deleteLocalFile(
       path.resolve(req.file.destination, "resized", filename)
@@ -198,6 +218,7 @@ const createPromo = async (req, res) => {
       subTitle,
       discount,
       permittedProductTypes,
+      type,
     } = req.body;
 
     if (!req.file) {
@@ -224,7 +245,11 @@ const createPromo = async (req, res) => {
         .status(400)
         .send({ error: "You are not authorized to create promo" });
     }
-    imageUrl = await addImage(req, req.file.filename);
+    if (type === "video") {
+      imageUrl = await addVideo(req, req.file.filename);
+    } else {
+      imageUrl = await addImage(req, req.file.filename);
+    }
     const promoId = await generateUniquePromoId();
     const promoData = {
       promoId,
@@ -255,7 +280,8 @@ const createPromo = async (req, res) => {
 
 const getPromos = async (req, res) => {
   try {
-    const promos = await PromoModel.find();
+    const promos = await PromoModel.find().lean();
+
     return res
       .status(200)
       .send({ data: promos, message: "Promos fetched successfully" });

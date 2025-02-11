@@ -420,7 +420,7 @@ const replaceOrderVariablesinTemplate = (template, order) => {
       );
     }
   });
-  console.log("replacedTemplate", replacedTemplate);
+
   return replacedTemplate;
 };
 

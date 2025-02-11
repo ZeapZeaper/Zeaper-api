@@ -14,6 +14,7 @@ const PromoSchema = new mongoose.Schema({
   imageUrl: {
     link: { type: String, required: false },
     name: { type: String, required: false },
+    type: { type: String, required: false, default: "image" },
   },
   status: {
     type: String,
@@ -32,8 +33,7 @@ const PromoSchema = new mongoose.Schema({
     rangePercentage: {
       min: { type: Number, required: false },
       max: { type: Number, required: false },
-    }
-   
+    },
   },
   productIds: [{ type: String, required: false }],
   permittedProductTypes: {
