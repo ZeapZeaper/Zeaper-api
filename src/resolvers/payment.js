@@ -19,6 +19,7 @@ const { notifyShop } = require("./notification");
 const { sendEmail } = require("../helpers/emailer");
 const EmailTemplateModel = require("../models/emailTemplate");
 const UserModel = require("../models/user");
+const { at } = require("lodash");
 
 const secretKey =
   ENV === "dev"
@@ -438,6 +439,8 @@ const verifyPayment = async (req, res) => {
           to: [email],
           subject: formattedOrderTemplateSubject || "Welcome",
           body: formattedOrderTemplateBody || "Welcome to Zeap",
+          attach: true,
+          order_id: order._id,
         };
         const orderMail = await sendEmail(param);
 

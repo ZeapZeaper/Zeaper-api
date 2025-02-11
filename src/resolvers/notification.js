@@ -19,7 +19,7 @@ const verifyFCMToken = async (fcmToken) => {
 
 const registerPushToken = async (req, res) => {
   try {
-    const { pushToken } = req.body;
+    const { pushToken, isAdminPanel } = req.body;
     if (!pushToken) {
       return res.status(400).send({ error: "required pushToken" });
     }
@@ -28,10 +28,43 @@ const registerPushToken = async (req, res) => {
     if (!validToken) {
       return res.status(400).send({ error: "Invalid pushToken" });
     }
+    const pushTokenDate = new Date();
+
     const authUser = await getAuthUser(req);
+    
+    if (isAdminPanel && !authUser.isAdmin && !authUser.superAdmin) {
+      return res.status(400).send({ error: "Unauthorized" });
+    }
+    if (isAdminPanel) {
+      
+      const adminNotification = await NotificationModel.findOne({
+        isAdminPanel: true,
+      });
+     
+      if (adminNotification) {
+        const existed = adminNotification.pushToken.find(
+          (token) => token === pushToken
+        );
+        if (existed) {
+          return res.status(200).send({ data: adminNotification });
+        }
+        adminNotification.pushToken.push(pushToken);
+        adminNotification.pushTokenDate = pushTokenDate;
+        await adminNotification.save();
+      
+        return res.status(200).send({ data: adminNotification });
+      }
+      const notification = new NotificationModel({
+        isAdminPanel: true,
+        pushToken: [pushToken],
+        pushTokenDate,
+      });
+      await notification.save();
+      return res.status(200).send({ data: notification });
+    }
     // check if existing token. if yes, updste, if no, create
     const user = authUser._id;
-    const pushTokenDate = new Date();
+
     const userToken = await NotificationModel.findOne({ user });
     if (userToken) {
       const existed = userToken.pushToken.find((token) => token === pushToken);
@@ -133,18 +166,11 @@ const sendPushMultipleDevice = async (pushTokens, title, body, image) => {
 };
 const sendPushAllAdmins = async (title, body, image) => {
   try {
-    const adminsAndSuperAdmins = await UserModel.find({
-      $or: [{ isAdmin: true, superAdmin: true }],
+    const adminsNotifications = await NotificationModel.findOne({
+      isAdminPanel: true,
     }).lean();
 
-    const adminsIds = adminsAndSuperAdmins.map((admin) => admin._id);
-    const userNotifications = await NotificationModel.find({
-      user: { $in: adminsIds },
-    }).lean();
-
-    const pushTokens = userNotifications
-      .map((notification) => notification.pushToken)
-      .flat();
+    const pushTokens = adminsNotifications.pushToken;
     console.log("pushTokens", pushTokens);
     const sendPush = await sendMultipleDevicePushNotification(
       pushTokens,

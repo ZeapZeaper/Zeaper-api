@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const timestamp = require("mongoose-timestamp");
 
 const NotificationSchema = new mongoose.Schema({
-  pushToken: [{ type: String, required: false, unique: true }],
+  pushToken: [{ type: String, required: false }],
   pushTokenDate: { type: Date, required: false },
   user: {
     type: mongoose.Schema.Types.ObjectId,
