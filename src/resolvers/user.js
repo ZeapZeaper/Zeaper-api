@@ -9,6 +9,8 @@ const {
   deleteLocalFile,
   cryptoDecrypt,
   cryptoEncrypt,
+  replaceUserVariablesinTemplate,
+  replaceShopVariablesinTemplate,
 } = require("../helpers/utils");
 const validator = require("email-validator");
 const { firebase } = require("../config/firebase");
@@ -18,6 +20,7 @@ const { sendOTP, verifyOTP } = require("../helpers/sms");
 const PointModel = require("../models/points");
 const { sendEmail } = require("../helpers/emailer");
 const EmailTemplateModel = require("../models/emailTemplate");
+const { userVariables, shopVariables } = require("../helpers/constants");
 
 //saving image to firebase storage
 const addImage = async (req, filename) => {
@@ -223,9 +226,10 @@ const createUser = async (req, res) => {
     const newPoint = await point.save();
 
     const data = {};
+    let shop = {};
 
     if (isVendor) {
-      const shop = await addShop(newUser);
+      shop = await addShop(newUser);
 
       shopId = shop.shopId;
       if (!shopId) {
@@ -249,20 +253,37 @@ const createUser = async (req, res) => {
     const welcomeUserEmailTemplate = await EmailTemplateModel.findOne({
       name: "welcome-user",
     }).lean();
+    const formattedUserTemplateBody = replaceUserVariablesinTemplate(
+      welcomeUserEmailTemplate?.body,
+      user
+    );
+
+    const formattedUserTemplateSubject = replaceUserVariablesinTemplate(
+      welcomeUserEmailTemplate?.subject,
+      user
+    );
 
     const param = {
       from: "admin@zeaper.com",
       to: [email],
-      subject: welcomeUserEmailTemplate?.subject || "Welcome",
-      body: welcomeUserEmailTemplate?.body || "Welcome to Zeap",
+      subject: formattedUserTemplateSubject || "Welcome",
+      body: formattedUserTemplateBody || "Welcome to Zeap",
     };
     const userMail = await sendEmail(param);
     if (isVendor && shopId) {
       const welcomeShopEmailTemplate = await EmailTemplateModel.findOne({
         name: "welcome-shop",
       }).lean();
-      param.body = welcomeShopEmailTemplate?.body || "Welcome to Zeap";
-      param.subject = welcomeShopEmailTemplate?.subject || "Welcome";
+      const formattedShopTemplateBody = replaceShopVariablesinTemplate(
+        replaceUserVariablesinTemplate(welcomeShopEmailTemplate?.body, user),
+        shop
+      );
+      const formattedShopTemplateSubject = replaceShopVariablesinTemplate(
+        replaceUserVariablesinTemplate(welcomeShopEmailTemplate?.subject, user),
+        shop
+      );
+      param.body = formattedShopTemplateBody || "Welcome to Zeap";
+      param.subject = formattedShopTemplateSubject?.subject || "Welcome";
       const shopMail = await sendEmail(param);
     }
     return res.status(200).send({
@@ -344,17 +365,26 @@ const createUserWithGoogleOrApple = async (req, res) => {
     });
 
     const newPoint = await point.save();
-    const welcomeEmailTemplate = await EmailTemplateModel.findOne({
+    const welcomeUserEmailTemplate = await EmailTemplateModel.findOne({
       name: "welcome-user",
     }).lean();
+    const formattedUserTemplateBody = replaceUserVariablesinTemplate(
+      welcomeUserEmailTemplate?.body,
+      user
+    );
+
+    const formattedUserTemplateSubject = replaceUserVariablesinTemplate(
+      welcomeUserEmailTemplate?.subject,
+      user
+    );
 
     const param = {
       from: "admin@zeaper.com",
       to: [email],
-      subject: welcomeEmailTemplate?.subject || "Welcome",
-      body: welcomeEmailTemplate?.body || "Welcome to Zeap",
+      subject: formattedUserTemplateSubject || "Welcome",
+      body: formattedUserTemplateBody || "Welcome to Zeap",
     };
-    const mail = await sendEmail(param);
+    const userMail = await sendEmail(param);
     return res
       .status(200)
       .send({ data: newUser, message: "User created successfully" });
@@ -463,6 +493,7 @@ const getUser = async (req, res) => {
     return res.status(500).send({ error: error.message });
   }
 };
+
 const getUserById = async (req, res) => {
   try {
     const { _id } = req.query;

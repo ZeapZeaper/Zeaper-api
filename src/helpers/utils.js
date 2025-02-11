@@ -12,6 +12,7 @@ const VoucherModel = require("../models/voucher");
 const DeliveryFeeModel = require("../models/deliveryFee");
 const ExchangeRateModel = require("../models/exchangeRate");
 const BodyMeasurementGuideModel = require("../models/bodyMeasurementGuide");
+const { shopVariables, userVariables, orderVariables } = require("./constants");
 const algorithm = "aes-256-ctr";
 const ENCRYPTION_KEY = process.env.ZEAPCRYPTOKEY;
 //const ENCRYPTION_KEY = "emVhcCBmYXNoaW9uIGFwcCBpcyBvd25l==";
@@ -369,6 +370,59 @@ const calcRate = (rate, currency, amount) => {
   }
   amount * rate;
 };
+
+const replaceUserVariablesinTemplate = (template, user) => {
+  const variables = userVariables;
+  const replacedBracket = template.replace("[", "").replace("]", "");
+
+  let replacedTemplate = replacedBracket;
+
+  // loop through all variables. if variable is in replacedBracket, replace with user data
+  variables.forEach((variable) => {
+    if (replacedBracket.includes(variable)) {
+      replacedTemplate = replacedTemplate.replace(
+        variable,
+        user[variable] || ""
+      );
+    }
+  });
+  return replacedTemplate;
+};
+const replaceShopVariablesinTemplate = (template, shop) => {
+  const variables = shopVariables;
+  const replacedBracket = template.replace("[", "").replace("]", "");
+
+  let replacedTemplate = replacedBracket;
+
+  // loop through all variables. if variable is in replacedBracket, replace with user data
+  variables.forEach((variable) => {
+    if (replacedBracket.includes(variable)) {
+      replacedTemplate = replacedTemplate.replace(
+        variable,
+        shop[variable] || ""
+      );
+    }
+  });
+  return replacedTemplate;
+};
+const replaceOrderVariablesinTemplate = (template, order) => {
+  const variables = orderVariables;
+  const replacedBracket = template.replace("[", "").replace("]", "");
+
+  let replacedTemplate = replacedBracket;
+
+  // loop through all variables. if variable is in replacedBracket, replace with user data
+  variables.forEach((variable) => {
+    if (replacedBracket.includes(variable)) {
+      replacedTemplate = replacedTemplate.replace(
+        variable,
+        order[variable] || ""
+      );
+    }
+  });
+  return replacedTemplate;
+};
+
 module.exports = {
   deleteLocalFile,
   numberWithCommas,
@@ -389,4 +443,7 @@ module.exports = {
   getBodyMeasurementEnumsFromGuide,
   getDaysDifference,
   calcRate,
+  replaceUserVariablesinTemplate,
+  replaceShopVariablesinTemplate,
+  replaceOrderVariablesinTemplate,
 };

@@ -5,6 +5,8 @@ const {
   calculateTotalBasketPrice,
   codeGenerator,
   currencyCoversion,
+  replaceUserVariablesinTemplate,
+  replaceOrderVariablesinTemplate,
 } = require("../helpers/utils");
 const request = require("request");
 const { getAuthUser } = require("../middleware/firebaseUserAuth");
@@ -14,6 +16,9 @@ const OrderModel = require("../models/order");
 const { addPointAfterSales } = require("./point");
 const ProductOrderModel = require("../models/productOrder");
 const { notifyShop } = require("./notification");
+const { sendEmail } = require("../helpers/emailer");
+const EmailTemplateModel = require("../models/emailTemplate");
+const UserModel = require("../models/user");
 
 const secretKey =
   ENV === "dev"
@@ -155,7 +160,7 @@ const getReference = async (req, res) => {
             return res.status(200).send({
               message: "Payment already made",
               data: {
-                reference : payment.reference,
+                reference: payment.reference,
                 amount,
                 currency,
                 fullName,
@@ -410,6 +415,31 @@ const verifyPayment = async (req, res) => {
           updatedPayment.user,
           pointToAdd
         );
+        order.orderPoints = pointToAdd;
+        const orderEmailTemplate = await EmailTemplateModel.findOne({
+          name: "successful-order",
+        }).lean();
+        const user = await UserModel.findOne({
+          _id: updatedPayment.user,
+        }).lean();
+        const email = user.email;
+        const formattedOrderTemplateBody = replaceOrderVariablesinTemplate(
+          replaceUserVariablesinTemplate(orderEmailTemplate?.body, user),
+          order
+        );
+
+        const formattedOrderTemplateSubject = replaceOrderVariablesinTemplate(
+          replaceUserVariablesinTemplate(orderEmailTemplate?.subject, user),
+          order
+        );
+
+        const param = {
+          from: "admin@zeaper.com",
+          to: [email],
+          subject: formattedOrderTemplateSubject || "Welcome",
+          body: formattedOrderTemplateBody || "Welcome to Zeap",
+        };
+        const orderMail = await sendEmail(param);
 
         return res.status(200).send({
           message: "Payment verified successfully",

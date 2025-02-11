@@ -1,9 +1,42 @@
+const {
+  userVariables,
+  shopVariables,
+  orderVariables,
+} = require("../helpers/constants");
 const EmailTemplateModel = require("../models/emailTemplate");
+
+const validateBodyVariables = (body, variables) => {
+  // get strings inside all squared brackets
+  const regex = /\[(.*?)\]/g;
+  let m;
+  let error;
+  const bodyVariables = [];
+  while ((m = regex.exec(body)) !== null) {
+    if (m.index === regex.lastIndex) {
+      regex.lastIndex++;
+    }
+    bodyVariables.push(m[1]);
+  }
+
+  bodyVariables.map((variable) => {
+    const found = variables.find((v) => v === variable);
+
+    if (!found) {
+      error = `Variable ${variable} is not allowed. Allowed variables are ${variables.join(
+        ", "
+      )}`;
+    }
+  });
+  if (error) {
+    return { error };
+  }
+  return true;
+};
 
 const addEmailTemplate = async (req, res) => {
   try {
     const { name, body, subject } = req.body;
-    
+
     if (!name) {
       return res.status(400).send({ error: "name is required" });
     }
@@ -13,6 +46,15 @@ const addEmailTemplate = async (req, res) => {
     if (!subject) {
       return res.status(400).send({ error: "subject is required" });
     }
+    const validateBody = validateBodyVariables(body, [
+      ...userVariables,
+      ...shopVariables,
+      ...orderVariables,
+    ]);
+    if (validateBody.error) {
+      return res.status(400).send({ error: validateBody.error });
+    }
+
     const exist = await EmailTemplateModel.findOne({
       name,
     });

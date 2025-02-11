@@ -1,8 +1,15 @@
 const ShopModel = require("../models/shop");
 const UserModel = require("../models/user");
-const { verifyUserId, verifyShopId } = require("../helpers/utils");
+const {
+  verifyUserId,
+  verifyShopId,
+  replaceShopVariablesinTemplate,
+  replaceUserVariablesinTemplate,
+} = require("../helpers/utils");
 const { getAuthUser } = require("../middleware/firebaseUserAuth");
 const ProductOrderModel = require("../models/productOrder");
+const EmailTemplateModel = require("../models/emailTemplate");
+const { sendEmail } = require("../helpers/emailer");
 
 function getRandomInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));
@@ -103,6 +110,34 @@ const createShop = async (req, res) => {
       return res
         .status(400)
         .send({ error: "Shop created but User not updated" });
+    }
+
+    if (shop && updatedUser?.email) {
+      const welcomeShopEmailTemplate = await EmailTemplateModel.findOne({
+        name: "welcome-shop",
+      }).lean();
+      const formattedShopTemplateBody = replaceShopVariablesinTemplate(
+        replaceUserVariablesinTemplate(
+          welcomeShopEmailTemplate?.body,
+          updatedUser
+        ),
+        shop
+      );
+      const formattedShopTemplateSubject = replaceShopVariablesinTemplate(
+        replaceUserVariablesinTemplate(
+          welcomeShopEmailTemplate?.subject,
+          updatedUser
+        ),
+        shop
+      );
+      const param = {
+        from: "admin@zeaper.com",
+        to: [updatedUser?.email],
+        subject: formattedShopTemplateSubject?.subject || "Welcome",
+        body: formattedShopTemplateBody || "Welcome to Zeap",
+      };
+
+      const shopMail = await sendEmail(param);
     }
     return res
       .status(200)

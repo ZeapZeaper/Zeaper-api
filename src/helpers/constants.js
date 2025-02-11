@@ -640,8 +640,7 @@ const productTypeEnums = [
   "bespokeShoe",
 ];
 
-const 
-bodyMeasurementEnums = [
+const bodyMeasurementEnums = [
   {
     name: "top",
     fields: [
@@ -878,6 +877,9 @@ const nairaToOtherCurrencyEnums = {
   GBP: 0.00051,
 };
 const currencyEnums = ["NGN", "USD", "GBP"];
+const userVariables = ["firstName", "lastName", "email", "phoneNumber"];
+const shopVariables = ["shopName"];
+const orderVariables = ["orderId", "orderPoints"];
 module.exports = {
   genderEnums,
   ageGroupEnums,
@@ -906,5 +908,7 @@ module.exports = {
   orderStatusEnums,
   nairaToOtherCurrencyEnums,
   currencyEnums,
+  userVariables,
+  shopVariables,
+  orderVariables,
 };
-

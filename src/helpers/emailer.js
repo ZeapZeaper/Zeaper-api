@@ -41,15 +41,14 @@ const sendEmail = async (param) => {
       bcc,
       attach,
 
-      id,
+      order_id,
       fileName,
-      socketId,
     } = param;
     if (!from || !to || !subject || !body) {
       return { error: "All fields are required" };
     }
 
-    if (!id && attach) {
+    if (!order_id && attach) {
       return { error: "Id is required" };
     }
 
@@ -57,9 +56,11 @@ const sendEmail = async (param) => {
     let attachments = [];
 
     if (attach) {
+      const website_url = `${url}/${order_id}`;
+      console.log("website_url", website_url);
       pdf = await generatePdf({
         type: "url",
-        website_url: `${url}/${id}`,
+        website_url,
       });
 
       const today = new Date();

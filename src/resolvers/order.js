@@ -116,7 +116,7 @@ const buildProductOrders = async (order, basketItems, currency) => {
       // value is 75% of the amount due
       value: amountDue * 0.75,
     };
-console.log("creating product order");
+
     const productOrder = new ProductOrderModel({
       order: order._id,
       orderId,
@@ -235,7 +235,7 @@ const createOrder = async (param) => {
     };
   }
   const currency = payment.currency;
-  console.log("buildProductOrders");
+
   const productOrders = await buildProductOrders(
     savedOrder,
     basketItems,
