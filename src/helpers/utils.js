@@ -36,7 +36,7 @@ const deleLocalImages = async (files) => {
   }
 };
 const numberWithCommas = (x) => {
-  return x?.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return x?.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ",");
 };
 
 function onlyUnique(value, index, array) {
@@ -373,14 +373,14 @@ const calcRate = (rate, currency, amount) => {
 
 const replaceUserVariablesinTemplate = (template, user) => {
   const variables = userVariables;
-  const replacedBracket = template.replace("[", "").replace("]", "");
+  const replacedBracket = template.replaceAll("[", "").replaceAll("]", "");
 
   let replacedTemplate = replacedBracket;
 
-  // loop through all variables. if variable is in replacedBracket, replace with user data
+  // loop through all variables. if variable is in replacedBracket, replaceAll with user data
   variables.forEach((variable) => {
     if (replacedBracket.includes(variable)) {
-      replacedTemplate = replacedTemplate.replace(
+      replacedTemplate = replacedTemplate.replaceAll(
         variable,
         user[variable] || ""
       );
@@ -390,14 +390,14 @@ const replaceUserVariablesinTemplate = (template, user) => {
 };
 const replaceShopVariablesinTemplate = (template, shop) => {
   const variables = shopVariables;
-  const replacedBracket = template.replace("[", "").replace("]", "");
+  const replacedBracket = template.replaceAll("[", "").replaceAll("]", "");
 
   let replacedTemplate = replacedBracket;
 
-  // loop through all variables. if variable is in replacedBracket, replace with user data
+  // loop through all variables. if variable is in replacedBracket, replaceAll with user data
   variables.forEach((variable) => {
     if (replacedBracket.includes(variable)) {
-      replacedTemplate = replacedTemplate.replace(
+      replacedTemplate = replacedTemplate.replaceAll(
         variable,
         shop[variable] || ""
       );
@@ -407,19 +407,20 @@ const replaceShopVariablesinTemplate = (template, shop) => {
 };
 const replaceOrderVariablesinTemplate = (template, order) => {
   const variables = orderVariables;
-  const replacedBracket = template.replace("[", "").replace("]", "");
+  const replacedBracket = template.replaceAll("[", "").replaceAll("]", "");
 
   let replacedTemplate = replacedBracket;
 
-  // loop through all variables. if variable is in replacedBracket, replace with user data
+  // loop through all variables. if variable is in replacedBracket, replaceAll with user data
   variables.forEach((variable) => {
     if (replacedBracket.includes(variable)) {
-      replacedTemplate = replacedTemplate.replace(
+      replacedTemplate = replacedTemplate.replaceAll(
         variable,
         order[variable] || ""
       );
     }
   });
+  console.log("replacedTemplate", replacedTemplate);
   return replacedTemplate;
 };
 

@@ -66,7 +66,7 @@ const sendEmail = async (param) => {
       const today = new Date();
       const pdfFilename = fileName
         ? `${fileName}.pdf`
-        : `${type}-${id}-${today.getFullYear()}-${today.getMonth()}-${today.getDate()}.pdf`;
+        : `${order_id}-${today.getFullYear()}-${today.getMonth()}-${today.getDate()}.pdf`;
       attachments = [
         {
           filename: pdfFilename,
