@@ -1,6 +1,6 @@
-
 const { getBodyMeasurementEnumsFromGuide } = require("../helpers/utils");
 const BodyMeasurementModel = require("../models/bodyMeasurement");
+const BodyMeasurementGuideModel = require("../models/bodyMeasurementGuide");
 const ProductModel = require("../models/products");
 
 const validateBodyMeasurement = (measurements, bodyMeasurementEnums) => {
@@ -56,8 +56,28 @@ const addBodyMeasurement = async (req, res) => {
     if (!measurements || !measurements.length) {
       return res.status(400).send({ error: "required measurements" });
     }
-    const bodyMeasurementEnums = await getBodyMeasurementEnumsFromGuide();
-    const validate = validateBodyMeasurement(measurements, bodyMeasurementEnums);
+    const bodyMeasurementEnums = await BodyMeasurementGuideModel.find().lean();
+    const mappedBodyMeasurementEnums = bodyMeasurementEnums.map((b) => {
+      const { name, fields } = b;
+      return {
+        name,
+        fields: fields.map((f) => f.field),
+      };
+    });
+    const mergedBodyMeasurementEnums = [];
+    mappedBodyMeasurementEnums.map((b) => {
+      const { name, fields } = b;
+      const found = mergedBodyMeasurementEnums.find((m) => m.name === name);
+      if (found) {
+        found.fields = [...found.fields, ...fields];
+      } else {
+        mergedBodyMeasurementEnums.push(b);
+      }
+    });
+    const validate = validateBodyMeasurement(
+      measurements,
+      mergedBodyMeasurementEnums
+    );
     if (validate.error) {
       return res.status(400).send({ error: validate.error });
     }

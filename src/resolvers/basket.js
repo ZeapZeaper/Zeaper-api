@@ -3,12 +3,13 @@ const {
   calculateTotalBasketPrice,
   validateBodyMeasurements,
   currencyCoversion,
-  getBodyMeasurementEnumsFromGuide,
+  
   calcRate,
 } = require("../helpers/utils");
 const { getAuthUser } = require("../middleware/firebaseUserAuth");
 const BasketModel = require("../models/basket");
 const BodyMeasurementModel = require("../models/bodyMeasurement");
+const BodyMeasurementGuideModel = require("../models/bodyMeasurementGuide");
 
 const BodyMeasurementTemplateModel = require("../models/bodyMeasurementTemplate");
 const ProductOrderModel = require("../models/productOrder");
@@ -54,10 +55,29 @@ const validateProductBodyMeasurements = async (product, bodyMeasurements) => {
           "required body measurements since product is bespoke and requires body measurements",
       };
     }
-    const bodyMeasurementEnums = await getBodyMeasurementEnumsFromGuide();
+    const bodyMeasurementEnums = await BodyMeasurementGuideModel.find().lean();
+    const mappedBodyMeasurementEnums = bodyMeasurementEnums.map((b) => {
+      const { name, fields } = b;
+      return {
+        name,
+        fields: fields.map((f) => f.field),
+      };
+    });
+    const mergedBodyMeasurementEnums = [];
+    mappedBodyMeasurementEnums.map((b) => {
+      const { name, fields } = b;
+      const found = mergedBodyMeasurementEnums.find((m) => m.name === name);
+      if (found) {
+        found.fields = [...found.fields, ...fields];
+      } else {
+        mergedBodyMeasurementEnums.push(b);
+      }
+    });
+
+    
     const validateMeasurements = validateBodyMeasurements(
       bodyMeasurements,
-      bodyMeasurementEnums
+      mergedBodyMeasurementEnums
     );
 
     if (validateMeasurements.error) {
@@ -208,7 +228,6 @@ const getBaskets = async (req, res) => {
         baskets[i].totalWithoutVoucher = basketCalc.totalWithoutVoucher;
       }
     }
-   
 
     return res
       .status(200)

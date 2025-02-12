@@ -68,7 +68,7 @@ const {
   addVariationToBespokeShoe,
   validateBespokeShoes,
 } = require("./bespokeShoes");
-const { notifyShop } = require(".././notification");
+const { notifyShop, sendPushAllAdmins, addNotification } = require(".././notification");
 
 //saving image to firebase storage
 const addImage = async (destination, filename) => {
@@ -958,16 +958,7 @@ const setProductStatus = async (req, res) => {
       },
       { new: true }
     ).exec();
-    const title = "Product Status Update";
-    const body = `Your product with productId ${productId} has been set to ${status}`;
-    const image = updatedProduct?.colors[0]?.images[0]?.link;
-    const shop_id = updatedProduct?.shop.toString();
 
-    if (shop_id) {
-      const notifyShopParam = { shop_id, title, body, image };
-
-      const notify = await notifyShop(notifyShopParam);
-    }
     return res.status(200).send({
       data: updatedProduct,
       message: "product status updated successfully",
@@ -1033,6 +1024,26 @@ const submitProduct = async (req, res) => {
     if (!updatedProduct) {
       return res.status(400).send({ error: "product not found" });
     }
+    const title = "Product Status Update";
+    const body = `A product with productId ${productId} has been set to under review`;
+    const image = updatedProduct?.colors[0]?.images[0]?.link;
+    const shop_id = updatedProduct?.shop.toString();
+
+    if (shop_id) {
+      const notifyShopParam = { shop_id, title, body, image };
+
+      const notify = await notifyShop(notifyShopParam);
+    }
+    const pushAllAdmins = await sendPushAllAdmins(title, body, image);
+    const notificationParam = {
+      title,
+      body,
+      image,
+      isAdminPanel: true,
+    };
+    const addAdminNotification = await addNotification({
+      notificationParam,
+    });
     return res.status(200).send({
       data: updatedProduct,
       message: "product submitted successfully",
