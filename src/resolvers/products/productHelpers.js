@@ -564,6 +564,7 @@ const getQuery = (queries) => {
     match.description = { $regex: description, $options: "i" };
   }
   if (colors) {
+    console.log("colors", colors);
     match.colors = {
       $elemMatch: {
         value: { $in: colors.replace(/\s*,\s*/g, ",").split(",") },

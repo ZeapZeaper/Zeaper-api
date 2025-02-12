@@ -826,12 +826,15 @@ const createProduct = async (req, res) => {
     if (!user?.shopId && !shopId) {
       return res.status(400).send({ error: "User does not have a shop" });
     }
-    if (!user?.shopEnabled) {
+    if (!user?.shopEnabled && !user?.isAdmin && !user?.superAdmin) {
       return res.status(400).send({ error: "User's shop is disabled" });
     }
     const shop = await ShopModel.findOne({ shopId: shopId || user.shopId });
     if (!shop) {
       return res.status(400).send({ error: "shop not found" });
+    }
+    if (shop?.disabled) {
+      return res.status(400).send({ error: "shop is disabled" });
     }
 
     const productId = await generateProductId(user.shopId, productType);
@@ -1148,6 +1151,7 @@ const getCategoryProducts = async (req, res) => {
 };
 const getProducts = async (req, res) => {
   try {
+    console.log("getProducts");
     const sort = req.query.sort || -1;
     const limit = parseInt(req.query.limit);
     const pageNumber = parseInt(req.query.pageNumber);
