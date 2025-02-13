@@ -44,6 +44,7 @@ const generateUniqueBasketId = async () => {
 };
 
 const validateProductBodyMeasurements = async (product, bodyMeasurements) => {
+  
   const { variations } = product;
   const bespokeVariation = variations.find((v) => v.bespoke?.isBespoke);
   let error;
@@ -66,7 +67,7 @@ const validateProductBodyMeasurements = async (product, bodyMeasurements) => {
     const mergedBodyMeasurementEnums = [];
     mappedBodyMeasurementEnums.map((b) => {
       const { name, fields } = b;
-      const found = mergedBodyMeasurementEnums.find((m) => m.name === name);
+      const found = mergedBodyMeasurementEnums.find((m) => m.name = name);
       if (found) {
         found.fields = [...found.fields, ...fields];
       } else {
@@ -86,6 +87,7 @@ const validateProductBodyMeasurements = async (product, bodyMeasurements) => {
       };
     }
     const productBodyMeasurement = product.bodyMeasurement;
+    console.log("productBodyMeasurement", productBodyMeasurement);
     const expectedProductBodyMeasurement = await BodyMeasurementModel.findOne({
       _id: productBodyMeasurement,
     }).lean();

@@ -67,7 +67,7 @@ const addBodyMeasurement = async (req, res) => {
     const mergedBodyMeasurementEnums = [];
     mappedBodyMeasurementEnums.map((b) => {
       const { name, fields } = b;
-      const found = mergedBodyMeasurementEnums.find((m) => m.name === name);
+      const found = mergedBodyMeasurementEnums.find((m) => m.name = name);
       if (found) {
         found.fields = [...found.fields, ...fields];
       } else {
