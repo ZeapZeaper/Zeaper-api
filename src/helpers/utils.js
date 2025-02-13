@@ -198,7 +198,7 @@ const validateBodyMeasurements = (bodyMeasurements, bodyMeasurementEnums) => {
       error = "One or more body measurements has no name";
       return { error };
     }
-    const validItem = bodyMeasurementEnums.find((m) => m.name = name);
+    const validItem = bodyMeasurementEnums.find((m) => (m.name = name));
     if (!validItem) {
       error = `One or more body measurements has an invalid name ${name}. Remember names are case sensitive. Valid names are ${bodyMeasurementEnums
         .map((m) => m.name)
@@ -222,7 +222,9 @@ const validateBodyMeasurements = (bodyMeasurements, bodyMeasurementEnums) => {
         error = `One or more measurements in ${name} has no field`;
         return { error };
       }
-      const validField = validItemFields.find((f) => f = field);
+      const validField = validItemFields.find(
+        (f) => f.toLowerCase() === field.toLowerCase()
+      );
       if (!validField) {
         error = `One or more measurements in ${name} has an invalid field ${field}. Valid fields are ${validItemFields.join(
           ", "
