@@ -97,6 +97,7 @@ const getReference = async (req, res) => {
     const payment = await PaymentModel.findOne({
       basket: basket._id.toString(),
     }).lean();
+    let reference = payment?.reference || null;
     if (payment) {
       verifyPaystack(payment?.reference, async (error, body) => {
         const response = JSON.parse(body);
@@ -151,7 +152,7 @@ const getReference = async (req, res) => {
               if (order.error) {
                 return res.status(400).send({ error: order.error });
               }
-              orderId = order.orderId;
+              orderId = order?.orderId;
               const addPoints = await addPointAfterSales(
                 updatedPayment.user,
                 pointToAdd
@@ -195,16 +196,13 @@ const getReference = async (req, res) => {
 
     const fullName = user.firstName + " " + user.lastName;
     const email = user.email;
-    const reference = generateReference({
+    reference = generateReference({
       firstName: user.firstName,
       lastName: user.lastName,
       basketId: basket.basketId,
     });
 
     if (payment) {
-      if (payment.status === "success") {
-        paymentStatus = "success";
-      }
       const addDeliveryAddress = await BasketModel.findOneAndUpdate(
         { basketId: basket.basketId },
         { deliveryAddress: deliveryAddress_id },
@@ -227,6 +225,7 @@ const getReference = async (req, res) => {
           total,
           appliedVoucherAmount,
           reference,
+          
         },
         { new: true }
       );
@@ -342,7 +341,7 @@ const verifyPayment = async (req, res) => {
         reject(error.message);
       }
       const response = JSON.parse(body);
-
+      console.log("response", response);
       if (response.status !== true) {
         return res.status(400).send({
           error: "Payment not successful",

@@ -302,7 +302,7 @@ let routes = (app) => {
     authMiddleware,
     promoResolver.getAvailablePromos
   );
-  router.get("/promos/live", authMiddleware, promoResolver.getLivePromos);
+  router.get("/promos/live", promoResolver.getLivePromos);
   router.get("/promos/draft", authMiddleware, promoResolver.getDraftPromos);
   router.get(
     "/promos/scheduled",
@@ -314,12 +314,8 @@ let routes = (app) => {
     authMiddleware,
     promoResolver.getFinishedPromos
   );
-  router.get(
-    "/promo/products",
-    authMiddleware,
-    productResolver.getPromoWithLiveProducts
-  );
-  router.get("/promo", authMiddleware, promoResolver.getPromo);
+  router.get("/promo/products", productResolver.getPromoWithLiveProducts);
+  router.get("/promo", promoResolver.getPromo);
   router.get("/product/promo", authMiddleware, promoResolver.getProductPromo);
   router.put(
     "/promo/update",

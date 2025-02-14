@@ -5,6 +5,7 @@ const {
 } = require("../helpers/utils");
 const { getAuthUser } = require("../middleware/firebaseUserAuth");
 const BodyMeasurementTemplateModel = require("../models/bodyMeasurementTemplate");
+const BodyMeasurementGuideModel = require("../models/bodyMeasurementGuide");
 
 const addBodyMeasurementTemplate = async (req, res) => {
   try {
@@ -42,8 +43,29 @@ const addBodyMeasurementTemplate = async (req, res) => {
         error: "Body Measurement Template with this name already exist",
       });
     }
-    const bodyMeasurementEnums = await getBodyMeasurementEnumsFromGuide();
-    const validate = validateBodyMeasurements(measurements, bodyMeasurementEnums);
+
+    const bodyMeasurementEnums = await BodyMeasurementGuideModel.find().lean();
+    const mappedBodyMeasurementEnums = bodyMeasurementEnums.map((b) => {
+      const { name, fields } = b;
+      return {
+        name,
+        fields: fields.map((f) => f.field),
+      };
+    });
+    const mergedBodyMeasurementEnums = [];
+    mappedBodyMeasurementEnums.map((b) => {
+      const { name, fields } = b;
+      const found = mergedBodyMeasurementEnums.find((m) => (m.name = name));
+      if (found) {
+        found.fields = [...found.fields, ...fields];
+      } else {
+        mergedBodyMeasurementEnums.push(b);
+      }
+    });
+    const validate = validateBodyMeasurements(
+      measurements,
+      mergedBodyMeasurementEnums
+    );
     if (validate.error) {
       return res.status(400).send({ error: validate.error });
     }
@@ -169,8 +191,30 @@ const updateBodyMeasurementTemplate = async (req, res) => {
           "You are not authorized to update Body Measurement Template for this user",
       });
     }
-    const bodyMeasurementEnums = await getBodyMeasurementEnumsFromGuide();
-    if (!validateBodyMeasurements(measurements, bodyMeasurementEnums)) {
+
+    const bodyMeasurementEnums = await BodyMeasurementGuideModel.find().lean();
+    const mappedBodyMeasurementEnums = bodyMeasurementEnums.map((b) => {
+      const { name, fields } = b;
+      return {
+        name,
+        fields: fields.map((f) => f.field),
+      };
+    });
+    const mergedBodyMeasurementEnums = [];
+    mappedBodyMeasurementEnums.map((b) => {
+      const { name, fields } = b;
+      const found = mergedBodyMeasurementEnums.find((m) => (m.name = name));
+      if (found) {
+        found.fields = [...found.fields, ...fields];
+      } else {
+        mergedBodyMeasurementEnums.push(b);
+      }
+    });
+    const validate = validateBodyMeasurements(
+      measurements,
+      mergedBodyMeasurementEnums
+    );
+    if (!validate) {
       return res.status(400).send({
         error:
           "Invalid measurements. Please provide valid measurements in the required schema",
