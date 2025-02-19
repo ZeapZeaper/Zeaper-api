@@ -43,24 +43,38 @@ const validateFileSizes = (request, response, next) => {
         .json({ error: "File is too large. Max file size is 1.5MB" });
     }
   }
+ 
   if (request?.files) {
     const images = request.files.images;
-    console.log("images", images);
-    if (!images) {
-      return response.status(400).json({ error: "No files uploaded" });
-    }
-    let valid = true;
-    images.forEach((file) => {
-      if (file.size > 1500 * 1500 * 1) {
-        valid = false;
-      }
-    });
-    if (!valid) {
-      return response
-        .status(400)
-        .json({
+
+    if (images) {
+      let valid = true;
+      images.forEach((file) => {
+        if (file.size > 1500 * 1500 * 1) {
+          valid = false;
+        }
+      });
+      if (!valid) {
+        return response.status(400).json({
           error: "one or more files are too large. Max file size is 1.5MB",
         });
+      }
+    }
+    const smallScreenImageUrl = request.files.smallScreenImageUrl;
+    if (smallScreenImageUrl) {
+      if (smallScreenImageUrl.size > 2500 * 2500 * 1) {
+        return response
+          .status(400)
+          .json({ error: "File is too large. Max file size is 2.5MB" });
+      }
+    }
+    const largeScreenImageUrl = request.files.largeScreenImageUrl;
+    if (largeScreenImageUrl) {
+      if (largeScreenImageUrl.size > 2500 * 2500 * 1) {
+        return response
+          .status(400)
+          .json({ error: "File is too large. Max file size is 2.5MB" });
+      }
     }
   }
 
@@ -85,7 +99,8 @@ const uploadMultiple = multer({
       file.mimetype == "image/jpg" ||
       file.mimetype == "image/jpeg" ||
       file.mimetype == "image/webp" ||
-      file.mimetype == "image/avif"
+      file.mimetype == "image/avif" ||
+      file.mimetype == "video/mp4"
     ) {
       cb(null, true);
     } else {

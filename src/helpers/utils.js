@@ -35,6 +35,10 @@ const deleLocalImages = async (files) => {
     const deleteSourceFile = await deleteLocalFile(source);
   }
 };
+const deleteLocalImagesByFileName = async (filename) => {
+  const source = path.join(root + "/uploads/" + filename);
+  const deleteSourceFile = await deleteLocalFile(source);
+};
 const numberWithCommas = (x) => {
   return x?.toString().replaceAll(/\B(?=(\d{3})+(?!\d))/g, ",");
 };
@@ -437,6 +441,7 @@ module.exports = {
   checkForDuplicates,
   lowerFirstChar,
   deleLocalImages,
+  deleteLocalImagesByFileName,
   validateProductAvailability,
   calculateTotalBasketPrice,
   validateBodyMeasurements,

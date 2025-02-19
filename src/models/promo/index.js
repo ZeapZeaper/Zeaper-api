@@ -11,7 +11,12 @@ const PromoSchema = new mongoose.Schema({
   endDate: { type: String, required: true },
   description: { type: String, required: true },
   title: { type: String, required: true },
-  imageUrl: {
+  smallScreenImageUrl: {
+    link: { type: String, required: false },
+    name: { type: String, required: false },
+    type: { type: String, required: false, default: "image" },
+  },
+  largeScreenImageUrl: {
     link: { type: String, required: false },
     name: { type: String, required: false },
     type: { type: String, required: false, default: "image" },

@@ -22,11 +22,16 @@ const {
 } = require("./productHelpers");
 
 const editReadyMadeShoes = async (req) => {
-  console.log("here");
   try {
     const params = req.body;
-    const { productId, categories, sizes, colors, variations } = params;
-    console.log("params", params);
+    const {
+      productId,
+      categories,
+      sizes,
+      colors,
+      variations,
+      autoPriceAdjustment,
+    } = params;
 
     if (
       sizes &&
@@ -36,6 +41,11 @@ const editReadyMadeShoes = async (req) => {
     }
     if (sizes?.some((s) => shoeSizeEnums.indexOf(s) === -1)) {
       return { error: "invalid size category" };
+    }
+    if (autoPriceAdjustment) {
+      return {
+        error: "you can not update autoPriceAdjustment with this endpoint",
+      };
     }
     if (categories && Object.keys(categories).length === 0) {
       return { error: "categories is required" };

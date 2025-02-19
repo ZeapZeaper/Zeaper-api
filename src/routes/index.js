@@ -241,6 +241,11 @@ let routes = (app) => {
     productResolver.deleteProductVariation
   );
   router.put(
+    "/product/update/autoPriceAdjustment",
+    authMiddleware,
+    productResolver.updateAutoPriceAdjustment
+  );
+  router.put(
     "/product/update/submitProduct",
     authMiddleware,
     productResolver.submitProduct
@@ -287,7 +292,10 @@ let routes = (app) => {
     "/promo/create",
     authMiddleware,
     authUserAdminMiddleware,
-    upload,
+    uploadMultiple.fields([
+      { name: "smallScreenImageUrl", maxCount: 1 },
+      { name: "largeScreenImageUrl", maxCount: 1 },
+    ]),
     validateFileSizes,
     promoResolver.createPromo
   );
@@ -321,7 +329,10 @@ let routes = (app) => {
     "/promo/update",
     authMiddleware,
     authUserAdminMiddleware,
-    upload,
+    uploadMultiple.fields([
+      { name: "smallScreenImageUrl", maxCount: 1 },
+      { name: "largeScreenImageUrl", maxCount: 1 },
+    ]),
     validateFileSizes,
     promoResolver.updatePromo
   );
@@ -503,7 +514,7 @@ let routes = (app) => {
 
   // body measurement routes
   router.post(
-    "/bodyMeasurement/add",
+    "/product/bodyMeasurement/add",
     authMiddleware,
     bodyMeasurementResolver.addBodyMeasurement
   );

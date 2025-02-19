@@ -23,13 +23,15 @@ const {
 const editBespokeClothes = async (req) => {
   try {
     const params = req.body;
-    const { productId, categories, colors, bodyMeasurement, variations } =
+    const { productId, categories, colors, bodyMeasurement, variations, autoPriceAdjustment } =
       params;
 
     if (categories && Object.keys(categories).length === 0) {
       return { error: "categories is required" };
     }
-
+    if(autoPriceAdjustment){
+      return { error: "you can not update autoPriceAdjustment with this endpoint" };
+    }
     if (categories) {
       const {
         gender,

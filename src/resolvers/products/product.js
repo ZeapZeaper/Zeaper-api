@@ -68,7 +68,11 @@ const {
   addVariationToBespokeShoe,
   validateBespokeShoes,
 } = require("./bespokeShoes");
-const { notifyShop, sendPushAllAdmins, addNotification } = require(".././notification");
+const {
+  notifyShop,
+  sendPushAllAdmins,
+  addNotification,
+} = require(".././notification");
 
 //saving image to firebase storage
 const addImage = async (destination, filename) => {
@@ -1971,7 +1975,69 @@ const deleteProductVariation = async (req, res) => {
     return res.status(500).send({ error: err.message });
   }
 };
+const updateAutoPriceAdjustment = async (req, res) => {
+  try {
+    const { productId, isAdjustable, adjustmentPercentage } = req.body;
 
+    if (!productId) {
+      return res.status(400).send({ error: "productId is required" });
+    }
+    if (isAdjustable === undefined) {
+      return res
+        .status(400)
+        .send({ error: "isAdjustable is required and its boolean" });
+    }
+    if (isAdjustable && !adjustmentPercentage && adjustmentPercentage === 0) {
+      return res
+        .status(400)
+        .send({
+          error: "adjustmentPercentage is required and must be more than 0",
+        });
+    }
+
+    if (
+      isAdjustable &&
+      (adjustmentPercentage < 0 || adjustmentPercentage > 100)
+    ) {
+      return res
+        .status(400)
+        .send({ error: "adjustmentPercentage must be between 0 and 100" });
+    }
+
+    const product = await ProductModel.findOne({ productId }).exec();
+    if (!product) {
+      return res.status(400).send({ error: "product not found" });
+    }
+    const user = await getAuthUser(req);
+    if (user.shopId !== product.shopId && !user?.isAdmin && !user?.superAdmin) {
+      return res
+        .status(400)
+        .send({ error: "You are not authorized to edit this product" });
+    }
+    const autoPriceAdjustment = {
+      isAdjustable,
+      adjustmentPercentage: isAdjustable ? adjustmentPercentage : 0,
+    };
+    console.log("autoPriceAdjustment", autoPriceAdjustment);
+    const updatedProduct = await ProductModel.findOneAndUpdate(
+      { productId },
+      {
+        autoPriceAdjustment,
+      },
+
+      { new: true }
+    ).exec();
+    if (!updatedProduct) {
+      return res.status(400).send({ error: "product not found" });
+    }
+    return res.status(200).send({
+      data: updatedProduct,
+      message: "product updated successfully",
+    });
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
+};
 module.exports = {
   editProduct,
   deleteProducts,
@@ -1999,6 +2065,7 @@ module.exports = {
   addImagesToProductColor,
   addProductVariation,
   editProductVariation,
+  updateAutoPriceAdjustment,
   deleteProductVariation,
   submitProduct,
 };

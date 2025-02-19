@@ -19,7 +19,7 @@ const editReadyMadeClothes = async (req) => {
   try {
    
     const params = req.body;
-    const { productId ,categories, sizes, colors, variations} = params;
+    const { productId ,categories, sizes, colors, variations, autoPriceAdjustment} = params;
     
     if(sizes && (!Array.isArray(sizes) || sizes.length === 0 || checkForDuplicates(sizes))){
       return { error: "sizes is required and must be unique" };
@@ -27,7 +27,9 @@ const editReadyMadeClothes = async (req) => {
     if(categories &&  Object.keys(categories).length === 0){
       return { error: "categories is required" }
     }
-    
+    if(autoPriceAdjustment){
+      return { error: "you can not update autoPriceAdjustment with this endpoint" };
+    }
     if(categories){
       const {gender, age,
         style,

@@ -16,7 +16,9 @@ const validateBodyMeasurement = (measurements, bodyMeasurementEnums) => {
       error = "One or more body measurements has no name";
       return { error };
     }
+
     const validItem = bodyMeasurementEnums.find((m) => m.name === name);
+   
     if (!validItem) {
       error = `Invalid measurement name: ${name}. Note that names are case sensitive valid measurement names are ${bodyMeasurementEnums
         .map((m) => m.name)
@@ -57,6 +59,7 @@ const addBodyMeasurement = async (req, res) => {
       return res.status(400).send({ error: "required measurements" });
     }
     const bodyMeasurementEnums = await BodyMeasurementGuideModel.find().lean();
+
     const mappedBodyMeasurementEnums = bodyMeasurementEnums.map((b) => {
       const { name, fields } = b;
       return {
@@ -64,16 +67,21 @@ const addBodyMeasurement = async (req, res) => {
         fields: fields.map((f) => f.field),
       };
     });
-    const mergedBodyMeasurementEnums = [];
-    mappedBodyMeasurementEnums.map((b) => {
-      const { name, fields } = b;
-      const found = mergedBodyMeasurementEnums.find((m) => m.name = name);
-      if (found) {
-        found.fields = [...found.fields, ...fields];
-      } else {
-        mergedBodyMeasurementEnums.push(b);
-      }
-    });
+
+
+    const mergedBodyMeasurementEnums = mappedBodyMeasurementEnums.reduce(
+      (acc, cur) => {
+        const found = acc.find((m) => m.name === cur.name);
+        if (found) {
+          found.fields = [...found.fields, ...cur.fields];
+        } else {
+          acc.push(cur);
+        }
+        return acc;
+      },
+      []
+    );
+
     const validate = validateBodyMeasurement(
       measurements,
       mergedBodyMeasurementEnums

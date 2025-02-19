@@ -26,10 +26,22 @@ const {
 const editBespokeShoes = async (req) => {
   try {
     const params = req.body;
-    const { productId, categories, colors,bodyMeasurement, variations } = params;
+    const {
+      productId,
+      categories,
+      colors,
+      bodyMeasurement,
+      variations,
+      autoPriceAdjustment,
+    } = params;
 
     if (categories && Object.keys(categories).length === 0) {
       return { error: "categories is required" };
+    }
+    if (autoPriceAdjustment) {
+      return {
+        error: "you can not update autoPriceAdjustment with this endpoint",
+      };
     }
 
     if (categories) {
@@ -153,7 +165,8 @@ const editBespokeShoes = async (req) => {
 };
 
 const validateBespokeShoes = async (product) => {
-  const { categories, sizes, colors, images,bodyMeasurement, variations } = product;
+  const { categories, sizes, colors, images, bodyMeasurement, variations } =
+    product;
   if (!categories || Object.keys(categories).length === 0) {
     return { error: "categories is required" };
   }
@@ -253,8 +266,8 @@ const validateBespokeShoes = async (product) => {
     return { error: "colors must have images and must be in right format" };
   }
 
-   // validate bodyMeasurement
-   if (!bodyMeasurement) {
+  // validate bodyMeasurement
+  if (!bodyMeasurement) {
     return { error: "bodyMeasurement is required" };
   }
 

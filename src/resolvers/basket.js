@@ -3,7 +3,7 @@ const {
   calculateTotalBasketPrice,
   validateBodyMeasurements,
   currencyCoversion,
-  
+
   calcRate,
 } = require("../helpers/utils");
 const { getAuthUser } = require("../middleware/firebaseUserAuth");
@@ -44,7 +44,6 @@ const generateUniqueBasketId = async () => {
 };
 
 const validateProductBodyMeasurements = async (product, bodyMeasurements) => {
-  
   const { variations } = product;
   const bespokeVariation = variations.find((v) => v.bespoke?.isBespoke);
   let error;
@@ -64,18 +63,19 @@ const validateProductBodyMeasurements = async (product, bodyMeasurements) => {
         fields: fields.map((f) => f.field),
       };
     });
-    const mergedBodyMeasurementEnums = [];
-    mappedBodyMeasurementEnums.map((b) => {
-      const { name, fields } = b;
-      const found = mergedBodyMeasurementEnums.find((m) => m.name = name);
-      if (found) {
-        found.fields = [...found.fields, ...fields];
-      } else {
-        mergedBodyMeasurementEnums.push(b);
-      }
-    });
+    const mergedBodyMeasurementEnums = mappedBodyMeasurementEnums.reduce(
+      (acc, cur) => {
+        const found = acc.find((m) => m.name === cur.name);
+        if (found) {
+          found.fields = [...found.fields, ...cur.fields];
+        } else {
+          acc.push(cur);
+        }
+        return acc;
+      },
+      []
+    );
 
-    
     const validateMeasurements = validateBodyMeasurements(
       bodyMeasurements,
       mergedBodyMeasurementEnums

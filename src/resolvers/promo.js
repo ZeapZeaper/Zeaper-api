@@ -3,7 +3,10 @@ const { storageRef } = require("../config/firebase"); // reference to our db
 const ProductModel = require("../models/products");
 const { productTypeEnums } = require("../helpers/constants");
 const { getAuthUser } = require("../middleware/firebaseUserAuth");
-const { deleLocalImages, deleteLocalFile } = require("../helpers/utils");
+const {
+  deleteLocalFile,
+  deleteLocalImagesByFileName,
+} = require("../helpers/utils");
 const root = require("../../root");
 const path = require("path");
 const { v4: uuidv4 } = require("uuid");
@@ -13,7 +16,7 @@ const { addPreferredAmountAndCurrency } = require("./products/productHelpers");
 const { type } = require("os");
 
 // saving video to firebase storage
-const addVideo = async (req, filename) => {
+const addVideo = async (filename) => {
   let url = {};
   if (filename) {
     const source = path.join(root + "/uploads/" + filename);
@@ -24,14 +27,18 @@ const addVideo = async (req, filename) => {
         firebaseStorageDownloadTokens: uuidv4(),
       },
     });
-    url = { link: storage[0].metadata.mediaLink, name: filename ,type:"video"};
+    url = {
+      link: storage[0].metadata.mediaLink,
+      name: filename,
+      type: "video",
+    };
     const deleteSourceFile = await deleteLocalFile(source);
     return url;
   }
   return url;
 };
 //saving image to firebase storage
-const addImage = async (req, filename) => {
+const addImage = async (destination, filename) => {
   let url = {};
   if (filename) {
     const source = path.join(root + "/uploads/" + filename);
@@ -40,9 +47,9 @@ const addImage = async (req, filename) => {
         fit: "inside",
         withoutEnlargement: true,
       })
-      .toFile(path.resolve(req.file.destination, "resized", filename));
+      .toFile(path.resolve(destination, "resized", filename));
     const storage = await storageRef.upload(
-      path.resolve(req.file.destination, "resized", filename),
+      path.resolve(destination, "resized", filename),
       {
         public: true,
         destination: `/promo/${filename}`,
@@ -51,10 +58,14 @@ const addImage = async (req, filename) => {
         },
       }
     );
-    url = { link: storage[0].metadata.mediaLink, name: filename, type:"image" };
+    url = {
+      link: storage[0].metadata.mediaLink,
+      name: filename,
+      type: "image",
+    };
     const deleteSourceFile = await deleteLocalFile(source);
     const deleteResizedFile = await deleteLocalFile(
-      path.resolve(req.file.destination, "resized", filename)
+      path.resolve(destination, "resized", filename)
     );
     await Promise.all([deleteSourceFile, deleteResizedFile]);
     return url;
@@ -221,12 +232,16 @@ const createPromo = async (req, res) => {
       type,
     } = req.body;
 
-    if (!req.file) {
+    if (!req.files) {
       return res.status(400).send({ error: "cover image file is required" });
     }
     const validation = validatePromo(req.body);
     if (validation !== true) {
-      await deleLocalImages([req.file]);
+      if (req?.files) {
+        Object.values(req.files).map(async (file) => {
+          await deleteLocalImagesByFileName(file[0].filename);
+        });
+      }
       return res.status(400).send({ error: validation.error });
     }
     // mate start date time 00:00:00 and end date time 23:59:59
@@ -236,20 +251,52 @@ const createPromo = async (req, res) => {
 
     const user = await getAuthUser(req);
     if (!user) {
-      await deleLocalImages([req.file]);
+      if (req?.files) {
+        Object.values(req.files).map(async (file) => {
+          await deleteLocalImagesByFileName(file[0].filename);
+        });
+      }
       return res.status(400).send({ error: "User not found" });
     }
     if (!user?.isAdmin && !user?.superAdmin) {
-      await deleLocalImages([req.file]);
+      if (req?.files) {
+        Object.values(req.files).map(async (file) => {
+          await deleteLocalImagesByFileName(file[0].filename);
+        });
+      }
       return res
         .status(400)
         .send({ error: "You are not authorized to create promo" });
     }
-    if (type === "video") {
-      imageUrl = await addVideo(req, req.file.filename);
-    } else {
-      imageUrl = await addImage(req, req.file.filename);
+    let smallScreenImageUrl = {};
+    let largeScreenImageUrl = {};
+
+    if (req?.files?.smallScreenImageUrl) {
+      if (type === "video") {
+        smallScreenImageUrl = await addVideo(
+          req.files.smallScreenImageUrl[0].filename
+        );
+      } else {
+        smallScreenImageUrl = await addImage(
+          req.files.smallScreenImageUrl[0].destination,
+          req.files.smallScreenImageUrl[0].filename
+        );
+      }
     }
+
+    if (req.files.largeScreenImageUrl) {
+      if (type === "video") {
+        largeScreenImageUrl = await addVideo(
+          req.files.largeScreenImageUrl[0].filename
+        );
+      } else {
+        largeScreenImageUrl = await addImage(
+          req.files.largeScreenImageUrl[0].destination,
+          req.files.largeScreenImageUrl[0].filename
+        );
+      }
+    }
+
     const promoId = await generateUniquePromoId();
     const promoData = {
       promoId,
@@ -257,10 +304,12 @@ const createPromo = async (req, res) => {
       endDate,
       description,
       title,
-      imageUrl,
+
       subTitle,
       discount,
       permittedProductTypes,
+      smallScreenImageUrl,
+      largeScreenImageUrl,
     };
     const promoInstance = new PromoModel(promoData);
     await promoInstance.save();
@@ -271,8 +320,11 @@ const createPromo = async (req, res) => {
     if (imageUrl.name) {
       await deleteImageFromFirebase(imageUrl.name);
     }
-    if (req.file) {
-      await deleLocalImages([req.file]);
+    if (req?.files) {
+      Object.values(req.files).map(async (file) => {
+        console.log("here 3", file);
+        await deleteLocalImagesByFileName(file[0].filename);
+      });
     }
     res.status(400).send({ error: error.message });
   }
@@ -440,10 +492,14 @@ const updatePromo = async (req, res) => {
       subTitle,
       discount,
       permittedProductTypes,
+      type,
     } = req.body;
     if (!promoId) {
-      if (req.file) {
-        await deleLocalImages([req.file]);
+      if (req?.files) {
+        Object.values(req.files).map(async (file) => {
+          console.log("here 3", file);
+          await deleteLocalImagesByFileName(file[0].filename);
+        });
       }
 
       return res.status(400).send({ error: "promoId is required" });
@@ -470,28 +526,66 @@ const updatePromo = async (req, res) => {
     endDate.setHours(23, 59, 59, 999);
 
     if (promo.status !== "draft") {
-      if (req.file) {
-        await deleLocalImages([req.file]);
+      if (req?.files) {
+        Object.values(req.files).map(async (file) => {
+          console.log("here 3", file);
+          await deleteLocalImagesByFileName(file[0].filename);
+        });
       }
+
       return res.status(400).send({ error: "Promo is not in draft status" });
     }
     const validation = validatePromo(req.body);
     if (validation !== true) {
-      if (req.file) {
-        await deleLocalImages([req.file]);
+      if (req?.files) {
+        Object.values(req.files).map(async (file) => {
+          console.log("here 3", file);
+          await deleteLocalImagesByFileName(file[0].filename);
+        });
       }
       return res.status(400).send({ error: validation.error });
     }
-    let imageUrl = promo.imageUrl;
-    if (req.file) {
-      imageUrl = await addImage(req, req.file.filename);
+    let smallScreenImageUrl = promo.smallScreenImageUrl;
+    let largeScreenImageUrl = promo.largeScreenImageUrl;
+
+    if (req?.files?.smallScreenImageUrl) {
+      if (type === "video") {
+        smallScreenImageUrl = await addVideo(
+          req.files.smallScreenImageUrl[0].filename
+        );
+      } else {
+        smallScreenImageUrl = await addImage(
+          req.files.smallScreenImageUrl[0].destination,
+          req.files.smallScreenImageUrl[0].filename
+        );
+      }
+    }
+
+    if (req.files.largeScreenImageUrl) {
+      if (type === "video") {
+        largeScreenImageUrl = await addVideo(
+          req.files.largeScreenImageUrl[0].filename
+        );
+      } else {
+        largeScreenImageUrl = await addImage(
+          req.files.largeScreenImageUrl[0].destination,
+          req.files.largeScreenImageUrl[0].filename
+        );
+      }
     }
     if (
-      promo.imageUrl.name &&
+      promo.smallScreenImageUrl.name &&
       req.file &&
-      promo.imageUrl.name !== imageUrl.name
+      promo.smallScreenImageUrl.name !== smallScreenImageUrl.name
     ) {
-      await deleteImageFromFirebase(promo.imageUrl.name);
+      await deleteImageFromFirebase(promo.smallScreenImageUrl.name);
+    }
+    if (
+      promo.largeScreenImageUrl.name &&
+      req.file &&
+      promo.largeScreenImageUrl.name !== largeScreenImageUrl.name
+    ) {
+      await deleteImageFromFirebase(promo.largeScreenImageUrl.name);
     }
 
     const updatedPromo = await PromoModel.findOneAndUpdate(
@@ -506,7 +600,8 @@ const updatePromo = async (req, res) => {
         subTitle,
         discount,
         permittedProductTypes,
-        imageUrl,
+        smallScreenImageUrl,
+        largeScreenImageUrl,
       },
       { new: true }
     ).lean();
@@ -514,8 +609,11 @@ const updatePromo = async (req, res) => {
       .status(200)
       .send({ data: updatedPromo, message: "Promo updated successfully" });
   } catch (error) {
-    if (req.file) {
-      await deleLocalImages([req.file]);
+    if (req?.files) {
+      Object.values(req.files).map(async (file) => {
+        console.log("here 3", file);
+        await deleteLocalImagesByFileName(file[0].filename);
+      });
     }
     res.status(400).send({ error: error.message });
   }
@@ -812,7 +910,12 @@ const updatePromoImage = async (req, res) => {
     const { promoId } = req.body;
     const promo = await PromoModel.findOne({ promoId });
     if (!promo) {
-      await deleLocalImages([req.file]);
+      if (req?.files) {
+        Object.values(req.files).map(async (file) => {
+          console.log("here 3", file);
+          await deleteLocalImagesByFileName(file[0].filename);
+        });
+      }
       return res.status(400).send({ error: "Promo not found" });
     }
     imageUrl = await addImage(req, req.file.filename);
@@ -836,8 +939,10 @@ const updatePromoImage = async (req, res) => {
     if (imageUrl.name) {
       await deleteImageFromFirebase(imageUrl.name);
     }
-    if (req.file) {
-      await deleLocalImages([req.file]);
+    if (req?.files) {
+      Object.values(req.files).map(async (file) => {
+        await deleteLocalImagesByFileName(file[0].filename);
+      });
     }
     res.status(400).send({ error: error.message });
   }

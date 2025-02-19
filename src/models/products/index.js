@@ -37,6 +37,10 @@ const ReadyMadeClothesSchema = new mongoose.Schema({
     promoId: { type: String, required: false },
     discountPercentage: { type: Number, required: false },
   },
+  autoPriceAdjustment: {
+    isAdjustable: { type: Boolean, required: false, default: false },
+    adjustmentPercentage: { type: Number, required: false, default: 0 },
+  },
   currentStep: { type: Number, required: true, default: 1 },
   categories: {
     gender: [
