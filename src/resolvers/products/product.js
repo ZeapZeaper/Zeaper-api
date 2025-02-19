@@ -1093,6 +1093,7 @@ const getProductById = async (req, res) => {
     const productData = await ProductModel.findById(_id)
       .populate("shop")
       .populate("postedBy")
+      .populate("bodyMeasurement")
       .populate("timeLine.actionBy")
       .lean();
     if (!productData) {
@@ -1988,11 +1989,9 @@ const updateAutoPriceAdjustment = async (req, res) => {
         .send({ error: "isAdjustable is required and its boolean" });
     }
     if (isAdjustable && !adjustmentPercentage && adjustmentPercentage === 0) {
-      return res
-        .status(400)
-        .send({
-          error: "adjustmentPercentage is required and must be more than 0",
-        });
+      return res.status(400).send({
+        error: "adjustmentPercentage is required and must be more than 0",
+      });
     }
 
     if (

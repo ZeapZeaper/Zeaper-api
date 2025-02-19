@@ -17,7 +17,7 @@ const validateBodyMeasurement = (measurements, bodyMeasurementEnums) => {
       return { error };
     }
 
-    const validItem = bodyMeasurementEnums.find((m) => m.name === name);
+    const validItem = bodyMeasurementEnums.find((m) => m.name.toLowerCase().replaceAll(/\s/g, "") === name.toLowerCase().replaceAll(/\s/g, ""));
    
     if (!validItem) {
       error = `Invalid measurement name: ${name}. Note that names are case sensitive valid measurement names are ${bodyMeasurementEnums

@@ -56,6 +56,7 @@ const validateProductBodyMeasurements = async (product, bodyMeasurements) => {
       };
     }
     const bodyMeasurementEnums = await BodyMeasurementGuideModel.find().lean();
+
     const mappedBodyMeasurementEnums = bodyMeasurementEnums.map((b) => {
       const { name, fields } = b;
       return {
@@ -75,6 +76,8 @@ const validateProductBodyMeasurements = async (product, bodyMeasurements) => {
       },
       []
     );
+    
+  
 
     const validateMeasurements = validateBodyMeasurements(
       bodyMeasurements,
@@ -87,7 +90,7 @@ const validateProductBodyMeasurements = async (product, bodyMeasurements) => {
       };
     }
     const productBodyMeasurement = product.bodyMeasurement;
-    console.log("productBodyMeasurement", productBodyMeasurement);
+   
     const expectedProductBodyMeasurement = await BodyMeasurementModel.findOne({
       _id: productBodyMeasurement,
     }).lean();
