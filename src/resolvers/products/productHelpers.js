@@ -523,7 +523,7 @@ const getQuery = (queries) => {
     sizes,
     title,
     description,
-    colors,
+    color,
     brand,
     design,
     gender,
@@ -537,6 +537,9 @@ const getQuery = (queries) => {
     occasion,
     price,
     status,
+    accessoryType,
+    heelType,
+    heelHeight,
   } = queries;
 
   const match = {
@@ -563,11 +566,11 @@ const getQuery = (queries) => {
   if (description) {
     match.description = { $regex: description, $options: "i" };
   }
-  if (colors) {
-    console.log("colors", colors);
+  if (color) {
+    console.log("colors", color);
     match.colors = {
       $elemMatch: {
-        value: { $in: colors.replace(/\s*,\s*/g, ",").split(",") },
+        value: { $in: color.replace(/\s*,\s*/g, ",").split(",") },
       },
     };
   }
@@ -632,6 +635,21 @@ const getQuery = (queries) => {
     const [min, max] = price.split("-");
 
     match["variations.price"] = { $gte: min, $lte: max };
+  }
+  if (accessoryType) {
+    match["categories.accessoryType"] = {
+      $in: accessoryType.replace(/\s*,\s*/g, ",").split(","),
+    };
+  }
+  if (heelType) {
+    match["categories.heelType"] = {
+      $in: heelType.replace(/\s*,\s*/g, ",").split(","),
+    };
+  }
+  if (heelHeight) {
+    match["categories.heelHeight"] = {
+      $in: heelHeight.replace(/\s*,\s*/g, ",").split(","),
+    };
   }
 
   const query = { ...match };
