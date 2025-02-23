@@ -73,6 +73,8 @@ const {
   sendPushAllAdmins,
   addNotification,
 } = require(".././notification");
+const ReviewModel = require("../../models/review");
+const ProductOrderModel = require("../../models/productOrder");
 
 //saving image to firebase storage
 const addImage = async (destination, filename) => {
@@ -1504,35 +1506,61 @@ const getMostPopular = async (req, res) => {
 
     const query = getQuery(req.query);
     query.status = "live";
-    const aggregate = [
+    // get most popular products based on number of productOrders
+    ProductOrderModel.aggregate([
       {
-        $facet: {
-          products: [
-            { $match: { ...query } },
-            { $sort: { createdAt: -1 } },
-            { $skip: limit * (pageNumber - 1) },
-            { $limit: limit },
-          ],
-          totalCount: [{ $match: { ...query } }, { $count: "count" }],
+        $group: {
+          _id: "$product",
+          count: { $sum: 1 },
         },
       },
-    ];
-    const productQuery = await ProductModel.aggregate(aggregate).exec();
-    const authUser = await getAuthUser(req);
-    const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
-    const productsData = productQuery[0].products;
-    const products = await addPreferredAmountAndCurrency(
-      productsData,
-      currency
-    );
-    const totalCount = productQuery[0].totalCount[0]?.count || 0;
-    const dynamicFilters = getDynamicFilters(products);
-    const data = {
-      products,
-      totalCount,
-      dynamicFilters,
-    };
-    return res.status(200).send({ data: data });
+      { $sort: { count: -1 } },
+      { $limit: limit },
+    ]).exec((err, result) => {
+      if (err) {
+        return res.status(500).send({ error: err.message });
+      }
+   
+      const product_ids = result.map((r) => r._id);
+      const aggregate = [
+        {
+          $facet: {
+            products: [
+              { $match: { ...query, _id: { $in: product_ids } } },
+              { $sort: { createdAt: -1 } },
+              { $skip: limit * (pageNumber - 1) },
+              { $limit: limit },
+            ],
+            totalCount: [
+              { $match: { ...query,_id: { $in:  product_ids } } },
+              { $count: "count" },
+            ],
+          },
+        },
+      ];
+      ProductModel.aggregate(aggregate).exec(async (err, productQuery) => {
+        if (err) {
+          return res.status(500).send({ error: err.message });
+        }
+        const authUser = await getAuthUser(req);
+        const currency =
+          req.query.currency || authUser?.prefferedCurrency || "NGN";
+     
+        const productsData = productQuery[0].products;
+        const products = await addPreferredAmountAndCurrency(
+          productsData,
+          currency
+        );
+        const totalCount = productQuery[0].totalCount[0]?.count || 0;
+        const dynamicFilters = getDynamicFilters(products);
+        const data = {
+          products,
+          totalCount,
+          dynamicFilters,
+        };
+        return res.status(200).send({ data: data });
+      });
+    });
   } catch (err) {
     return res.status(500).send({ error: err.message });
   }

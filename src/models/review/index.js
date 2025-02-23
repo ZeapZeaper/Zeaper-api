@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 const timestamp = require("mongoose-timestamp");
-const { type } = require("../../config/firebaseServiceAcc");
+
 
 const ReviewSchema = new mongoose.Schema({
   productId: { type: String, required: true },
