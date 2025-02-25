@@ -76,8 +76,6 @@ const validateProductBodyMeasurements = async (product, bodyMeasurements) => {
       },
       []
     );
-    
-  
 
     const validateMeasurements = validateBodyMeasurements(
       bodyMeasurements,
@@ -90,7 +88,7 @@ const validateProductBodyMeasurements = async (product, bodyMeasurements) => {
       };
     }
     const productBodyMeasurement = product.bodyMeasurement;
-   
+
     const expectedProductBodyMeasurement = await BodyMeasurementModel.findOne({
       _id: productBodyMeasurement,
     }).lean();
@@ -349,6 +347,65 @@ const deleteBasket = async (req, res) => {
   }
 };
 
+const compareBodyMeasurements = (bodyMeasurements1, bodyMeasurements2) => {
+  // compare body measurements array of objects with name and fields
+  // return true if they are the same
+  // return false if they are not the same
+  if (bodyMeasurements1.length === 0 && bodyMeasurements2.length === 0) {
+    return true;
+  }
+  if (bodyMeasurements1.length !== bodyMeasurements2.length) {
+    return false;
+  }
+  const names1 = bodyMeasurements1.map((m) => m.name);
+
+  const names2 = bodyMeasurements2.map((m) => m.name);
+
+  if (names1.length !== names2.length) {
+    return false;
+  }
+
+  const missingNames = names1.filter((n) => !names2.includes(n));
+  if (missingNames.length > 0) {
+    return false;
+  }
+  for (let i = 0; i < bodyMeasurements1.length; i++) {
+    const measurement1 = bodyMeasurements1[i];
+    const measurement2 = bodyMeasurements2.find(
+      (m) => m.name === measurement1.name
+    );
+    if (!measurement2) {
+      return false;
+    }
+    const fields1 = measurement1.measurements;
+    const fields2 = measurement2.measurements;
+    if (fields1.length !== fields2.length) {
+      return false;
+    }
+    const fieldNames1 = fields1.map((f) => f.field);
+    const fieldNames2 = fields2.map((f) => f.field);
+    if (fieldNames1.length !== fieldNames2.length) {
+      return false;
+    }
+    const missingFields = fieldNames1.filter((f) => !fieldNames2.includes(f));
+    if (missingFields.length > 0) {
+      return false;
+    }
+    for (let j = 0; j < fields1.length; j++) {
+      const field1 = fields1[j];
+      const field2 = fields2.find((f) => f.field === field1.field);
+      if (!field2) {
+        return false;
+      }
+      if (field1.value !== field2.value) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+};
+
 const addProductToBasket = async (req, res) => {
   try {
     const {
@@ -428,14 +485,24 @@ const addProductToBasket = async (req, res) => {
 
     const basketItems = basket.basketItems;
     const itemIndex = basketItems.findIndex((item) => {
-      console.log("product._id", product._id);
+
+      if (bodyMeasurements && item.bodyMeasurements) {
+        return (
+          item.product.toString() === product._id.toString() &&
+          item.sku === sku &&
+          compareBodyMeasurements(
+            item.bodyMeasurements || [],
+            bodyMeasurements || []
+          )
+        );
+      }
+
       return (
         item.product.toString() === product._id.toString() && item.sku === sku
       );
     });
 
     if (itemIndex !== -1) {
-      console.log("itemIndex", itemIndex);
       basketItems[itemIndex].quantity += quantity;
       basketItems[itemIndex].bespokeColor = bespokeColor;
       basketItems[itemIndex].bodyMeasurements = bodyMeasurements;
