@@ -15,7 +15,10 @@ const {
 const validator = require("email-validator");
 const { firebase } = require("../config/firebase");
 const { generateUniqueShopId } = require("./shop");
-const { getAuthUser } = require("../middleware/firebaseUserAuth");
+const {
+  getAuthUser,
+  getAuthUserUid,
+} = require("../middleware/firebaseUserAuth");
 const { sendOTP, verifyOTP } = require("../helpers/sms");
 const PointModel = require("../models/points");
 const { sendEmail } = require("../helpers/emailer");
@@ -123,6 +126,116 @@ const addShop = async (user) => {
   });
   const newShop = await shop.save();
   return newShop;
+};
+
+const creatGuestUser = async (req, res) => {
+  try {
+    const uid = await getAuthUserUid(req);
+    if (!uid) {
+      return res.status(400).send({ error: "User Uid  not found" });
+    }
+    const user = await UserModel.findOne({ uid });
+    if (user) {
+      return res.status(200).send({ data: user });
+    }
+    const userId = await generateUniqueUserId();
+    const isGuest = true;
+    const firstName = "Guest";
+    const lastName = "User";
+    const email = "";
+    const displayName = "Guest User";
+    const imageUrl = {};
+    const newUser = new UserModel({
+      email,
+      firstName,
+      lastName,
+      displayName,
+      imageUrl,
+      userId,
+      uid,
+      isGuest,
+    });
+    const savedUser = await newUser.save();
+    if (!savedUser) {
+      return res.status(400).send({ error: "User not created" });
+    }
+    console.log("savedUser", savedUser);
+    return res.status(200).send({ data: savedUser });
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
+};
+const convertGuestUserWithEmailPasswordProvider = async (req, res) => {
+  try {
+    const body = req.body;
+    const { email, password } = body;
+    if (!email) {
+      return res.status(400).send({ error: "email is required" });
+    }
+    if (!password) {
+      return res.status(400).send({ error: "password is required" });
+    }
+    const uid = await getAuthUserUid(req);
+    if (!uid) {
+      return res.status(400).send({ error: "User Uid  not found" });
+    }
+    const user = await UserModel.findOne({ uid }).lean();
+    if (!user) {
+      return res.status(404).send({ error: "Guest User not found" });
+    }
+    if (!user.isGuest) {
+      return res.status(400).send({ error: "User is not a guest" });
+    }
+    const decriptedPassword = cryptoDecrypt(password);
+    const firebaseUser = await addUserToFirebase({
+      email,
+      password: decriptedPassword,
+    });
+    if (!firebaseUser.uid) {
+      return res.status(400).send({ error: "Error creating user" });
+    }
+    const updatedUser = await UserModel.findByIdAndUpdate(
+      user._id,
+      { email, uid: firebaseUser.uid, ...body, isGuest: false },
+      { new: true }
+    );
+    if (!updatedUser) {
+      return res.status(500).send({ error: "Error updating user" });
+    }
+    // create point for user
+    const point = new PointModel({
+      user: updatedUser._id,
+      availablePoints: 500,
+      redeemedPoints: 0,
+      totalPoints: 500,
+    });
+
+    const newPoint = await point.save();
+    const welcomeUserEmailTemplate = await EmailTemplateModel.findOne({
+      name: "welcome-user",
+    }).lean();
+    const formattedUserTemplateBody = replaceUserVariablesinTemplate(
+      welcomeUserEmailTemplate?.body,
+      user
+    );
+
+    const formattedUserTemplateSubject = replaceUserVariablesinTemplate(
+      welcomeUserEmailTemplate?.subject,
+      user
+    );
+
+    const param = {
+      from: "admin@zeaper.com",
+      to: [email],
+      subject: formattedUserTemplateSubject || "Welcome",
+      body: formattedUserTemplateBody || "Welcome to Zeap",
+    };
+    const userMail = await sendEmail(param);
+
+    return res.status(200).send({ data: updatedUser });
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
 };
 
 const createUser = async (req, res) => {
@@ -388,6 +501,80 @@ const createUserWithGoogleOrApple = async (req, res) => {
     return res
       .status(200)
       .send({ data: newUser, message: "User created successfully" });
+  } catch (error) {
+    return res.status(500).send({ error: error.message });
+  }
+};
+
+const ConvertGuestUserWithGooglAppleProvider = async (req, res) => {
+  try {
+    const { email, firstName, lastName, guestUid } = req.body;
+    if (!email) {
+      return res.status(400).send({ error: "email is required" });
+    }
+    if (!firstName) {
+      return res.status(400).send({ error: "firstName is required" });
+    }
+    if (!lastName) {
+      return res.status(400).send({ error: "lastName is required" });
+    }
+    if (!guestUid) {
+      return res.status(400).send({ error: "guestUid is required" });
+    }
+    const uid = guestUid;
+    const user = await UserModel.findOne({ uid }).lean();
+    if (!user) {
+      return res.status(404).send({ error: "Guest User not found" });
+    }
+    if (!user.isGuest) {
+      return res.status(400).send({ error: "User is not a guest" });
+    }
+    const alreadyUser = await UserModel.findOne({ email }).lean();
+    if (alreadyUser) {
+      return res.status(400).send({
+        error: "An account with same email address is already existing.",
+      });
+    }
+    const displayName = `${firstName} ${lastName}`;
+    const userId = await generateUniqueUserId();
+    const updatedUser = await UserModel.findByIdAndUpdate(
+      user._id,
+      { email, userId, displayName, isGuest: false },
+      { new: true }
+    );
+    if (!updatedUser) {
+      return res.status(500).send({ error: "Error updating user" });
+    }
+    // create point for user
+    const point = new PointModel({
+      user: newUser._id,
+      availablePoints: 500,
+      redeemedPoints: 0,
+      totalPoints: 500,
+    });
+
+    const newPoint = await point.save();
+    const welcomeUserEmailTemplate = await EmailTemplateModel.findOne({
+      name: "welcome-user",
+    }).lean();
+    const formattedUserTemplateBody = replaceUserVariablesinTemplate(
+      welcomeUserEmailTemplate?.body,
+      user
+    );
+
+    const formattedUserTemplateSubject = replaceUserVariablesinTemplate(
+      welcomeUserEmailTemplate?.subject,
+      user
+    );
+
+    const param = {
+      from: "admin@zeaper.com",
+      to: [email],
+      subject: formattedUserTemplateSubject || "Welcome",
+      body: formattedUserTemplateBody || "Welcome to Zeap",
+    };
+    const userMail = await sendEmail(param);
+    return res.status(200).send({ data: updatedUser });
   } catch (error) {
     return res.status(500).send({ error: error.message });
   }
@@ -845,6 +1032,7 @@ const verifyUserOTP = async (req, res) => {
 module.exports = {
   createUser,
   createUserWithGoogleOrApple,
+  creatGuestUser,
   getUsers,
   getUser,
   getUserById,
@@ -857,4 +1045,6 @@ module.exports = {
   uploadProfilePic,
   verifyUserOTP,
   sendOTPToUser,
+  convertGuestUserWithEmailPasswordProvider,
+  ConvertGuestUserWithGooglAppleProvider,
 };

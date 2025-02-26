@@ -60,6 +60,15 @@ const getAuthUser = async (request) => {
   return user;
 };
 
+const getAuthUserUid = async (request) => {
+  const token = getToken(request);
+  const authUser = await firebase.auth().verifyIdToken(token);
+  if (!authUser) {
+    return null;
+  }
+  return authUser.uid;
+}
+
 const authUserAdminMiddleware = async (request, response, next) => {
   const token = getToken(request);
   const authUser = await firebase.auth().verifyIdToken(token);
@@ -85,4 +94,5 @@ module.exports = {
   authMiddleware,
   getAuthUser,
   authUserAdminMiddleware,
+  getAuthUserUid
 };

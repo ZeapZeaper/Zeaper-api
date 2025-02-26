@@ -52,6 +52,24 @@ let routes = (app) => {
   //User routes
   router.post("/user/create", authMiddleware, upload, userResolver.createUser);
   router.post(
+    "/user/guest/create",
+    authMiddleware,
+    upload,
+    userResolver.creatGuestUser
+  );
+  router.post(
+    "/user/guest/convert/emailPassword",
+    authMiddleware,
+    upload,
+    userResolver.convertGuestUserWithEmailPasswordProvider
+  );
+  router.post(
+    "/user/guest/convert/googleApple",
+    authMiddleware,
+    upload,
+    userResolver.ConvertGuestUserWithGooglAppleProvider
+  );
+  router.post(
     "/user/create/googleApple",
     authMiddleware,
     upload,
@@ -310,7 +328,7 @@ let routes = (app) => {
     authMiddleware,
     promoResolver.getAvailablePromos
   );
-  router.get("/promos/live", promoResolver.getLivePromos);
+  router.get("/promos/live", authMiddleware, promoResolver.getLivePromos);
   router.get("/promos/draft", authMiddleware, promoResolver.getDraftPromos);
   router.get(
     "/promos/scheduled",
