@@ -33,7 +33,7 @@ const BasketSchema = new mongoose.Schema({
             {
               field: { type: String, required: true },
               value: { type: Number, required: true },
-              unit: { type: String, required: true, value: "inch" },
+              unit: { type: String, required: false, value: "inch" },
             },
           ],
         },
