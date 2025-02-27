@@ -201,8 +201,7 @@ const getReference = async (req, res) => {
       lastName: user.lastName,
       basketId: basket.basketId,
     });
-
-    if (payment) {
+    if (deliveryAddress_id.toString() !== basket?.deliveryAddress?.toString()) {
       const addDeliveryAddress = await BasketModel.findOneAndUpdate(
         { basketId: basket.basketId },
         { deliveryAddress: deliveryAddress_id },
@@ -211,8 +210,10 @@ const getReference = async (req, res) => {
       if (!addDeliveryAddress) {
         return res
           .status(400)
-          .send({ error: "Delivery Address not added to basket" });
+          .send({ error: "Error in adding delivery address to basket" });
       }
+    }
+    if (payment) {
       const updatePayment = await PaymentModel.findOneAndUpdate(
         { basket: basket._id.toString() },
         {
@@ -225,7 +226,6 @@ const getReference = async (req, res) => {
           total,
           appliedVoucherAmount,
           reference,
-          
         },
         { new: true }
       );
