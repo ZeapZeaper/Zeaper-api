@@ -843,7 +843,10 @@ const createProduct = async (req, res) => {
       return res.status(400).send({ error: "shop is disabled" });
     }
 
-    const productId = await generateProductId(user.shopId, productType);
+    const productId = await generateProductId(
+      shopId || user.shopId,
+      productType
+    );
     const timeLine = [
       {
         date: new Date(),
@@ -1520,7 +1523,7 @@ const getMostPopular = async (req, res) => {
       if (err) {
         return res.status(500).send({ error: err.message });
       }
-   
+
       const product_ids = result.map((r) => r._id);
       const aggregate = [
         {
@@ -1532,7 +1535,7 @@ const getMostPopular = async (req, res) => {
               { $limit: limit },
             ],
             totalCount: [
-              { $match: { ...query,_id: { $in:  product_ids } } },
+              { $match: { ...query, _id: { $in: product_ids } } },
               { $count: "count" },
             ],
           },
@@ -1545,7 +1548,7 @@ const getMostPopular = async (req, res) => {
         const authUser = await getAuthUser(req);
         const currency =
           req.query.currency || authUser?.prefferedCurrency || "NGN";
-     
+
         const productsData = productQuery[0].products;
         const products = await addPreferredAmountAndCurrency(
           productsData,
