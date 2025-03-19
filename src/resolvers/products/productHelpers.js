@@ -632,8 +632,9 @@ const getQuery = (queries) => {
   }
   if (price) {
     const [min, max] = price.split("-");
-
-    match["variations.price"] = { $gte: min, $lte: max };
+    // where variations.price is greater than or equal to min and less than or equal to max
+    match["variations.price"] = { $gte: Number(min), $lte: Number(max) };
+    // match["variations.price"] = { $gte: min, $lte: max };
   }
   if (accessoryType) {
     match["categories.accessoryType"] = {
@@ -746,28 +747,31 @@ const validateBespokeVariations = (variations) => {
   return valid;
 };
 const addPreferredAmountAndCurrency = async (products, preferredCurrency) => {
-  const promises = products.map((product) => {
-    const variations = product.variations.map(async (variation) => {
-      const { price, discount } = variation;
-      const priceInPreferredCurrency = await currencyCoversion(
-        price,
-        preferredCurrency
-      );
-      const discountInPreferredCurrency = await currencyCoversion(
-        discount,
-        preferredCurrency
-      );
-      return {
-        ...variation,
-        price: priceInPreferredCurrency,
-        discount: discountInPreferredCurrency,
-        currency: preferredCurrency,
-      };
-    });
-    return {
-      ...product,
-      variations,
-    };
+  const promises = products.map(async (product) => {
+    const variations = await Promise.all(
+      product.variations.map(async (variation) => {
+        const { price, discount } = variation;
+        const priceInPreferredCurrency = await currencyCoversion(
+          price,
+          preferredCurrency
+        );
+
+        const discountInPreferredCurrency = await currencyCoversion(
+          discount,
+          preferredCurrency
+        );
+
+        return {
+          ...variation,
+          price: priceInPreferredCurrency,
+          discount: discountInPreferredCurrency,
+          currency: preferredCurrency,
+        };
+      })
+    );
+
+    product.variations = variations;
+    return product;
   });
   await Promise.all(promises);
   return products;

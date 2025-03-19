@@ -87,11 +87,23 @@ const getReviews = async (req, res) => {
       .populate("user")
       .exec();
     const averageRating = calcAvrerageRating(reviews);
+    let imageMatch = {
+      true: 0,
+      false: 0,
+    };
+    reviews.forEach((review) => {
+      imageMatch[review.imageMatch] += 1;
+    });
+    imageMatch = {
+      ...imageMatch,
+      total: reviews.length,
+    };
 
     res.status(200).send({
       data: {
         reviews,
         averageRating,
+        imageMatch,
       },
       message: "Reviews retrieved successfully",
     });

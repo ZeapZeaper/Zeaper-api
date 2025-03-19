@@ -75,6 +75,7 @@ const {
 } = require(".././notification");
 const ReviewModel = require("../../models/review");
 const ProductOrderModel = require("../../models/productOrder");
+const { all } = require("axios");
 
 //saving image to firebase storage
 const addImage = async (destination, filename) => {
@@ -1207,23 +1208,26 @@ const getProducts = async (req, res) => {
             { $skip: limit * (pageNumber - 1) },
             { $limit: limit },
           ],
-          totalCount: [{ $match: { ...query } }, { $count: "count" }],
+          allProducts: [
+            { $match: { ...query } },
+            {
+              $project: {
+                productType: 1,
+                categories: 1,
+                sizes: 1,
+                colors: 1,
+                variations: 1,
+              },
+            },
+          ],
         },
       },
     ];
     const productQuery = await ProductModel.aggregate(aggregate).exec();
     const products = productQuery[0].products;
-    const totalCount = productQuery[0].totalCount[0]?.count || 0;
-
-    // const updateProducts = products.map((product) => {
-    //   const update =  ProductModel.findOneAndUpdate({ _id: product._id }, {
-    //     "categories.productGroup" : "Ready-Made"
-    //    }, { new: true }).exec();
-    //   return update;
-    // });
-    // await Promise.all(updateProducts);
-
-    const dynamicFilters = getDynamicFilters(products);
+    const allProducts = productQuery[0].allProducts;
+    const totalCount = allProducts?.length || 0;
+    const dynamicFilters = getDynamicFilters(allProducts);
 
     const data = {
       products,
@@ -1276,7 +1280,18 @@ const getAuthShopProducts = async (req, res) => {
             { $skip: limit * (pageNumber - 1) },
             { $limit: limit },
           ],
-          totalCount: [{ $match: { ...query } }, { $count: "count" }],
+          allProducts: [
+            { $match: { ...query } },
+            {
+              $project: {
+                productType: 1,
+                categories: 1,
+                sizes: 1,
+                colors: 1,
+                variations: 1,
+              },
+            },
+          ],
         },
       },
     ];
@@ -1287,17 +1302,9 @@ const getAuthShopProducts = async (req, res) => {
       productsData,
       currency
     );
-    const totalCount = productQuery[0].totalCount[0]?.count || 0;
-
-    // const updateProducts = products.map((product) => {
-    //   const update =  ProductModel.findOneAndUpdate({ _id: product._id }, {
-    //     "categories.productGroup" : "Ready-Made"
-    //    }, { new: true }).exec();
-    //   return update;
-    // });
-    // await Promise.all(updateProducts);
-
-    const dynamicFilters = getDynamicFilters(products);
+    const allProducts = productQuery[0].allProducts;
+    const totalCount = allProducts?.length || 0;
+    const dynamicFilters = getDynamicFilters(allProducts);
 
     const data = {
       products,
@@ -1346,7 +1353,19 @@ const getLiveProducts = async (req, res) => {
             { $skip: limit * (pageNumber - 1) },
             { $limit: limit },
           ],
-          totalCount: [{ $match: { ...query } }, { $count: "count" }],
+
+          allProducts: [
+            { $match: { ...query } },
+            {
+              $project: {
+                productType: 1,
+                categories: 1,
+                sizes: 1,
+                colors: 1,
+                variations: 1,
+              },
+            },
+          ],
         },
       },
     ];
@@ -1359,8 +1378,10 @@ const getLiveProducts = async (req, res) => {
       productsData,
       currency
     );
-    const totalCount = productQuery[0].totalCount[0]?.count || 0;
-    const dynamicFilters = getDynamicFilters(products);
+
+    const allProducts = productQuery[0].allProducts;
+    const totalCount = allProducts?.length || 0;
+    const dynamicFilters = getDynamicFilters(allProducts);
     const data = {
       products,
       totalCount,
@@ -1412,7 +1433,18 @@ const getPromoWithLiveProducts = async (req, res) => {
             { $skip: limit * (pageNumber - 1) },
             { $limit: limit },
           ],
-          totalCount: [{ $match: { ...query } }, { $count: "count" }],
+          allProducts: [
+            { $match: { ...query } },
+            {
+              $project: {
+                productType: 1,
+                categories: 1,
+                sizes: 1,
+                colors: 1,
+                variations: 1,
+              },
+            },
+          ],
         },
       },
     ];
@@ -1425,8 +1457,9 @@ const getPromoWithLiveProducts = async (req, res) => {
       currency
     );
 
-    const totalCount = productQuery[0].totalCount[0]?.count || 0;
-    const dynamicFilters = getDynamicFilters(products);
+    const allProducts = productQuery[0].allProducts;
+    const totalCount = allProducts?.length || 0;
+    const dynamicFilters = getDynamicFilters(allProducts);
     const data = {
       products,
       promo,
@@ -1456,6 +1489,7 @@ const getNewestArrivals = async (req, res) => {
     }
 
     const query = getQuery(req.query);
+
     query.status = "live";
     const aggregate = [
       {
@@ -1466,7 +1500,18 @@ const getNewestArrivals = async (req, res) => {
             { $skip: limit * (pageNumber - 1) },
             { $limit: limit },
           ],
-          totalCount: [{ $match: { ...query } }, { $count: "count" }],
+          allProducts: [
+            { $match: { ...query } },
+            {
+              $project: {
+                productType: 1,
+                categories: 1,
+                sizes: 1,
+                colors: 1,
+                variations: 1,
+              },
+            },
+          ],
         },
       },
     ];
@@ -1478,8 +1523,9 @@ const getNewestArrivals = async (req, res) => {
       productsData,
       currency
     );
-    const totalCount = productQuery[0].totalCount[0]?.count || 0;
-    const dynamicFilters = getDynamicFilters(products);
+    const allProducts = productQuery[0].allProducts;
+    const totalCount = allProducts?.length || 0;
+    const dynamicFilters = getDynamicFilters(allProducts);
     const data = {
       products,
       totalCount,
@@ -1534,10 +1580,7 @@ const getMostPopular = async (req, res) => {
               { $skip: limit * (pageNumber - 1) },
               { $limit: limit },
             ],
-            totalCount: [
-              { $match: { ...query, _id: { $in: product_ids } } },
-              { $count: "count" },
-            ],
+            allProducts: [{ $match: { ...query } }],
           },
         },
       ];
@@ -1554,10 +1597,26 @@ const getMostPopular = async (req, res) => {
           productsData,
           currency
         );
-        const totalCount = productQuery[0].totalCount[0]?.count || 0;
-        const dynamicFilters = getDynamicFilters(products);
+        const allProducts = productQuery[0].allProducts;
+        const totalCount = allProducts?.length || 0;
+        const dynamicFilters = getDynamicFilters(allProducts);
+        const mostPopularProducts = [...products];
+        if (products.length < limit) {
+          const remainingLimit = limit - products.length;
+          // remove products from allProducts
+          const notPopularProducts = allProducts.filter(
+            (p) =>
+              !products.map((p) => p._id.toString()).includes(p._id.toString())
+          );
+          const remainingProducts = notPopularProducts.slice(0, remainingLimit);
+          const remainingProductsData = await addPreferredAmountAndCurrency(
+            remainingProducts,
+            currency
+          );
+          mostPopularProducts.push(...remainingProductsData);
+        }
         const data = {
-          products,
+          products: mostPopularProducts,
           totalCount,
           dynamicFilters,
         };
@@ -1651,6 +1710,16 @@ const searchLiveProducts = async (req, res) => {
       dynamicFilters,
     };
     return res.status(200).send({ data: data });
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
+};
+const getQueryProductsDynamicFilters = async (req, res) => {
+  try {
+    const query = getQuery(req.query);
+    const productsData = await ProductModel.find({ ...query }).lean();
+    const dynamicFilters = getDynamicFilters(productsData);
+    return res.status(200).send({ data: dynamicFilters });
   } catch (err) {
     return res.status(500).send({ error: err.message });
   }
@@ -2087,6 +2156,7 @@ module.exports = {
   getShopDraftProducts,
   setProductStatus,
   getProductOptions,
+  getQueryProductsDynamicFilters,
   getProductById,
   addProductColorAndImages,
   deleteProductColor,

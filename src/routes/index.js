@@ -208,6 +208,11 @@ let routes = (app) => {
     productResolver.getProductOptions
   );
   router.get(
+    "/products/dynamicFilters",
+    authMiddleware,
+    productResolver.getQueryProductsDynamicFilters,
+  );
+  router.get(
     "/products/shop/draft",
     authMiddleware,
     productResolver.getShopDraftProducts
