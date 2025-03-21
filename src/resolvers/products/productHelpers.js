@@ -130,10 +130,12 @@ const getDynamicFilters = (products) => {
       });
     } else {
       mainObj.options[mainIndex].count += 1;
+
     }
   });
 
   if (mainObj.options.length > 0) {
+   
     filters.push(mainObj);
   }
   const accessoryTypeObj = {

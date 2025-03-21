@@ -880,6 +880,27 @@ const currencyEnums = ["NGN", "USD", "GBP"];
 const userVariables = ["firstName", "lastName", "email", "phoneNumber"];
 const shopVariables = ["shopName"];
 const orderVariables = ["orderId", "orderPoints"];
+
+const searchQueryAllowedPaths = [{ label: "title", value: "title" },
+  {
+    path: "design",
+    value: "categories.design"
+  },
+  {
+    path: "occasion",
+    value: "categories.occasion"
+  },
+  {
+    path: "sleeveLength",
+    value: "categories.sleeveLength"
+  },
+  {
+    path: "style",
+    value: "categories.style"
+  },
+ 
+
+];
 module.exports = {
   genderEnums,
   ageGroupEnums,
@@ -911,4 +932,5 @@ module.exports = {
   userVariables,
   shopVariables,
   orderVariables,
+  searchQueryAllowedPaths
 };

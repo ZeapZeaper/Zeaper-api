@@ -23,6 +23,7 @@ const {
   accessoryStyleEnums,
   accessorySizeEnums,
   currencyEnums,
+  searchQueryAllowedPaths,
 } = require("../../helpers/constants");
 const {
   checkForDuplicates,
@@ -76,6 +77,7 @@ const {
 const ReviewModel = require("../../models/review");
 const ProductOrderModel = require("../../models/productOrder");
 const { all } = require("axios");
+const { type } = require("os");
 
 //saving image to firebase storage
 const addImage = async (destination, filename) => {
@@ -1672,21 +1674,53 @@ const searchProducts = async (req, res) => {
 const searchLiveProducts = async (req, res) => {
   try {
     const { search } = req.query;
+    const limit = parseInt(req.query.limit);
+    const pageNumber = parseInt(req.query.pageNumber);
+    if (!limit) {
+      return res.status(400).send({
+        error: "limit is required. This is maximum number you want per page",
+      });
+    }
 
+    if (!pageNumber) {
+      return res.status(400).send({
+        error:
+          "pageNumber is required. This is the current page number in the pagination",
+      });
+    }
     if (!search) {
       return res.status(400).send({ error: "search is required" });
     }
+
     const query = getQuery(req.query);
     query.status = "live";
+    const should = [
+      {
+        text: {
+          query: search,
+          path: {
+            wildcard: "*",
+          },
+        },
+      },
+    ];
+
+    searchQueryAllowedPaths.forEach((p) => {
+      should.push({
+        autocomplete: {
+          query: search,
+          path: p.value,
+        },
+      });
+    });
+    console.log("should", should);
     const aggregate = [
       {
         $search: {
           index: "products",
-          text: {
-            query: search,
-            path: {
-              wildcard: "*",
-            },
+          compound: {
+            should,
+            minimumShouldMatch: 1,
           },
         },
       },
@@ -1696,17 +1730,25 @@ const searchLiveProducts = async (req, res) => {
       {
         $sort: { score: { $meta: "textScore" } },
       },
+      {
+        $facet: {
+          products: [{ $skip: limit * (pageNumber - 1) }, { $limit: limit }],
+          allProducts: [{ $count: "count" }],
+        },
+      },
     ];
     const productsData = await ProductModel.aggregate(aggregate).exec();
     const authUser = await getAuthUser(req);
     const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
     const products = await addPreferredAmountAndCurrency(
-      productsData,
+      productsData[0].products,
       currency
     );
-    const dynamicFilters = getDynamicFilters(products);
+    const totalCount = productsData[0].allProducts[0]?.count || 0;
+    const dynamicFilters = getDynamicFilters(productsData[0].products);
     const data = {
       products,
+      totalCount,
       dynamicFilters,
     };
     return res.status(200).send({ data: data });
@@ -1717,6 +1759,7 @@ const searchLiveProducts = async (req, res) => {
 const getQueryProductsDynamicFilters = async (req, res) => {
   try {
     const query = getQuery(req.query);
+    query.status = "live";
     const productsData = await ProductModel.find({ ...query }).lean();
     const dynamicFilters = getDynamicFilters(productsData);
     return res.status(200).send({ data: dynamicFilters });
