@@ -169,6 +169,8 @@ const deleLocalImages = async (files) => {
 };
 const addProductColorAndImages = async (req, res) => {
   try {
+    console.log("addProductColorAndImages req body", req.body);
+    console.log("addProductColorAndImages req file", req.file);
     const files = req.files?.images;
     if (req.fileValidationError) {
       await deleLocalImages(files);
@@ -1713,7 +1715,7 @@ const searchLiveProducts = async (req, res) => {
         },
       });
     });
-    console.log("should", should);
+
     const aggregate = [
       {
         $search: {
@@ -1752,6 +1754,101 @@ const searchLiveProducts = async (req, res) => {
       dynamicFilters,
     };
     return res.status(200).send({ data: data });
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
+};
+const searchSimilarProducts = async (req, res) => {
+  try {
+    const { productId } = req.query;
+    const limit = parseInt(req.query.limit);
+
+    if (!limit) {
+      return res.status(400).send({
+        error: "limit is required. This is maximum number you want per page",
+      });
+    }
+    if (!productId) {
+      return res.status(400).send({ error: "productId is required" });
+    }
+    const product = await ProductModel.findOne({ productId }).exec();
+    if (!product) {
+      return res.status(400).send({ error: "product not found" });
+    }
+
+    const styles = product.categories.style;
+    const design = product.categories.design;
+    const occasion = product.categories.occasion;
+    const search = [...styles, ...design, ...occasion].join(" ");
+    const productType = product.productType;
+    const main = product.categories.main;
+    const gender = product.categories.gender;
+    const queryParam = {
+      status: "live",
+      productType,
+      "categories.main": { $in: main },
+      "categories.gender": { $in: gender },
+    };
+
+    const should = [
+      {
+        text: {
+          query: search,
+          path: {
+            wildcard: "*",
+          },
+        },
+      },
+      {
+        autocomplete: {
+          query: search,
+          path: "title",
+        },
+      },
+      {
+        autocomplete: {
+          query: search,
+          path: "categories.design",
+        },
+      },
+      {
+        autocomplete: {
+          query: search,
+          path: "categories.style",
+        },
+      },
+      {
+        autocomplete: {
+          query: search,
+          path: "categories.occasion",
+        },
+      },
+    ];
+    const aggregate = [
+      {
+        $search: {
+          index: "products",
+          compound: {
+            should,
+            minimumShouldMatch: 1,
+          },
+        },
+      },
+      {
+        $match: { ...queryParam, productId: { $ne: productId } },
+      },
+      {
+        $limit: limit,
+      },
+    ];
+    const products = await ProductModel.aggregate(aggregate).exec();
+    const authUser = await getAuthUser(req);
+    const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
+    const productsData = await addPreferredAmountAndCurrency(
+      products,
+      currency
+    );
+    return res.status(200).send({ data: productsData });
   } catch (err) {
     return res.status(500).send({ error: err.message });
   }
@@ -2211,4 +2308,5 @@ module.exports = {
   updateAutoPriceAdjustment,
   deleteProductVariation,
   submitProduct,
+  searchSimilarProducts,
 };

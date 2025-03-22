@@ -203,6 +203,11 @@ let routes = (app) => {
     productResolver.searchLiveProducts
   );
   router.get(
+    "/products/live/similar",
+    authMiddleware,
+    productResolver.searchSimilarProducts
+  );
+  router.get(
     "/products/options",
     authMiddleware,
     productResolver.getProductOptions
