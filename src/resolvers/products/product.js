@@ -170,7 +170,7 @@ const deleLocalImages = async (files) => {
 const addProductColorAndImages = async (req, res) => {
   try {
     console.log("addProductColorAndImages req body", req.body);
-    console.log("addProductColorAndImages req file", req.file);
+    console.log("addProductColorAndImages req file", req.files);
     const files = req.files?.images;
     if (req.fileValidationError) {
       await deleLocalImages(files);
