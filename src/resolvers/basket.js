@@ -313,7 +313,9 @@ const getBasket = async (req, res) => {
       const chosenColor = colors.find((c) => c.value === variation.colorValue);
       const image = chosenColor?.images.find((image) => image.link !== "");
       const color = chosenColor?.value;
+      const size = variation.size;
       basket.basketItems[i].color = color;
+      basket.basketItems[i].size = size;
       basket.basketItems[i].image = image?.link || {};
       basket.basketItems[i].title = title;
       basket.basketItems[i].productId = productId;
@@ -485,7 +487,6 @@ const addProductToBasket = async (req, res) => {
 
     const basketItems = basket.basketItems;
     const itemIndex = basketItems.findIndex((item) => {
-
       if (bodyMeasurements && item.bodyMeasurements) {
         return (
           item.product.toString() === product._id.toString() &&

@@ -1264,11 +1264,7 @@ const getAuthShopProducts = async (req, res) => {
       return res.status(400).send({ error: "sort value can only be 1 or -1" });
     }
     const user = await getAuthUser(req);
-    if (!user?.isAdmin && !user?.superAdmin) {
-      return res
-        .status(400)
-        .send({ error: "You are not authorized to view all products" });
-    }
+
     const query = getQuery(req.query);
     const authShop = await ShopModel.findOne({ user: user._id }).exec();
     if (!authShop) {

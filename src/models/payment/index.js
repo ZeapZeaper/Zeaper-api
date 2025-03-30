@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 const timestamp = require("mongoose-timestamp");
-const { del } = require("request");
+
 
 const PaymentSchema = new mongoose.Schema({
   user: {
