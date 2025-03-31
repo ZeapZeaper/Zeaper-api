@@ -7,9 +7,6 @@ const updateDeliveryFee = async (req, res) => {
     if (!fee) {
       return res.status(400).send({ error: "required fee" });
     }
-    if (fee < 0) {
-      return res.status(400).send({ error: "Fee must be greater than 0" });
-    }
 
     const currency = "NGN";
     const authUser = await getAuthUser(req);
