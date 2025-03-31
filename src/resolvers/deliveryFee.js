@@ -4,7 +4,7 @@ const DeliveryFeeModel = require("../models/deliveryFee");
 const updateDeliveryFee = async (req, res) => {
   try {
     const { fee } = req.body;
-    if (!fee) {
+    if (!fee && fee !== 0) {
       return res.status(400).send({ error: "required fee" });
     }
 

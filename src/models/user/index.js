@@ -25,6 +25,7 @@ const UserSchema = new mongoose.Schema({
     isMobile: { type: Boolean, required: false },
   },
   isGuest: { type: Boolean, required: false, default: false },
+  acceptMarketing: { type: Boolean, required: false, default: false },
   role: { type: String, required: false },
   signInCount: { type: Number, required: false, default: 0 },
   firstName: { type: String, required: false },

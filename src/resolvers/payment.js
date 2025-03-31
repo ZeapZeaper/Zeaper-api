@@ -49,7 +49,16 @@ const getReference = async (req, res) => {
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
     }
+    if (authUser.disabled) {
+      return res.status(400).send({ error: "User is disabled" });
+    }
+    if (authUser.isGuest) {
+      const { email } = authUser;
 
+      if (!email) {
+        return res.status(400).send({ error: "As a guest, update  email for receipt and contact" });
+      }
+    }
     const basketQuery = {
       ...(basketId && { basketId }),
       ...(!basketId && { user: authUser._id }),
