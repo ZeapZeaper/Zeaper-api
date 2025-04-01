@@ -1,6 +1,7 @@
 const { isCancel } = require("axios");
 const mongoose = require("mongoose");
 const timestamp = require("mongoose-timestamp");
+const { deliveryDetailsSchema } = require("../deliveryDetails");
 
 const OrderSchema = new mongoose.Schema({
   orderId: { type: String, required: true, unique: true },
@@ -25,6 +26,10 @@ const OrderSchema = new mongoose.Schema({
     ref: "Payments",
     required: true,
   },
+  deliveryDetails: {
+    type: deliveryDetailsSchema,
+    required: false,
+  },
   deliveryAddress: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "DeliveryAddress",
@@ -34,8 +39,7 @@ const OrderSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Vouchers",
     required: false,
-  }
- 
+  },
 });
 
 OrderSchema.plugin(timestamp);

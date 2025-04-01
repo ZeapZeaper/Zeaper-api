@@ -19,6 +19,7 @@ const {
 const NotificationModel = require("../models/notification");
 const generatePdf = require("../helpers/pdf");
 const { ENV } = require("../config");
+const { first } = require("lodash");
 const url =
   ENV === "prod"
     ? process.env.DOC_DOWNLOAD_URL_PROD
@@ -207,14 +208,11 @@ const createOrder = async (param) => {
       error: "Payment successful but basket not found. Please contact support",
     };
   }
-  const deliveryAddress = DeliveryAddressModel.findOne({
-    _id: basket?.deliveryAddress,
-    user: user,
-  }).lean();
-  if (!deliveryAddress) {
+  const deliveryDetails = basket.deliveryDetails;
+  if (!deliveryDetails) {
     return {
       error:
-        "Payment successful but delivery address not found. Hence, unable to proceed with order. Please contact support",
+        "Payment successful but delivery details not found. Please contact support",
     };
   }
   const basketItems = basket.basketItems;
@@ -224,7 +222,7 @@ const createOrder = async (param) => {
     orderId,
     user: user,
     basket: basket?._id,
-    deliveryAddress: basket?.deliveryAddress,
+    deliveryDetails,
     payment: payment?._id,
   });
 
@@ -305,7 +303,6 @@ const getAuthBuyerOrders = async (req, res) => {
     }
     const orders = await OrderModel.find({ user: authUser._id })
       .populate("productOrders")
-      .populate("deliveryAddress")
       .populate("productOrders.product")
       .lean();
     return res
@@ -329,7 +326,6 @@ const getAuthVendorProductOrders = async (req, res) => {
     const productOrders = await ProductOrderModel.find({ shop: shop._id })
       .populate("product")
       .populate("user")
-      .populate("deliveryAddress")
       .lean();
     return res.status(200).send({
       data: productOrders,
@@ -363,7 +359,6 @@ const getOrder = async (req, res) => {
     }
     const order = await OrderModel.findOne({ _id: order_id })
       .populate("productOrders")
-      .populate("deliveryAddress")
       .populate("payment")
       .populate("user")
       .populate({
@@ -470,14 +465,10 @@ const getProductOrder = async (req, res) => {
 
     const order = await OrderModel.findOne({
       _id: productOrder.order,
-    })
-      .populate("deliveryAddress")
-      .lean();
-    const deliveryAddress = await DeliveryAddressModel.findOne({
-      _id: order.deliveryAddress,
     }).lean();
+    const deliveryDetails = order.deliveryDetails;
     productOrder.order = order;
-    productOrder.deliveryAddress = deliveryAddress;
+    productOrder.deliveryDetails = deliveryDetails;
 
     return res.status(200).send({
       data: productOrder,

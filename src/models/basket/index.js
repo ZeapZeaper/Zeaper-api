@@ -1,6 +1,9 @@
 const { uniq } = require("lodash");
 const mongoose = require("mongoose");
 const timestamp = require("mongoose-timestamp");
+const { deliveryDetailsSchema } = require("../deliveryDetails");
+
+
 
 const BasketSchema = new mongoose.Schema({
   user: {
@@ -10,7 +13,7 @@ const BasketSchema = new mongoose.Schema({
     unique: true,
   },
   basketId: { type: String, required: true },
-  voucher : {
+  voucher: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Vouchers",
     required: false,
@@ -40,6 +43,11 @@ const BasketSchema = new mongoose.Schema({
       ],
     },
   ],
+  deliveryDetails: {
+    type: deliveryDetailsSchema,
+    required: false,
+  },
+
   deliveryAddress: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "DeliveryAddress",

@@ -738,12 +738,23 @@ const updateUser = async (req, res) => {
     if (!_id) {
       return res.status(400).send({ error: "_id is required" });
     }
-    if (email) {
-      return res.status(400).send({ error: "email cannot be updated" });
+    const authUser = await getAuthUser(req);
+    if (!authUser) {
+      return res.status(400).send({ error: "User not authenticated" });
+    }
+    const isAdmin = authUser.isAdmin || authUser.superAdmin;
+    if (!isAdmin && authUser._id.toString() !== _id.toString()) {
+      return res.status(400).send({ error: "You are not authorized" });
     }
     const user = await UserModel.findById(_id);
     if (!user) {
       return res.status(404).send({ error: "User not found" });
+    }
+    if (email && email !== user.email && !user?.isGuest) {
+      return res.status(400).send({ error: "email cannot be updated" });
+    }
+    if (email && !validator.validate(email)) {
+      return res.status(400).send({ error: "email is invalid" });
     }
 
     if (phoneNumber !== user.phoneNumber) {

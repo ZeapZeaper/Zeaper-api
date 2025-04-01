@@ -1,3 +1,4 @@
+const { default: mongoose } = require("mongoose");
 const { getAuthUser } = require("../middleware/firebaseUserAuth");
 const DeliveryAddressModel = require("../models/deliveryAddresses");
 const OrderModel = require("../models/order");
@@ -8,8 +9,10 @@ const createDeliveryAddress = async (req, res) => {
       address,
       region,
       country,
-      postalCode,
+
       phoneNumber,
+      firstName,
+      lastName,
       isDefault,
       user_id,
     } = req.body;
@@ -22,9 +25,15 @@ const createDeliveryAddress = async (req, res) => {
     if (!country) {
       return res.status(400).send({ error: "required country" });
     }
-    if (!postalCode) {
-      return res.status(400).send({ error: "required postalCode" });
+    if (!firstName) {
+      return res.status(400).send({ error: "required firstName" });
     }
+    if (!lastName) {
+      return res.status(400).send({ error: "required lastName" });
+    }
+    // if (!postalCode) {
+    //   return res.status(400).send({ error: "required postalCode" });
+    // }
     if (!phoneNumber) {
       return res.status(400).send({ error: "required phoneNumber" });
     }
@@ -46,7 +55,7 @@ const createDeliveryAddress = async (req, res) => {
     const userDeliveryAddresses = await DeliveryAddressModel.find({
       user: user_id || authUser._id,
     });
-
+    console.log("userDeliveryAddresses", userDeliveryAddresses);
     // check if user already has default address
     if (isDefault) {
       const defaultAddress = userDeliveryAddresses.find(
@@ -59,7 +68,26 @@ const createDeliveryAddress = async (req, res) => {
         );
       }
     }
+    const alreadyExist = userDeliveryAddresses.find(
+      (userAddress) => userAddress.address === address
+    );
 
+    if (alreadyExist && alreadyExist._id) {
+      const updatedAddress = await DeliveryAddressModel.findOneAndUpdate(
+        { _id: alreadyExist._id },
+        {
+          region,
+          country,
+          phoneNumber,
+          firstName,
+          lastName,
+          isDefault,
+        },
+        { new: true }
+      );
+
+      return res.status(200).send({ data: updatedAddress });
+    }
     const deliveryAddress = await DeliveryAddressModel.create({
       ...req.body,
       isDefault,
@@ -86,7 +114,7 @@ const getDeliveryAddresses = async (req, res) => {
         .status(400)
         .send({ error: "You are not authorized to fetch delivery addresses" });
     }
-    console.log("user_id", authUser._id.toString());
+
     const deliveryAddresses = await DeliveryAddressModel.find({
       user: user_id || authUser._id.toString(),
       disabled: false,

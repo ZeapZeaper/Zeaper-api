@@ -38,11 +38,47 @@ const generateReference = (param) => {
 
 const getReference = async (req, res) => {
   try {
-    const { basketId, deliveryAddress_id } = req.query;
+    const { basketId, deliveryDetails } = req.query;
     let paymentStatus = "pending";
     let orderId = null;
-    if (!deliveryAddress_id) {
-      return res.status(400).send({ error: "required deliveryAddress_id" });
+    const {
+      firstName,
+      lastName,
+      country,
+      region,
+      address,
+      phoneNumber,
+      postCode,
+    } = deliveryDetails;
+    if (!firstName) {
+      return res
+        .status(400)
+        .send({ error: "required firstName in deliveryDetails" });
+    }
+    if (!lastName) {
+      return res
+        .status(400)
+        .send({ error: "required lastName in deliveryDetails" });
+    }
+    if (!country) {
+      return res
+        .status(400)
+        .send({ error: "required country in deliveryDetails" });
+    }
+    if (!region) {
+      return res
+        .status(400)
+        .send({ error: "required region in deliveryDetails" });
+    }
+    if (!address) {
+      return res
+        .status(400)
+        .send({ error: "required address in deliveryDetails" });
+    }
+    if (!phoneNumber) {
+      return res
+        .status(400)
+        .send({ error: "required phoneNumber in deliveryDetails" });
     }
 
     const authUser = await getAuthUser(req);
@@ -56,7 +92,9 @@ const getReference = async (req, res) => {
       const { email } = authUser;
 
       if (!email) {
-        return res.status(400).send({ error: "As a guest, update  email for receipt and contact" });
+        return res
+          .status(400)
+          .send({ error: "As a guest, update  email for receipt and contact" });
       }
     }
     const basketQuery = {
@@ -84,14 +122,6 @@ const getReference = async (req, res) => {
     }
 
     const currency = authUser.prefferedCurrency || "NGN";
-
-    const deliveryAddress = await DeliveryAddressModel.findOne({
-      _id: deliveryAddress_id,
-      user: authUser._id,
-    }).lean();
-    if (!deliveryAddress) {
-      return res.status(404).send({ error: "Delivery Address not found" });
-    }
 
     if (
       authUser._id.toString() !== basket.user._id.toString() &&
@@ -210,18 +240,18 @@ const getReference = async (req, res) => {
       lastName: user.lastName,
       basketId: basket.basketId,
     });
-    if (deliveryAddress_id.toString() !== basket?.deliveryAddress?.toString()) {
-      const addDeliveryAddress = await BasketModel.findOneAndUpdate(
-        { basketId: basket.basketId },
-        { deliveryAddress: deliveryAddress_id },
-        { new: true }
-      );
-      if (!addDeliveryAddress) {
-        return res
-          .status(400)
-          .send({ error: "Error in adding delivery address to basket" });
-      }
+
+    const addDeliveryDetail = await BasketModel.findOneAndUpdate(
+      { basketId: basket.basketId },
+      { deliveryDetails },
+      { new: true }
+    );
+    if (!addDeliveryDetail) {
+      return res
+        .status(400)
+        .send({ error: "Error in adding delivery address to basket" });
     }
+
     if (payment) {
       const updatePayment = await PaymentModel.findOneAndUpdate(
         { basket: basket._id.toString() },
