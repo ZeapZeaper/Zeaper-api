@@ -253,7 +253,9 @@ const getBasket = async (req, res) => {
       .populate("basketItems.product", "productId title variations colors")
       .lean();
     if (!basket) {
-      return res.status(400).send({ error: "Basket not found" });
+      return res
+        .status(200)
+        .send({ data: {}, message: "No basket found / empty basket" });
     }
     let rate = null;
     if (currency !== "NGN") {

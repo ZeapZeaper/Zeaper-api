@@ -14,7 +14,6 @@ const createDeliveryAddress = async (req, res) => {
       firstName,
       lastName,
       isDefault,
-      user_id,
     } = req.body;
     if (!address) {
       return res.status(400).send({ error: "required address" });
@@ -42,18 +41,14 @@ const createDeliveryAddress = async (req, res) => {
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
     }
-    if (
-      user_id &&
-      !authUser.isAdmin &&
-      !authUser.superAdmin &&
-      authUser._id.toString() !== user_id
-    ) {
+    if (authUser?.isGuest) {
       return res
         .status(400)
-        .send({ error: "You are not authorized to create delivery address" });
+        .send({ error: "Guest user cannot add delivery address" });
     }
+
     const userDeliveryAddresses = await DeliveryAddressModel.find({
-      user: user_id || authUser._id,
+      user: authUser._id,
     });
     console.log("userDeliveryAddresses", userDeliveryAddresses);
     // check if user already has default address
@@ -91,7 +86,7 @@ const createDeliveryAddress = async (req, res) => {
     const deliveryAddress = await DeliveryAddressModel.create({
       ...req.body,
       isDefault,
-      user: user_id || authUser._id,
+      user: authUser._id,
     });
     return res.status(200).send({ data: deliveryAddress });
   } catch (err) {
@@ -116,7 +111,7 @@ const getDeliveryAddresses = async (req, res) => {
     }
 
     const deliveryAddresses = await DeliveryAddressModel.find({
-      user: user_id || authUser._id.toString(),
+      user: authUser._id.toString(),
       disabled: false,
     });
     return res.status(200).send({ data: deliveryAddresses });

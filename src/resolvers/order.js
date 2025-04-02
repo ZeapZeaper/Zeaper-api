@@ -144,7 +144,7 @@ const buildProductOrders = async (order, basketItems, currency) => {
     if (savedProductOrder && shop) {
       const title = "New Order";
       const body = `You have a new order with order ID - ${orderId} and item number - ${itemNo}`;
-      const image = null;
+      const image = savedProductOrder?.images[0]?.link || null;
       const notifyShopParam = { shop_id: shop.toString(), title, body, image };
       const notify = await notifyShop(notifyShopParam);
     }
@@ -265,7 +265,7 @@ const createOrder = async (param) => {
   }
   const title = "Order Placed";
   const body = `Your order with order ID ${orderId} has been placed successfully`;
-  const image = productOrders[0].images[0].link;
+  const image = null;
   const pushAllAdmins = await sendPushAllAdmins(title, body, image);
   const userNotification = await NotificationModel.findOne({
     user,

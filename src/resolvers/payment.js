@@ -192,7 +192,7 @@ const getReference = async (req, res) => {
             const existingOrder = await OrderModel.findOne({
               payment: updatedPayment._id,
             }).lean();
-            orderId = existingOrder.orderId;
+            orderId = existingOrder?.orderId;
             if (!existingOrder) {
               const order = await createOrder({
                 payment: updatedPayment,
@@ -249,7 +249,7 @@ const getReference = async (req, res) => {
       lastName: user.lastName,
       basketId: basket.basketId,
     });
-
+    console.log("reference", reference);
     const addDeliveryDetail = await BasketModel.findOneAndUpdate(
       { basketId: basket.basketId },
       { deliveryDetails },
@@ -384,12 +384,14 @@ const verifyPayment = async (req, res) => {
     // }
 
     verifyPaystack(reference, async (error, body) => {
+      console.log("verifying payment");
+      
       if (error) {
         console.log("error 1", error);
         reject(error.message);
       }
       const response = JSON.parse(body);
-      console.log("response", response);
+      ;
       if (response.status !== true) {
         return res.status(400).send({
           error: "Payment not successful",
@@ -410,96 +412,92 @@ const verifyPayment = async (req, res) => {
       } = response.data;
       const { card_type, bank, country_code } = authorization;
 
-      if (status === "success") {
-        const updatedPayment = await PaymentModel.findOneAndUpdate(
-          { reference },
-          {
-            amount,
-            status,
-            paidAt,
-            channel,
-            currency,
-            transactionDate: transaction_date,
-            log,
-            fees,
-            cardType: card_type,
-            bank,
-            countryCode: country_code,
-            gatewayResponse: gateway_response,
-          },
-          { new: true }
-        );
-        if (!updatedPayment) {
-          return res.status(400).send({
-            error:
-              "Payment successful but unable to update payment. Please contact support",
-          });
-        }
-        // 1000 naira = 10 points
-        // round down to the nearest 1000
-        const pointToAdd = Math.floor(amount / 1000) * 10;
-        const existingOrder = await OrderModel.findOne({
-          payment: updatedPayment._id,
-        }).lean();
-        if (existingOrder) {
-          return res.status(200).send({
-            message: "Payment verified successfully",
-            data: {
-              payment: updatedPayment,
-              order: existingOrder,
-              addedPoints: pointToAdd,
-            },
-          });
-        }
-
-        const order = await createOrder({
-          payment: updatedPayment,
-          user: updatedPayment.user,
-        });
-        if (order.error) {
-          return res.status(400).send({ error: order.error });
-        }
-        const addPoints = await addPointAfterSales(
-          updatedPayment.user,
-          pointToAdd
-        );
-        order.orderPoints = pointToAdd;
-        const orderEmailTemplate = await EmailTemplateModel.findOne({
-          name: "successful-order",
-        }).lean();
-        const user = await UserModel.findOne({
-          _id: updatedPayment.user,
-        }).lean();
-        const email = user.email;
-        const formattedOrderTemplateBody = replaceOrderVariablesinTemplate(
-          replaceUserVariablesinTemplate(orderEmailTemplate?.body, user),
-          order
-        );
-
-        const formattedOrderTemplateSubject = replaceOrderVariablesinTemplate(
-          replaceUserVariablesinTemplate(orderEmailTemplate?.subject, user),
-          order
-        );
-
-        const param = {
-          from: "admin@zeaper.com",
-          to: [email],
-          subject: formattedOrderTemplateSubject || "Welcome",
-          body: formattedOrderTemplateBody || "Welcome to Zeap",
-          attach: true,
-          order_id: order._id,
-        };
-        const orderMail = await sendEmail(param);
-
-        return res.status(200).send({
-          message: "Payment verified successfully",
-          data: { payment: updatedPayment, order, addedPoints: pointToAdd },
+      const updatedPayment = await PaymentModel.findOneAndUpdate(
+        { reference },
+        {
+          amount,
+          status,
+          paidAt,
+          channel,
+          currency,
+          transactionDate: transaction_date,
+          log,
+          fees,
+          cardType: card_type,
+          bank,
+          countryCode: country_code,
+          gatewayResponse: gateway_response,
+        },
+        { new: true }
+      );
+      if (!updatedPayment) {
+        return res.status(400).send({
+          error:
+            "Payment successful but unable to update payment. Please contact support",
         });
       }
-      return res.status(400).send({
-        error: "Payment not successful",
+      // 1000 naira = 10 points
+      // round down to the nearest 1000
+      const pointToAdd = Math.floor(amount / 1000) * 10;
+      const existingOrder = await OrderModel.findOne({
+        payment: updatedPayment._id,
+      }).lean();
+      if (existingOrder) {
+        return res.status(200).send({
+          message: "Payment verified successfully",
+          data: {
+            payment: updatedPayment,
+            order: existingOrder,
+            addedPoints: pointToAdd,
+          },
+        });
+      }
+
+      const order = await createOrder({
+        payment: updatedPayment,
+        user: updatedPayment.user,
+      });
+      if (order.error) {
+        return res.status(400).send({ error: order.error });
+      }
+      const addPoints = await addPointAfterSales(
+        updatedPayment.user,
+        pointToAdd
+      );
+      order.orderPoints = pointToAdd;
+      const orderEmailTemplate = await EmailTemplateModel.findOne({
+        name: "successful-order",
+      }).lean();
+      const user = await UserModel.findOne({
+        _id: updatedPayment.user,
+      }).lean();
+      const email = user.email;
+      const formattedOrderTemplateBody = replaceOrderVariablesinTemplate(
+        replaceUserVariablesinTemplate(orderEmailTemplate?.body, user),
+        order
+      );
+
+      const formattedOrderTemplateSubject = replaceOrderVariablesinTemplate(
+        replaceUserVariablesinTemplate(orderEmailTemplate?.subject, user),
+        order
+      );
+
+      const param = {
+        from: "admin@zeaper.com",
+        to: [email],
+        subject: formattedOrderTemplateSubject || "Welcome",
+        body: formattedOrderTemplateBody || "Welcome to Zeap",
+        attach: true,
+        order_id: order._id,
+      };
+      const orderMail = await sendEmail(param);
+
+      return res.status(200).send({
+        message: "Payment verified successfully",
+        data: { payment: updatedPayment, order, addedPoints: pointToAdd },
       });
     });
+    
   } catch (error) {
     res.status(400).send({ error: error.message });
   }

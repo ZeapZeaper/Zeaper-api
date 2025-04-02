@@ -30,11 +30,7 @@ const OrderSchema = new mongoose.Schema({
     type: deliveryDetailsSchema,
     required: false,
   },
-  deliveryAddress: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "DeliveryAddress",
-    required: true,
-  },
+
   voucher: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Vouchers",
