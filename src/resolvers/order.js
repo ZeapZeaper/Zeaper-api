@@ -240,9 +240,7 @@ const createOrder = async (param) => {
     currency
   );
   if (!productOrders || productOrders.length === 0) {
-    console.log(
-      "Payment successful but product orders not created. Please contact support"
-    );
+   
     return {
       error:
         "Payment successful but product orders not created. Please contact support",
@@ -611,7 +609,7 @@ const updateProductOrderStatus = async (req, res) => {
     // if selected status is placed, update confirmedAt to null
 
     if (selectedStatus.value === "order confirmed") {
-      console.log("is order confirmed");
+     
       confirmedAt = new Date();
       const productType = productOrder.product.productType;
       const bespokes = ["bespokeCloth", "bespokeShoe"];
@@ -883,7 +881,9 @@ const downloadReciept = async (req, res) => {
       progress: 20,
       status: "Getting receipt...",
     });
+    
     const order = await OrderModel.findOne({ _id: order_id.toString() });
+    console.log("order is", order);
     if (!order) {
       return res.status(400).send({
         error:

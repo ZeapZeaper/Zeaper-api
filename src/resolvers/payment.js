@@ -443,6 +443,32 @@ const verifyPayment = async (req, res) => {
         payment: updatedPayment._id,
       }).lean();
       if (existingOrder) {
+        // const orderEmailTemplate = await EmailTemplateModel.findOne({
+        //   name: "successful-order",
+        // }).lean();
+        // const user = await UserModel.findOne({
+        //   _id: updatedPayment.user,
+        // }).lean();
+        // const email = user.email;
+        // const formattedOrderTemplateBody = replaceOrderVariablesinTemplate(
+        //   replaceUserVariablesinTemplate(orderEmailTemplate?.body, user),
+        //   existingOrder
+        // );
+  
+        // const formattedOrderTemplateSubject = replaceOrderVariablesinTemplate(
+        //   replaceUserVariablesinTemplate(orderEmailTemplate?.subject, user),
+        //   existingOrder
+        // );
+  
+        // const param = {
+        //   from: "admin@zeaper.com",
+        //   to: [email],
+        //   subject: formattedOrderTemplateSubject || "Welcome",
+        //   body: formattedOrderTemplateBody || "Welcome to Zeap",
+        //   attach: true,
+        //   order_id: existingOrder._id,
+        // };
+        // const orderMail = await sendEmail(param);
         return res.status(200).send({
           message: "Payment verified successfully",
           data: {
@@ -490,7 +516,7 @@ const verifyPayment = async (req, res) => {
         attach: true,
         order_id: order._id,
       };
-      const orderMail = await sendEmail(param);
+      const orderMail = await Promise.resolve(sendEmail(param));
 
       return res.status(200).send({
         message: "Payment verified successfully",
