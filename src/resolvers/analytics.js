@@ -264,7 +264,7 @@ const getProductAnalytics = async (req, res) => {
       acc[productId] += rating;
       return acc;
     }, {});
-    console.log("mostRatedProductIds", mostRatedProductIds);
+
     // arrange mostRatedProducts in descending order
     const mostRatedProductsArray = Object.keys(mostRatedProductIds)
       .map((key) => {
@@ -275,7 +275,7 @@ const getProductAnalytics = async (req, res) => {
       })
       .sort((a, b) => b.rating - a.rating)
       .slice(0, 5);
-    console.log("mostRatedProductsArray", mostRatedProductsArray);
+
     const mostRatedProducts = mostRatedProductsArray.map((product) => {
       const productDetails = products.find(
         (p) => p.productId === product.product

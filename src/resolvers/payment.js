@@ -38,10 +38,8 @@ const generateReference = (param) => {
 
 const getReference = async (req, res) => {
   try {
-    const { basketId, deliveryDetails } = req.query;
-    let paymentStatus = "pending";
-    let orderId = null;
     const {
+      basketId,
       firstName,
       lastName,
       country,
@@ -49,38 +47,50 @@ const getReference = async (req, res) => {
       address,
       phoneNumber,
       postCode,
-    } = deliveryDetails;
+    } = req.query;
+
+    let paymentStatus = "pending";
+    let orderId = null;
+
     if (!firstName) {
       return res
         .status(400)
-        .send({ error: "required firstName in deliveryDetails" });
+        .send({ error: "required firstName for delivery address" });
     }
     if (!lastName) {
       return res
         .status(400)
-        .send({ error: "required lastName in deliveryDetails" });
+        .send({ error: "required lastName for delivery address" });
     }
     if (!country) {
       return res
         .status(400)
-        .send({ error: "required country in deliveryDetails" });
+        .send({ error: "required country in delivery address" });
     }
     if (!region) {
       return res
         .status(400)
-        .send({ error: "required region in deliveryDetails" });
+        .send({ error: "required region in delivery address" });
     }
     if (!address) {
       return res
         .status(400)
-        .send({ error: "required address in deliveryDetails" });
+        .send({ error: "required address in delivery address" });
     }
     if (!phoneNumber) {
       return res
         .status(400)
-        .send({ error: "required phoneNumber in deliveryDetails" });
+        .send({ error: "required phoneNumber in delivery address" });
     }
-
+    const deliveryDetails = {
+      address,
+      region,
+      country,
+      phoneNumber,
+      firstName,
+      lastName,
+      postCode,
+    };
     const authUser = await getAuthUser(req);
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
@@ -222,7 +232,6 @@ const getReference = async (req, res) => {
     const deliveryFeeDue = calculateTotal.deliveryFee * 100;
     const appliedVoucherAmountDue = calculateTotal.appliedVoucherAmount * 100;
     const totalDue = calculateTotal.total * 100;
-    console.log("calculateTotal", calculateTotal);
 
     const amount = await currencyCoversion(amountDue, currency);
     const itemsTotal = await currencyCoversion(itemsTotalDue, currency);
