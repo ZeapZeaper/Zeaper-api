@@ -140,10 +140,10 @@ const creatGuestUser = async (req, res) => {
     }
     const userId = await generateUniqueUserId();
     const isGuest = true;
-    const firstName = "Guest";
-    const lastName = "User";
+    const firstName = "Customer";
+    const lastName = "Guest";
     const email = "";
-    const displayName = "Guest User";
+    // const displayName = "Guest User";
     const imageUrl = {};
     const newUser = new UserModel({
       email,

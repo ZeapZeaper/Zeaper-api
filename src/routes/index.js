@@ -561,8 +561,9 @@ let routes = (app) => {
     orderResolver.getOrders
   );
   router.get("/order", orderResolver.getOrder);
+  router.get("/order/authUser/buyer/orderId", orderResolver.getOrderByOrderId,);
   router.get(
-    "/orders/authUser/buyer/order",
+    "/order/authUser/buyer/order",
     authMiddleware,
     authUserAdminMiddleware,
     orderResolver.getOrder

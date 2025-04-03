@@ -87,7 +87,7 @@ const sendEmail = async (param) => {
       bcc: bcc?.map((email) => email),
       attachments,
     };
-
+console.log("mail", mail);
     const response = await transporter.sendMail(mail, (err, data) => {
       if (err) {
         console.log("err", err);

@@ -51,6 +51,7 @@ const getReference = async (req, res) => {
 
     let paymentStatus = "pending";
     let orderId = null;
+    let order = null;
 
     if (!firstName) {
       return res
@@ -193,20 +194,23 @@ const getReference = async (req, res) => {
               payment: updatedPayment._id,
             }).lean();
             orderId = existingOrder?.orderId;
+            order = existingOrder;
             if (!existingOrder) {
-              const order = await createOrder({
+              const newOrder = await createOrder({
                 payment: updatedPayment,
                 user: updatedPayment.user,
               });
-              if (order.error) {
-                return res.status(400).send({ error: order.error });
+              if (newOrder.error) {
+                return res.status(400).send({ error: newOrder.error });
               }
+              order = newOrder.order;
               orderId = order?.orderId;
               const addPoints = await addPointAfterSales(
                 updatedPayment.user,
                 pointToAdd
               );
             }
+
 
             return res.status(200).send({
               message: "Payment already made",
@@ -218,6 +222,7 @@ const getReference = async (req, res) => {
                 email,
                 paymentStatus,
                 orderId,
+                order
               },
             });
           }
@@ -249,7 +254,7 @@ const getReference = async (req, res) => {
       lastName: user.lastName,
       basketId: basket.basketId,
     });
-    console.log("reference", reference);
+  
     const addDeliveryDetail = await BasketModel.findOneAndUpdate(
       { basketId: basket.basketId },
       { deliveryDetails },
@@ -384,14 +389,13 @@ const verifyPayment = async (req, res) => {
     // }
 
     verifyPaystack(reference, async (error, body) => {
-      console.log("verifying payment");
-      
+  
+
       if (error) {
-        console.log("error 1", error);
+      
         reject(error.message);
       }
       const response = JSON.parse(body);
-      ;
       if (response.status !== true) {
         return res.status(400).send({
           error: "Payment not successful",
@@ -454,12 +458,12 @@ const verifyPayment = async (req, res) => {
         //   replaceUserVariablesinTemplate(orderEmailTemplate?.body, user),
         //   existingOrder
         // );
-  
+
         // const formattedOrderTemplateSubject = replaceOrderVariablesinTemplate(
         //   replaceUserVariablesinTemplate(orderEmailTemplate?.subject, user),
         //   existingOrder
         // );
-  
+
         // const param = {
         //   from: "admin@zeaper.com",
         //   to: [email],
@@ -479,13 +483,14 @@ const verifyPayment = async (req, res) => {
         });
       }
 
-      const order = await createOrder({
+      const newOrder = await createOrder({
         payment: updatedPayment,
         user: updatedPayment.user,
       });
-      if (order.error) {
-        return res.status(400).send({ error: order.error });
+      if (newOrder.error) {
+        return res.status(400).send({ error: newOrder.error });
       }
+      const order = newOrder.order;
       const addPoints = await addPointAfterSales(
         updatedPayment.user,
         pointToAdd
@@ -516,14 +521,13 @@ const verifyPayment = async (req, res) => {
         attach: true,
         order_id: order._id,
       };
-      const orderMail = await Promise.resolve(sendEmail(param));
+      const orderMail = await sendEmail(param);
 
       return res.status(200).send({
         message: "Payment verified successfully",
         data: { payment: updatedPayment, order, addedPoints: pointToAdd },
       });
     });
-    
   } catch (error) {
     res.status(400).send({ error: error.message });
   }

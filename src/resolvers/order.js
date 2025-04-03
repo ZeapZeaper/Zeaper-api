@@ -240,7 +240,6 @@ const createOrder = async (param) => {
     currency
   );
   if (!productOrders || productOrders.length === 0) {
-   
     return {
       error:
         "Payment successful but product orders not created. Please contact support",
@@ -355,6 +354,11 @@ const getOrder = async (req, res) => {
     if (!order_id) {
       return res.status(400).send({ error: "required order_id" });
     }
+    const authUser = await getAuthUser(req);
+    if (!authUser) {
+      return res.status(400).send({ error: "User not found" });
+    }
+
     const order = await OrderModel.findOne({ _id: order_id })
       .populate("productOrders")
       .populate("payment")
@@ -380,6 +384,57 @@ const getOrder = async (req, res) => {
     //   type: "url",
     //   website_url,
     // });
+    const user = order.user;
+    const isAdmin = authUser.superAdmin || authUser.admin;
+    if (user._id.toString() !== authUser._id.toString() && !isAdmin) {
+      return res
+        .status(400)
+        .send({ error: "You are not authorized to view this order" });
+    }
+
+    return res
+      .status(200)
+      .send({ data: order, message: "Order fetched successfully" });
+  } catch (error) {
+    res.status(400).send({ error: error.message });
+  }
+};
+
+const getOrderByOrderId = async (req, res) => {
+  try {
+    const { orderId } = req.query;
+    if (!orderId) {
+      return res.status(400).send({ error: "required orderId of order" });
+    }
+    const authUser = await getAuthUser(req);
+    if (!authUser) {
+      return res.status(400).send({ error: "User not found" });
+    }
+    const order = await OrderModel.findOne({ orderId })
+      .populate("productOrders")
+      .populate("payment")
+      .populate("user")
+      .populate({
+        path: "productOrders",
+        populate: [
+          { path: "product" },
+          {
+            path: "user",
+          },
+          {
+            path: "shop",
+          },
+        ],
+      })
+
+      .lean();
+    const user = order.user;
+    const isAdmin = authUser.superAdmin || authUser.admin;
+    if (user._id.toString() !== authUser._id.toString() && !isAdmin) {
+      return res
+        .status(400)
+        .send({ error: "You are not authorized to view this order" });
+    }
 
     return res
       .status(200)
@@ -609,7 +664,6 @@ const updateProductOrderStatus = async (req, res) => {
     // if selected status is placed, update confirmedAt to null
 
     if (selectedStatus.value === "order confirmed") {
-     
       confirmedAt = new Date();
       const productType = productOrder.product.productType;
       const bespokes = ["bespokeCloth", "bespokeShoe"];
@@ -881,7 +935,7 @@ const downloadReciept = async (req, res) => {
       progress: 20,
       status: "Getting receipt...",
     });
-    
+
     const order = await OrderModel.findOne({ _id: order_id.toString() });
     console.log("order is", order);
     if (!order) {
@@ -933,6 +987,7 @@ module.exports = {
   getOrderStatusOptions,
   updateProductOrderStatus,
   getOrder,
+  getOrderByOrderId,
   getProductOrder,
   getProductOrderStatusHistory,
   cancelOrder,
