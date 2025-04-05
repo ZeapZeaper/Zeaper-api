@@ -8,16 +8,12 @@ const BodyMeasurementTemplateSchema = new mongoose.Schema({
     required: true,
   },
   templateName: { type: String, required: true },
+
   measurements: [
     {
-      name: { type: String, required: true },
-      measurements: [
-        {
-          field: { type: String, required: true },
-          value: { type: Number, required: true },
-          unit: { type: String,  value: "inch" },
-        },
-      ],
+      field: { type: String, required: true },
+      value: { type: Number, required: true },
+      unit: { type: String, value: "inch", required: true },
     },
   ],
 });

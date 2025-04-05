@@ -6,6 +6,7 @@ const {
 const { getAuthUser } = require("../middleware/firebaseUserAuth");
 const BodyMeasurementTemplateModel = require("../models/bodyMeasurementTemplate");
 const BodyMeasurementGuideModel = require("../models/bodyMeasurementGuide");
+const BodyMeasurementGuideFieldModel = require("../models/BodyMeasurementGuideField");
 
 const addBodyMeasurementTemplate = async (req, res) => {
   try {
@@ -25,8 +26,10 @@ const addBodyMeasurementTemplate = async (req, res) => {
     if (measurements.length === 0) {
       return res.status(400).send({ error: "measurements must not be empty" });
     }
+
     const bodyMeasurementGuideFields =
       await BodyMeasurementGuideFieldModel.find().lean();
+
     // if measurement item is not object containing field and value
     // field must be in bodyMeasurementGuideFields
     // value must be number
@@ -117,10 +120,15 @@ const addBodyMeasurementTemplate = async (req, res) => {
     //   return res.status(400).send({ error: validate.error });
     // }
 
+    // add unit = inch to all measurements
+    const formattedMeasurements = measurements.map((measurement) => {
+      measurement.unit = "inch";
+      return measurement;
+    });
     const bodyMeasurementTemplate = new BodyMeasurementTemplateModel({
       user: user_id || authUser._id,
       templateName,
-      measurements,
+      measurements: formattedMeasurements,
     });
     const bodyMeasurementTemplateRes = await bodyMeasurementTemplate.save();
     if (!bodyMeasurementTemplateRes?._id) {
@@ -217,18 +225,13 @@ const updateBodyMeasurementTemplate = async (req, res) => {
     if (!templateName) {
       return res.status(400).send({ error: "required template name" });
     }
-    const exist = await BodyMeasurementTemplateModel.findOne({ templateName });
-    if (!exist) {
-      return res
-        .status(400)
-        .send({ error: "Body Measurement Template not found" });
-    }
 
     const authUser = await getAuthUser(req);
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
     }
     if (
+      user_id &&
       !authUser.isAdmin &&
       !authUser.superAdmin &&
       authUser._id.toString() !== user_id
@@ -237,6 +240,16 @@ const updateBodyMeasurementTemplate = async (req, res) => {
         error:
           "You are not authorized to update Body Measurement Template for this user",
       });
+    }
+    const exist = await BodyMeasurementTemplateModel.findOne({
+      templateName,
+      user: user_id || authUser._id,
+    }).lean();
+
+    if (!exist) {
+      return res
+        .status(400)
+        .send({ error: "Body Measurement Template not found" });
     }
 
     const bodyMeasurementEnums = await BodyMeasurementGuideModel.find().lean();
