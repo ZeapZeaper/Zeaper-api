@@ -21,7 +21,7 @@ const promoResolver = require("../resolvers/promo");
 const basketResolver = require("../resolvers/basket");
 const paymentResolver = require("../resolvers/payment");
 const deliveryAddressResolver = require("../resolvers/deliveryAddress");
-const bodyMeasurementTemplateResolver = require("../resolvers/bodyMeasurementTemplateModel");
+const bodyMeasurementTemplateResolver = require("../resolvers/bodyMeasurementTemplate");
 const bodyMeasurementResolver = require("../resolvers/bodyMeasurement");
 const orderResolver = require("../resolvers/order");
 const pointResolver = require("../resolvers/point");
@@ -691,7 +691,7 @@ let routes = (app) => {
   router.get(
     "/bodyMeasurementGuide/bespoke/fields",
     authMiddleware,
-    bodyMeasurementGuideResolver.getBodyMeasurementGuideFields
+    bodyMeasurementGuideResolver.getBodyMeasurementFields
   );
   router.put(
     "/bodyMeasurementGuide/bespoke/field/Image",

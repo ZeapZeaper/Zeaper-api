@@ -17,8 +17,12 @@ const validateBodyMeasurement = (measurements, bodyMeasurementEnums) => {
       return { error };
     }
 
-    const validItem = bodyMeasurementEnums.find((m) => m.name.toLowerCase().replaceAll(/\s/g, "") === name.toLowerCase().replaceAll(/\s/g, ""));
-   
+    const validItem = bodyMeasurementEnums.find(
+      (m) =>
+        m.name.toLowerCase().replaceAll(/\s/g, "") ===
+        name.toLowerCase().replaceAll(/\s/g, "")
+    );
+
     if (!validItem) {
       error = `Invalid measurement name: ${name}. Note that names are case sensitive valid measurement names are ${bodyMeasurementEnums
         .map((m) => m.name)
@@ -50,7 +54,7 @@ const validateBodyMeasurement = (measurements, bodyMeasurementEnums) => {
 
 const addBodyMeasurement = async (req, res) => {
   try {
-    const { productId, measurements } = req.body;
+    const { productId, measurements, currentStep } = req.body;
 
     if (!productId) {
       return res.status(400).send({ error: "required productId" });
@@ -67,7 +71,6 @@ const addBodyMeasurement = async (req, res) => {
         fields: fields.map((f) => f.field),
       };
     });
-
 
     const mergedBodyMeasurementEnums = mappedBodyMeasurementEnums.reduce(
       (acc, cur) => {
@@ -103,12 +106,25 @@ const addBodyMeasurement = async (req, res) => {
         { measurements },
         { new: true }
       );
+      if (currentStep) {
+        const updateProduct = await ProductModel.findOneAndUpdate(
+          { productId },
+          { currentStep },
+          { new: true }
+        );
+      }
       return res.status(200).send({
         data: updatedMeasurement,
         message: "Measurement updated successfully",
       });
     }
-
+    if (currentStep) {
+      const updateProduct = await ProductModel.findOneAndUpdate(
+        { productId },
+        { currentStep },
+        { new: true }
+      );
+    }
     const newBodyMeasurement = new BodyMeasurementModel({
       productId: productId,
       measurements,

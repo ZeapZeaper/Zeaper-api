@@ -18,6 +18,51 @@ const addBodyMeasurementTemplate = async (req, res) => {
         .status(400)
         .send({ error: "required measurements and must be array" });
     }
+    // if measurements is not array
+    if (!Array.isArray(measurements)) {
+      return res.status(400).send({ error: "measurements must be array" });
+    }
+    if (measurements.length === 0) {
+      return res.status(400).send({ error: "measurements must not be empty" });
+    }
+    const bodyMeasurementGuideFields =
+      await BodyMeasurementGuideFieldModel.find().lean();
+    // if measurement item is not object containing field and value
+    // field must be in bodyMeasurementGuideFields
+    // value must be number
+    let measurementInvalidError;
+    const isValidMeasurement = measurements.every((measurement, index) => {
+      if (typeof measurement !== "object") {
+        measurementInvalidError = `measurement at index ${index} must be object`;
+        return false;
+      }
+      const { field, value } = measurement;
+      if (!field) {
+        measurementInvalidError = `measurement at index ${index} must contain field`;
+        return false;
+      }
+      if (!value) {
+        measurementInvalidError = `measurement at index ${index} must contain value`;
+        return false;
+      }
+      if (typeof value !== "number") {
+        measurementInvalidError = `measurement at index ${index} value must be number`;
+        return false;
+      }
+      const fieldExist = bodyMeasurementGuideFields.find(
+        (f) => f.field === field
+      );
+      if (!fieldExist) {
+        measurementInvalidError = `measurement at index ${index} field ${field} does not exist`;
+        return false;
+      }
+      return true;
+    });
+    if (!isValidMeasurement) {
+      return res.status(400).send({
+        error: measurementInvalidError,
+      });
+    }
 
     const authUser = await getAuthUser(req);
     if (!authUser) {
@@ -44,33 +89,33 @@ const addBodyMeasurementTemplate = async (req, res) => {
       });
     }
 
-    const bodyMeasurementEnums = await BodyMeasurementGuideModel.find().lean();
-    const mappedBodyMeasurementEnums = bodyMeasurementEnums.map((b) => {
-      const { name, fields } = b;
-      return {
-        name,
-        fields: fields.map((f) => f.field),
-      };
-    });
-    const mergedBodyMeasurementEnums = mappedBodyMeasurementEnums.reduce(
-      (acc, cur) => {
-        const found = acc.find((m) => m.name === cur.name);
-        if (found) {
-          found.fields = [...found.fields, ...cur.fields];
-        } else {
-          acc.push(cur);
-        }
-        return acc;
-      },
-      []
-    );
-    const validate = validateBodyMeasurements(
-      measurements,
-      mergedBodyMeasurementEnums
-    );
-    if (validate.error) {
-      return res.status(400).send({ error: validate.error });
-    }
+    // const bodyMeasurementEnums = await BodyMeasurementGuideModel.find().lean();
+    // const mappedBodyMeasurementEnums = bodyMeasurementEnums.map((b) => {
+    //   const { name, fields } = b;
+    //   return {
+    //     name,
+    //     fields: fields.map((f) => f.field),
+    //   };
+    // });
+    // const mergedBodyMeasurementEnums = mappedBodyMeasurementEnums.reduce(
+    //   (acc, cur) => {
+    //     const found = acc.find((m) => m.name === cur.name);
+    //     if (found) {
+    //       found.fields = [...found.fields, ...cur.fields];
+    //     } else {
+    //       acc.push(cur);
+    //     }
+    //     return acc;
+    //   },
+    //   []
+    // );
+    // const validate = validateBodyMeasurements(
+    //   measurements,
+    //   mergedBodyMeasurementEnums
+    // );
+    // if (validate.error) {
+    //   return res.status(400).send({ error: validate.error });
+    // }
 
     const bodyMeasurementTemplate = new BodyMeasurementTemplateModel({
       user: user_id || authUser._id,

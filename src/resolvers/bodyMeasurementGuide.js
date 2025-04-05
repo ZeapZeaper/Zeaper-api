@@ -439,7 +439,7 @@ const addBodyMeasurementGuide = async (req, res) => {
     return res.status(500).send({ error: err.message });
   }
 };
-const getBodyMeasurementGuideFields = async (req, res) => {
+const getBodyMeasurementFields = async (req, res) => {
   try {
     const bodyMeasurementGuideFields =
       await BodyMeasurementGuideFieldModel.find().lean();
@@ -460,5 +460,5 @@ module.exports = {
   updateBodyMeasurementGuideName,
   addBodyMeasurementGuideField,
   addBodyMeasurementGuide,
-  getBodyMeasurementGuideFields,
+  getBodyMeasurementFields,
 };

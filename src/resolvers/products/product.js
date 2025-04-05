@@ -169,8 +169,6 @@ const deleLocalImages = async (files) => {
 };
 const addProductColorAndImages = async (req, res) => {
   try {
-    console.log("addProductColorAndImages req body", req.body);
-    console.log("addProductColorAndImages req file", req.files);
     const files = req.files?.images;
     if (req.fileValidationError) {
       await deleLocalImages(files);
@@ -191,7 +189,7 @@ const addProductColorAndImages = async (req, res) => {
       });
     }
 
-    const { productId, color } = req.body;
+    const { productId, color, currentStep } = req.body;
 
     if (!productId) {
       await deleLocalImages(files);
@@ -268,7 +266,11 @@ const addProductColorAndImages = async (req, res) => {
 
     const updatedProduct = await ProductModel.findOneAndUpdate(
       { productId },
-      { $push: { colors: newColor } },
+      {
+        $push: { colors: newColor },
+        currentStep: currentStep || product.currentStep,
+      },
+
       { new: true }
     ).exec();
 
@@ -1979,7 +1981,7 @@ const getProductOptions = async (req, res) => {
 };
 const addProductVariation = async (req, res) => {
   try {
-    const { productId, variation } = req.body;
+    const { productId, variation, currentStep } = req.body;
     if (!productId) {
       return res.status(400).send({ error: "productId is required" });
     }
@@ -1990,6 +1992,9 @@ const addProductVariation = async (req, res) => {
 
     if (!product) {
       return res.status(400).send({ error: "product not found" });
+    }
+    if (currentStep) {
+      product.currentStep = currentStep;
     }
     const user = await getAuthUser(req);
     if (user.shopId !== product.shopId && !user?.isAdmin && !user?.superAdmin) {
@@ -2214,7 +2219,8 @@ const deleteProductVariation = async (req, res) => {
 };
 const updateAutoPriceAdjustment = async (req, res) => {
   try {
-    const { productId, isAdjustable, adjustmentPercentage } = req.body;
+    const { productId, isAdjustable, adjustmentPercentage, currentStep } =
+      req.body;
 
     if (!productId) {
       return res.status(400).send({ error: "productId is required" });
@@ -2258,6 +2264,7 @@ const updateAutoPriceAdjustment = async (req, res) => {
       { productId },
       {
         autoPriceAdjustment,
+        currentStep: currentStep ? currentStep : product.currentStep,
       },
 
       { new: true }
