@@ -12,6 +12,7 @@ const WishSchema = new mongoose.Schema({
     ref: "Product",
     required: true,
   },
+  color: { type: String, required: true },
 });
 
 WishSchema.plugin(timestamp);
