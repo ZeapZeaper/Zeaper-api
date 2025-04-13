@@ -25,7 +25,7 @@ const {
   accessorySizeEnums,
 } = require("../../helpers/constants");
 
-const ReadyMadeClothesSchema = new mongoose.Schema({
+const ProductSchema = new mongoose.Schema({
   productId: { type: String, required: true },
   productType: { type: String, enum: productTypeEnums, required: true },
   disabled: { type: Boolean, required: false, default: false },
@@ -181,7 +181,7 @@ const ReadyMadeClothesSchema = new mongoose.Schema({
   ],
 });
 
-ReadyMadeClothesSchema.plugin(timestamp);
-const ProductModel = mongoose.model("Product", ReadyMadeClothesSchema);
+ProductSchema.plugin(timestamp);
+const ProductModel = mongoose.model("Product", ProductSchema);
 
 module.exports = ProductModel;

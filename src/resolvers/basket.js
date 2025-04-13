@@ -700,4 +700,5 @@ module.exports = {
   removeProductFromBasket,
   increaseProductQuantity,
   decreaseProductQuantity,
+  generateUniqueBasketId
 };

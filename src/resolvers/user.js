@@ -24,6 +24,16 @@ const PointModel = require("../models/points");
 const { sendEmail } = require("../helpers/emailer");
 const EmailTemplateModel = require("../models/emailTemplate");
 const { userVariables, shopVariables } = require("../helpers/constants");
+const BasketModel = require("../models/basket");
+const { generateUniqueBasketId } = require("./basket");
+const WishModel = require("../models/wish");
+const BodyMeasurementTemplateModel = require("../models/bodyMeasurementTemplate");
+const { console } = require("inspector");
+const OrderModel = require("../models/order");
+const VoucherModel = require("../models/voucher");
+const PaymentModel = require("../models/payment");
+const ProductOrderModel = require("../models/productOrder");
+const DeliveryAddressModel = require("../models/deliveryAddresses");
 
 //saving image to firebase storage
 const addImage = async (req, filename) => {
@@ -135,6 +145,7 @@ const creatGuestUser = async (req, res) => {
       return res.status(400).send({ error: "User Uid  not found" });
     }
     const user = await UserModel.findOne({ uid });
+
     if (user) {
       return res.status(200).send({ data: user });
     }
@@ -149,7 +160,6 @@ const creatGuestUser = async (req, res) => {
       email,
       firstName,
       lastName,
-      displayName,
       imageUrl,
       userId,
       uid,
@@ -159,7 +169,7 @@ const creatGuestUser = async (req, res) => {
     if (!savedUser) {
       return res.status(400).send({ error: "User not created" });
     }
-    console.log("savedUser", savedUser);
+
     return res.status(200).send({ data: savedUser });
   } catch (err) {
     return res.status(500).send({ error: err.message });
@@ -216,12 +226,12 @@ const convertGuestUserWithEmailPasswordProvider = async (req, res) => {
     }).lean();
     const formattedUserTemplateBody = replaceUserVariablesinTemplate(
       welcomeUserEmailTemplate?.body,
-      user
+      updatedUser
     );
 
     const formattedUserTemplateSubject = replaceUserVariablesinTemplate(
       welcomeUserEmailTemplate?.subject,
-      user
+      updatedUser
     );
 
     const param = {
@@ -231,6 +241,7 @@ const convertGuestUserWithEmailPasswordProvider = async (req, res) => {
       body: formattedUserTemplateBody || "Welcome to Zeap",
     };
     const userMail = await sendEmail(param);
+    await deleteUserFromFirebase(user.uid);
 
     return res.status(200).send({ data: updatedUser });
   } catch (err) {
@@ -505,85 +516,280 @@ const createUserWithGoogleOrApple = async (req, res) => {
     return res.status(500).send({ error: error.message });
   }
 };
-
-const ConvertGuestUserWithGooglAppleProvider = async (req, res) => {
+const mergePasswordLoginGuestUser = async (req, res) => {
   try {
-    const { email, firstName, lastName, guestUid } = req.body;
-    if (!email) {
-      return res.status(400).send({ error: "email is required" });
-    }
-    if (!firstName) {
-      return res.status(400).send({ error: "firstName is required" });
-    }
-    if (!lastName) {
-      return res.status(400).send({ error: "lastName is required" });
-    }
+    const { guestUid } = req.body;
     if (!guestUid) {
       return res.status(400).send({ error: "guestUid is required" });
     }
-    const uid = guestUid;
-    const user = await UserModel.findOne({ uid }).lean();
-    if (!user) {
-      return res.status(404).send({ error: "Guest User not found" });
-    }
-    if (!user.isGuest) {
-      return res.status(400).send({ error: "User is not a guest" });
-    }
-    const alreadyUser = await UserModel.findOne({ email }).lean();
-    if (alreadyUser) {
+    const authUser = await getAuthUser(req);
+    if (!authUser) {
       return res.status(400).send({
-        error: "An account with same email address is already existing.",
+        error: "current logged in Password User not found in firebase",
       });
     }
-    const displayName = `${firstName} ${lastName}`;
-    const userId = await generateUniqueUserId();
-    const updatedUser = await UserModel.findByIdAndUpdate(
-      user._id,
-      { email, userId, displayName, isGuest: false },
-      { new: true }
-    );
-    if (!updatedUser) {
-      return res.status(500).send({ error: "Error updating user" });
+    const guestUser = await UserModel.findOne({ uid: guestUid }).lean();
+    if (!guestUser) {
+      return res.status(404).send({ error: "Guest User not found" });
     }
-    // create point for user
-    const point = new PointModel({
-      user: newUser._id,
-      availablePoints: 500,
-      redeemedPoints: 0,
-      totalPoints: 500,
-    });
+    if (!guestUser.isGuest) {
+      return res.status(400).send({ error: "User is not a guest" });
+    }
+    const updateGuestOrders = await OrderModel.updateMany(
+      { user: guestUser._id },
+      { user: authUser._id }
+    );
+    const updateGuestProductOrders = await ProductOrderModel.updateMany(
+      { user: guestUser._id },
+      { user: authUser._id }
+    );
+    const updateGuestPayments = await PaymentModel.updateMany(
+      { user: guestUser._id },
+      { user: authUser._id }
+    );
+    const updateGuestVouchers = await VoucherModel.updateMany(
+      { user: guestUser._id },
+      { user: authUser._id }
+    );
 
-    const newPoint = await point.save();
-    const welcomeUserEmailTemplate = await EmailTemplateModel.findOne({
-      name: "welcome-user",
+    const updateGuestDeliveryAddresses = await DeliveryAddressModel.updateMany(
+      { user: guestUser._id },
+      { user: alreadyExisting._id }
+    );
+
+    const updateGuestWishes = await WishModel.updateMany(
+      { user: guestUser._id },
+      { user: authUser._id }
+    );
+    const updateGuestBodyMeasurementTemplates =
+      await BodyMeasurementTemplateModel.updateMany(
+        { user: guestUser._id },
+        { user: authUser._id }
+      );
+    const guestBasket = await BasketModel.findOne({
+      user: guestUser._id,
     }).lean();
-    const formattedUserTemplateBody = replaceUserVariablesinTemplate(
-      welcomeUserEmailTemplate?.body,
-      user
-    );
+    const guestBasketItems = guestBasket?.basketItems || [];
+    if (guestBasketItems?.length > 0) {
+      const alreadyExistingBasket = await BasketModel.findOne({
+        user: authUser._id,
+      }).lean();
+      if (alreadyExistingBasket) {
+        const newBasketItems =
+          alreadyExistingBasket.basketItems.concat(guestBasketItems);
+        await BasketModel.findByIdAndUpdate(
+          alreadyExistingBasket._id,
+          { basketItems: newBasketItems },
+          { new: true }
+        );
+      } else {
+        const basketId = await generateUniqueBasketId();
+        const newBasket = new BasketModel({
+          user: authUser._id,
+          basketId,
+          basketItems: guestBasketItems,
+        });
+        await newBasket.save();
+      }
+    }
+    await deleteUserFromFirebase(guestUser.uid);
+    await UserModel.findByIdAndDelete(guestUser._id);
+    return res.status(200).send({
+      data: authUser,
+      message: "Guest user merged successfully to logged in password user",
+    });
+  } catch (error) {
+    return res.status(500).send({ error: error.message });
+  }
+};
 
-    const formattedUserTemplateSubject = replaceUserVariablesinTemplate(
-      welcomeUserEmailTemplate?.subject,
-      user
-    );
+const mergeGoogleAppleLoginGuestUser = async (req, res) => {
+  try {
+    const { guestUid } = req.body;
+    const getAuthUid = await getAuthUserUid(req);
 
-    const param = {
-      from: "admin@zeaper.com",
-      to: [email],
-      subject: formattedUserTemplateSubject || "Welcome",
-      body: formattedUserTemplateBody || "Welcome to Zeap",
-    };
-    const userMail = await sendEmail(param);
-    return res.status(200).send({ data: updatedUser });
+    if (!getAuthUid) {
+      return res.status(400).send({
+        error: "current logged in Google/Apple User not found in firebase",
+      });
+    }
+    // get firebase user
+    const firebaseUser = await firebase
+      .auth()
+      .getUser(getAuthUid)
+      .then((userRecord) => {
+        if (userRecord?.uid) {
+          return userRecord;
+        }
+        return false;
+      })
+      .catch((error) => {
+        console.log("Error fetching user data:", error);
+        return false;
+      });
+    if (!firebaseUser) {
+      return res.status(400).send({
+        error: "current logged in Google/Apple User not found in firebase",
+      });
+    }
+    console.log("firebaseUser", firebaseUser);
+    const newUid = firebaseUser.uid;
+    const firstName = firebaseUser.displayName
+      ? firebaseUser.displayName.split(" ")[0]
+      : firebaseUser.email.split("@")[0];
+    const lastName = firebaseUser.displayName
+      ? firebaseUser.displayName.split(" ")[1]
+      : firebaseUser.email.split("@")[0];
+    const email = firebaseUser.email;
+
+    if (!guestUid) {
+      return res.status(400).send({ error: "guestUid is required" });
+    }
+
+    const guestUser = await UserModel.findOne({ uid: guestUid }).lean();
+    if (!guestUser) {
+      return res.status(404).send({ error: "Guest User not found" });
+    }
+    if (!guestUser.isGuest) {
+      return res.status(400).send({ error: "User is not a guest" });
+    }
+
+    const alreadyExisting = await UserModel.findOne({
+      uid: newUid,
+    }).lean();
+
+    if (alreadyExisting) {
+      const updatedUser = await UserModel.findByIdAndUpdate(
+        alreadyExisting._id,
+        { isGuest: false, firstName, lastName, email },
+        { new: true }
+      );
+
+      const guestBasket = await BasketModel.findOne({
+        user: guestUser._id,
+      }).lean();
+      const guestBasketItems = guestBasket?.basketItems || [];
+      if (guestBasketItems?.length > 0) {
+        const alreadyExistingBasket = await BasketModel.findOne({
+          user: alreadyExisting._id,
+        }).lean();
+        if (alreadyExistingBasket) {
+          const newBasketItems =
+            alreadyExistingBasket.basketItems.concat(guestBasketItems);
+          await BasketModel.findByIdAndUpdate(
+            alreadyExistingBasket._id,
+            { basketItems: newBasketItems },
+            { new: true }
+          );
+        } else {
+          const basketId = await generateUniqueBasketId();
+          const newBasket = new BasketModel({
+            user: alreadyExisting._id,
+            basketId,
+            basketItems: guestBasketItems,
+          });
+          await newBasket.save();
+        }
+      }
+      const updateGuestOrders = await OrderModel.updateMany(
+        { user: guestUser._id },
+        { user: alreadyExisting._id }
+      );
+      const updateGuestProductOrders = await ProductOrderModel.updateMany(
+        { user: guestUser._id },
+        { user: alreadyExisting._id }
+      );
+      const updateGuestPayments = await PaymentModel.updateMany(
+        { user: guestUser._id },
+        { user: alreadyExisting._id }
+      );
+      const updateGuestVouchers = await VoucherModel.updateMany(
+        { user: guestUser._id },
+        { user: alreadyExisting._id }
+      );
+      const updateGuestWishes = await WishModel.updateMany(
+        { user: guestUser._id },
+        { user: alreadyExisting._id }
+      );
+      const updateGuestBodyMeasurementTemplates =
+        await BodyMeasurementTemplateModel.updateMany(
+          { user: guestUser._id },
+          { user: alreadyExisting._id }
+        );
+      const updateGuestDeliveryAddresses =
+        await DeliveryAddressModel.updateMany(
+          { user: guestUser._id },
+          { user: alreadyExisting._id }
+        );
+
+      await deleteUserFromFirebase(guestUser.uid);
+      await UserModel.findByIdAndDelete(guestUser._id);
+      return res.status(200).send({
+        data: alreadyExisting,
+        message:
+          "Guest user merged successfully to logged in google/apple user",
+      });
+    } else {
+      const updatedUser = await UserModel.findOneAndUpdate(
+        { uid: guestUid },
+        {
+          email,
+          firstName,
+          lastName,
+          uid: newUid,
+          isGuest: false,
+        },
+        { new: true }
+      );
+      if (!updatedUser) {
+        return res.status(500).send({ error: "Error updating user" });
+      }
+      // create point for user
+      const point = new PointModel({
+        user: updatedUser._id,
+        availablePoints: 500,
+        redeemedPoints: 0,
+        totalPoints: 500,
+      });
+
+      const newPoint = await point.save();
+      const welcomeUserEmailTemplate = await EmailTemplateModel.findOne({
+        name: "welcome-user",
+      }).lean();
+      const formattedUserTemplateBody = replaceUserVariablesinTemplate(
+        welcomeUserEmailTemplate?.body,
+        updatedUser
+      );
+
+      const formattedUserTemplateSubject = replaceUserVariablesinTemplate(
+        welcomeUserEmailTemplate?.subject,
+        updatedUser
+      );
+
+      const param = {
+        from: "admin@zeaper.com",
+        to: [email],
+        subject: formattedUserTemplateSubject || "Welcome",
+        body: formattedUserTemplateBody || "Welcome to Zeap",
+      };
+      const userMail = await sendEmail(param);
+      return res.status(200).send({
+        data: updatedUser,
+        message:
+          "Guest user merged successfully to logged in google/apple user",
+      });
+    }
   } catch (error) {
     return res.status(500).send({ error: error.message });
   }
 };
 
 const getUsers = async (req, res) => {
+
   try {
+    
     const skip = parseInt(req.query.skip) || 0;
-    const limit = parseInt(req.query.limit) || 10;
+    const limit = parseInt(req.query.limit) || 10000;
     const sort = req.query.sort || "desc";
     const search = req.query.search || "";
     const match = {
@@ -1039,6 +1245,26 @@ const verifyUserOTP = async (req, res) => {
     return res.status(500).send({ error: error.message });
   }
 };
+const getUserInfoByEmail = async (req, res) => {
+  try {
+    const { email } = req.query;
+    if (!email) {
+      return res.status(400).send({ error: "email is required" });
+    }
+    const user = await UserModel.findOne({
+      email: { $regex: email, $options: "i" },
+    }).lean();
+    const data = {};
+    if (user) {
+      data.firstName = user.firstName;
+      data.lastName = user.lastName;
+      data.email = user.email;
+    }
+    return res.status(200).send({ data });
+  } catch (error) {
+    return res.status(500).send({ error: error.message });
+  }
+};
 
 module.exports = {
   createUser,
@@ -1047,6 +1273,7 @@ module.exports = {
   getUsers,
   getUser,
   getUserById,
+  getUserInfoByEmail,
   getAdminUsers,
   updateUser,
   deleteUsers,
@@ -1057,5 +1284,6 @@ module.exports = {
   verifyUserOTP,
   sendOTPToUser,
   convertGuestUserWithEmailPasswordProvider,
-  ConvertGuestUserWithGooglAppleProvider,
+  mergeGoogleAppleLoginGuestUser,
+  mergePasswordLoginGuestUser,
 };

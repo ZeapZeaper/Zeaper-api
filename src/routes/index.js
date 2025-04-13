@@ -33,6 +33,7 @@ const deliveryFeeResolver = require("../resolvers/deliveryFee");
 const exchangeRateResolver = require("../resolvers/exchangeRate");
 const notificationResolver = require("../resolvers/notification");
 const emailTemplateResolver = require("../resolvers/emailTemplate");
+const recentViewsResolver = require("../resolvers/recentviews");
 
 const handleMoreFieldsUploads = uploadMultiple.fields([
   { name: "documents", maxCount: 5 },
@@ -51,23 +52,26 @@ let routes = (app) => {
 
   //User routes
   router.post("/user/create", authMiddleware, upload, userResolver.createUser);
-  router.post(
+  router.put(
     "/user/guest/create",
     authMiddleware,
     upload,
     userResolver.creatGuestUser
   );
-  router.post(
+  router.put(
     "/user/guest/convert/emailPassword",
     authMiddleware,
-    upload,
     userResolver.convertGuestUserWithEmailPasswordProvider
   );
-  router.post(
-    "/user/guest/convert/googleApple",
+  router.put(
+    "/user/guest/login/googleApple/merge",
     authMiddleware,
-    upload,
-    userResolver.ConvertGuestUserWithGooglAppleProvider
+    userResolver.mergeGoogleAppleLoginGuestUser
+  );
+  router.put(
+    "/user/guest/login/password/merge",
+    authMiddleware,
+    userResolver.mergePasswordLoginGuestUser
   );
   router.post(
     "/user/create/googleApple",
@@ -89,6 +93,11 @@ let routes = (app) => {
     authMiddleware,
     authUserAdminMiddleware,
     userResolver.getUserById
+  );
+  router.get(
+    "/user/checkEmail",
+    authMiddleware,
+    userResolver.getUserInfoByEmail
   );
   router.get(
     "/admin/users",
@@ -338,7 +347,7 @@ let routes = (app) => {
     authMiddleware,
     promoResolver.getAvailablePromos
   );
-  router.get("/promos/live", authMiddleware, promoResolver.getLivePromos);
+  router.get("/promos/live",  promoResolver.getLivePromos);
   router.get("/promos/draft", authMiddleware, promoResolver.getDraftPromos);
   router.get(
     "/promos/scheduled",
@@ -810,6 +819,15 @@ let routes = (app) => {
     "/emailTemplate",
     authMiddleware,
     emailTemplateResolver.getEmailTemplate
+  );
+
+
+
+  // recent views routes
+  router.get(
+    "/recentViews/products",
+    authMiddleware,
+    recentViewsResolver.getAuthRecentViews
   );
 
   return app.use("/", router);

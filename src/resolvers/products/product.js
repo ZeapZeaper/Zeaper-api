@@ -78,6 +78,7 @@ const ReviewModel = require("../../models/review");
 const ProductOrderModel = require("../../models/productOrder");
 const { all } = require("axios");
 const { type } = require("os");
+const { addRecentView } = require("../recentviews");
 
 //saving image to firebase storage
 const addImage = async (destination, filename) => {
@@ -1090,6 +1091,9 @@ const getProduct = async (req, res) => {
       currency
     );
     const product = addCurrency[0];
+    if (product?.status === "live" && !authUser.isGuest) {
+      const updateRecentView = await addRecentView(product._id, authUser._id);
+    }
 
     return res.status(200).send({ data: product });
   } catch (err) {

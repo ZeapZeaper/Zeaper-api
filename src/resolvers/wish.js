@@ -22,7 +22,7 @@ const addWish = async (req, res) => {
     }
     const authUser = await getAuthUser(req);
     if (!authUser) {
-      return res.status(400).send({ error: "User not found" });
+      return res.status(200).send({ message: "User not found", data: {} });
     }
     const user_id = authUser._id;
 
@@ -44,7 +44,10 @@ const addWish = async (req, res) => {
     await newWish.save();
     return res
       .status(200)
-      .send({ message: "Product added to wish list successfully", data: newWish });
+      .send({
+        message: "Product added to wish list successfully",
+        data: newWish,
+      });
   } catch (error) {
     res.status(400).send({ error: error.message });
   }
