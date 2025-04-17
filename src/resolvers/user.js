@@ -785,9 +785,7 @@ const mergeGoogleAppleLoginGuestUser = async (req, res) => {
 };
 
 const getUsers = async (req, res) => {
-
   try {
-    
     const skip = parseInt(req.query.skip) || 0;
     const limit = parseInt(req.query.limit) || 10000;
     const sort = req.query.sort || "desc";
@@ -979,7 +977,9 @@ const updateUser = async (req, res) => {
       req.body.social = JSON.parse(req.body.social);
     }
 
-    const updatedUser = await UserModel.findByIdAndUpdate(_id, req.body);
+    const updatedUser = await UserModel.findByIdAndUpdate(_id, req.body, {
+      new: true,
+    });
 
     return res
       .status(200)

@@ -37,13 +37,13 @@ const getAuthRecentViews = async (req, res) => {
       // populate the product inside products array
       .populate("products")
       .lean();
-    console.log("recentViews", recentViews);
+
     if (recentViews) {
-      products = recentViews.products.filter(
-        (product) => product.status === "live"
-      );
+      products = recentViews.products
+        .filter((product) => product.status === "live")
+        .reverse();
     }
-    res.status(200).send({ products });
+    res.status(200).send({ data: products });
   } catch (error) {
     res.status(400).send({ error: error.message });
   }

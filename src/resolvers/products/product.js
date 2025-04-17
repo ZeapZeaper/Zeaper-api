@@ -1886,6 +1886,33 @@ const getShopDraftProducts = async (req, res) => {
     return res.status(500).send({ error: err.message });
   }
 };
+
+const getBuyAgainList = async (req, res) => {
+  try{
+    const authUser = await getAuthUser(req);
+    if (!authUser) {
+      return res.status(400).send({ error: "user not found" });
+    }
+    const userId = authUser._id;
+    const buyAgainProducts = await ProductOrderModel.find({
+      user : userId,
+      status: "delivered",
+    })
+      .populate("product")
+      .sort({ createdAt: -1 })
+      .lean();
+    const products = buyAgainProducts.map((p) => p.product).filter((p) => p.status === "live");
+    return res.status(200).send({
+      data: products,
+      message: "Buy again list fetched successfully",
+    });
+  }
+  catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
+}
+
+
 const getProductOptions = async (req, res) => {
   try {
     const bodyMeasurementEnums = await getBodyMeasurementEnumsFromGuide();
@@ -2316,4 +2343,5 @@ module.exports = {
   deleteProductVariation,
   submitProduct,
   searchSimilarProducts,
+  getBuyAgainList,
 };

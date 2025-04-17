@@ -7,8 +7,7 @@ const SocialSchema = new mongoose.Schema({
   twitter: String,
   facebook: String,
   instagram: String,
-  website: String,
-  linkedin: String,
+  tiktok: String,
 });
 
 const UserSchema = new mongoose.Schema({

@@ -201,6 +201,11 @@ let routes = (app) => {
     productResolver.getMostPopular
   );
   router.get(
+    "/products/live/buyAgain",
+    authMiddleware,
+    productResolver.getBuyAgainList
+  );
+  router.get(
     "/products/searchProducts",
     authMiddleware,
     authUserAdminMiddleware,
