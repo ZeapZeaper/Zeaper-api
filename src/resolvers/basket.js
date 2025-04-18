@@ -1,4 +1,7 @@
-const { currencyEnums } = require("../helpers/constants");
+const {
+  currencyEnums,
+  allowedDeliveryCountries,
+} = require("../helpers/constants");
 const {
   calculateTotalBasketPrice,
   validateBodyMeasurements,
@@ -266,7 +269,7 @@ const getBasket = async (req, res) => {
     const basketCalc = await calculateTotalBasketPrice(basket);
 
     const subTotal = calcRate(rate, currency, basketCalc.itemsTotal);
-    const deliveryFee = calcRate(rate, currency, basketCalc.deliveryFee);
+    const deliveryFee = "calculated on checkout based on country";
     const total = calcRate(rate, currency, basketCalc.total);
     const appliedVoucherAmount = calcRate(
       rate,
@@ -658,28 +661,49 @@ const getBasketTotal = async (req, res) => {
     if (!user) {
       return res.status(400).send({ error: "User not found, please login" });
     }
+    const { country } = req.query;
+    if (!country) {
+      return res.status(400).send({ error: "required country" });
+    }
+    if (!allowedDeliveryCountries.includes(country)) {
+      return res.status(400).send({
+        error: `country not supported. Supported countries are ${allowedDeliveryCountries}`,
+      });
+    }
     const currency = user.prefferedCurrency || "NGN";
     const basket = await BasketModel.findOne({ user: user._id }).lean();
     if (!basket) {
       return res.status(400).send({ error: "Basket not found" });
     }
     // use Promise to wait for the total to be calculated
-    const basketTotal = await calculateTotalBasketPrice(basket);
-    const totalAmount = basketTotal.total;
-    const itemTotalAmount = basketTotal.itemsTotal;
-    const deliveryFee = basketTotal.deliveryFee;
 
-    const convertedAmount = await currencyCoversion(totalAmount, currency);
-    const convertedItemTotalAmount = await currencyCoversion(
-      itemTotalAmount,
+    const basketTotal = await calculateTotalBasketPrice(basket, country);
+
+    const subTotalAmount = basketTotal.itemsTotal;
+    const deliveryFee = basketTotal.deliveryFee;
+    const voucherAmount = basketTotal.appliedVoucherAmount;
+    const totalAmount = basketTotal.total;
+    const totalWithoutVoucher = basketTotal.totalWithoutVoucher;
+
+    const convertedSubtotal = await currencyCoversion(subTotalAmount, currency);
+    const convertedDeliveryFee = await currencyCoversion(deliveryFee, currency);
+    const convertedTotal = await currencyCoversion(totalAmount, currency);
+    const convertedVoucherAmount = await currencyCoversion(
+      voucherAmount,
       currency
     );
-    const convertedDeliveryFee = await currencyCoversion(deliveryFee, currency);
+    const convertedTotalWithoutVoucher = await currencyCoversion(
+      totalWithoutVoucher,
+      currency
+    );
     const total = {
-      total: convertedAmount,
-      itemsTotal: convertedItemTotalAmount,
-      deliveryFee: convertedDeliveryFee,
       currency,
+      subTotal: convertedSubtotal,
+      deliveryFee: convertedDeliveryFee,
+      total: convertedTotal,
+      totalWithoutVoucher: convertedTotalWithoutVoucher,
+      voucherAmount: convertedVoucherAmount,
+      appliedVoucherAmount: convertedVoucherAmount,
     };
 
     return res.status(200).send({
@@ -700,5 +724,5 @@ module.exports = {
   removeProductFromBasket,
   increaseProductQuantity,
   decreaseProductQuantity,
-  generateUniqueBasketId
+  generateUniqueBasketId,
 };

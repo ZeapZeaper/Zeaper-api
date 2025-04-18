@@ -9,7 +9,6 @@ const createDeliveryAddress = async (req, res) => {
       address,
       region,
       country,
-
       phoneNumber,
       firstName,
       lastName,
@@ -64,7 +63,10 @@ const createDeliveryAddress = async (req, res) => {
       }
     }
     const alreadyExist = userDeliveryAddresses.find(
-      (userAddress) => userAddress.address === address
+      (userAddress) =>
+        userAddress.address === address &&
+        userAddress.region === region &&
+        userAddress.country === country
     );
 
     if (alreadyExist && alreadyExist._id) {
@@ -136,9 +138,7 @@ const updateDeliveryAddress = async (req, res) => {
     if (!country) {
       return res.status(400).send({ error: "required country" });
     }
-    if (!postalCode) {
-      return res.status(400).send({ error: "required postalCode" });
-    }
+
     if (!phoneNumber) {
       return res.status(400).send({ error: "required phoneNumber" });
     }
@@ -167,7 +167,7 @@ const updateDeliveryAddress = async (req, res) => {
 
 const deleteDeliveryAddress = async (req, res) => {
   try {
-    const { address_id } = req.query;
+    const { address_id } = req.body;
     if (!address_id) {
       return res.status(400).send({ error: "required address_id" });
     }

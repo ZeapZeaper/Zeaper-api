@@ -3,55 +3,42 @@ const DeliveryFeeModel = require("../models/deliveryFee");
 
 const updateDeliveryFee = async (req, res) => {
   try {
-    const { fee } = req.body;
+    const { fee, country } = req.body;
     if (!fee && fee !== 0) {
       return res.status(400).send({ error: "required fee" });
+    }
+    if (!country) {
+      return res.status(400).send({ error: "required country" });
     }
 
     const currency = "NGN";
     const authUser = await getAuthUser(req);
 
-    const defalutDeliveryFee = await DeliveryFeeModel.findOne({
-      default: true,
+    const deliveryFee = await DeliveryFeeModel.findOne({
+      country,
     });
-    if (!defalutDeliveryFee) {
-      const deliveryFeeObj = {
-        fee,
-        default: true,
-        currency,
-        logs: [
-          {
-            currency,
-            user: authUser._id,
-            value: fee,
-            date: new Date(),
-          },
-        ],
-      };
-      const deliveryFee = new DeliveryFeeModel(deliveryFeeObj);
-      await deliveryFee.save();
-      return res.status(200).send({ data: deliveryFee });
-    }
-    defalutDeliveryFee.fee = fee;
-    defalutDeliveryFee.logs.push({
+    
+    deliveryFee.fee = fee;
+    deliveryFee.logs.push({
       currency,
       user: authUser._id,
       value: fee,
       date: new Date(),
     });
-    await defalutDeliveryFee.save();
-    return res.status(200).send({ data: defalutDeliveryFee });
+    await deliveryFee.save();
+    return res.status(200).send({ data: deliveryFee });
   } catch (err) {
     return res.status(500).send({ error: err.message });
   }
 };
 
-const getDeliveryFee = async (req, res) => {
+const getDeliveryFees = async (req, res) => {
   try {
-    const deliveryFee = await DeliveryFeeModel.findOne({
-      default: true,
-    }).populate("logs.user", "firstName lastName imageUrl");
-    return res.status(200).send({ data: deliveryFee });
+    const deliveryFees = await DeliveryFeeModel.find({}).populate(
+      "logs.user",
+      "firstName lastName imageUrl"
+    );
+    return res.status(200).send({ data: deliveryFees });
   } catch (err) {
     return res.status(500).send({ error: err.message });
   }
@@ -59,5 +46,5 @@ const getDeliveryFee = async (req, res) => {
 
 module.exports = {
   updateDeliveryFee,
-  getDeliveryFee,
+  getDeliveryFees,
 };

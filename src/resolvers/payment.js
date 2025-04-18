@@ -20,6 +20,7 @@ const { sendEmail } = require("../helpers/emailer");
 const EmailTemplateModel = require("../models/emailTemplate");
 const UserModel = require("../models/user");
 const { at } = require("lodash");
+const { allowedDeliveryCountries } = require("../helpers/constants");
 
 const secretKey =
   ENV === "dev"
@@ -67,6 +68,14 @@ const getReference = async (req, res) => {
       return res
         .status(400)
         .send({ error: "required country in delivery address" });
+    }
+
+    if (!allowedDeliveryCountries.includes(country)) {
+      return res
+        .status(400)
+        .send({
+          error: `country not supported. Supported countries are ${allowedDeliveryCountries}`,
+        });
     }
     if (!region) {
       return res
@@ -211,7 +220,6 @@ const getReference = async (req, res) => {
               );
             }
 
-
             return res.status(200).send({
               message: "Payment already made",
               data: {
@@ -222,14 +230,14 @@ const getReference = async (req, res) => {
                 email,
                 paymentStatus,
                 orderId,
-                order
+                order,
               },
             });
           }
         }
       });
     }
-    const calculateTotal = await calculateTotalBasketPrice(basket);
+    const calculateTotal = await calculateTotalBasketPrice(basket, country);
 
     // convert amount to kobo or cent
     const amountDue = calculateTotal.total * 100;
@@ -254,7 +262,7 @@ const getReference = async (req, res) => {
       lastName: user.lastName,
       basketId: basket.basketId,
     });
-  
+
     const addDeliveryDetail = await BasketModel.findOneAndUpdate(
       { basketId: basket.basketId },
       { deliveryDetails },
@@ -389,10 +397,7 @@ const verifyPayment = async (req, res) => {
     // }
 
     verifyPaystack(reference, async (error, body) => {
-  
-
       if (error) {
-      
         reject(error.message);
       }
       const response = JSON.parse(body);

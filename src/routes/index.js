@@ -759,9 +759,9 @@ let routes = (app) => {
 
   // Delivery Fee routes
   router.get(
-    "/deliveryFee",
+    "/deliveryFees",
     authMiddleware,
-    deliveryFeeResolver.getDeliveryFee
+    deliveryFeeResolver.getDeliveryFees
   );
   router.put(
     "/deliveryFee/update",

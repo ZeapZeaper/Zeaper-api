@@ -900,6 +900,12 @@ const searchQueryAllowedPaths = [
     value: "categories.style",
   },
 ];
+const allowedDeliveryCountries = [
+  "Nigeria",
+  "United States",
+  "United Kingdom",
+  "Canada",
+];
 module.exports = {
   genderEnums,
   ageGroupEnums,
@@ -932,4 +938,6 @@ module.exports = {
   shopVariables,
   orderVariables,
   searchQueryAllowedPaths,
+  allowedDeliveryCountries
+
 };

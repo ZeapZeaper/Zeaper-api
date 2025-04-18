@@ -125,8 +125,24 @@ const validateProductAvailability = async (product, quantity, sku) => {
   }
   return { success: true };
 };
+const calculateDeliveryFee = (fee, quantity) => {
+  if (fee === 0) {
+    return 0;
+  }
+  if (quantity === 0) {
+    return 0;
+  }
+  if (quantity === 1) {
+    return fee;
+  }
+  // increase by 30% for each additional item
+  const additionalItems = quantity - 1;
+  const additionalFee = fee * 0.3 * additionalItems;
+  const totalFee = fee + additionalFee;
+  return totalFee;
+};
 
-const calculateTotalBasketPrice = async (basket) => {
+const calculateTotalBasketPrice = async (basket, country) => {
   const basketItems = basket.basketItems;
   if (basketItems.length === 0) {
     return {
@@ -144,9 +160,16 @@ const calculateTotalBasketPrice = async (basket) => {
     isUsed: true,
   }).lean();
   const voucherAmount = voucher ? voucher.amount : 0;
-  const currentDeliveryFee = await DeliveryFeeModel.findOne({ default: true });
-  const deliveryrate = currentDeliveryFee ? currentDeliveryFee.fee : 0;
-  const deliveryFee = deliveryrate * basketItems.length;
+  const currentDeliveryFee = await DeliveryFeeModel.findOne({
+    country: country,
+  }).lean();
+  const quantity = basketItems.reduce((acc, item) => {
+    return acc + item.quantity;
+  }, 0);
+  const deliveryFee = calculateDeliveryFee(
+    currentDeliveryFee?.fee || 0,
+    quantity
+  );
   return new Promise(async (resolve) => {
     let itemsTotal = 0;
     let items = [];
@@ -154,7 +177,6 @@ const calculateTotalBasketPrice = async (basket) => {
       const item = basketItems[i];
       const product = await ProductModel.findOne({ _id: item.product }).lean();
       const variation = product.variations.find((v) => v.sku === item.sku);
-
       const totalPrice =
         (variation?.discount || variation.price) * item.quantity;
 

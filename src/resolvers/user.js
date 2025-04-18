@@ -964,16 +964,8 @@ const updateUser = async (req, res) => {
     if (phoneNumber !== user.phoneNumber) {
       req.body.phoneNumberVerified = false;
     }
-    if (req.body?.social) {
-      try {
-        JSON.parse(req.body.social);
-      } catch (e) {
-        return res
-          .status(400)
-          .send({ error: "social must be a valid JSON string" });
-      }
-    }
-    if (social) {
+
+    if (typeof req.body?.social === "string") {
       req.body.social = JSON.parse(req.body.social);
     }
 
