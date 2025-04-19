@@ -269,24 +269,10 @@ const getBasket = async (req, res) => {
     const basketCalc = await calculateTotalBasketPrice(basket);
 
     const subTotal = calcRate(rate, currency, basketCalc.itemsTotal);
-    const deliveryFee = "calculated on checkout based on country";
-    const total = calcRate(rate, currency, basketCalc.total);
-    const appliedVoucherAmount = calcRate(
-      rate,
-      currency,
-      basketCalc.appliedVoucherAmount
-    );
-    const totalWithoutVoucher = calcRate(
-      rate,
-      currency,
-      basketCalc.totalWithoutVoucher || total + appliedVoucherAmount
-    );
     basket.currency = currency;
-    basket.appliedVoucherAmount = appliedVoucherAmount;
-    basket.deliveryFee = deliveryFee;
+
     basket.subTotal = subTotal;
-    basket.total = total;
-    basket.totalWithoutVoucher = totalWithoutVoucher;
+
     const items = basketCalc.items;
     for (let i = 0; i < basket.basketItems.length; i++) {
       const item = items.find(
@@ -677,13 +663,13 @@ const getBasketTotal = async (req, res) => {
     }
     // use Promise to wait for the total to be calculated
 
-    const basketTotal = await calculateTotalBasketPrice(basket, country);
+    const basketCalc = await calculateTotalBasketPrice(basket, country);
 
-    const subTotalAmount = basketTotal.itemsTotal;
-    const deliveryFee = basketTotal.deliveryFee;
-    const voucherAmount = basketTotal.appliedVoucherAmount;
-    const totalAmount = basketTotal.total;
-    const totalWithoutVoucher = basketTotal.totalWithoutVoucher;
+    const subTotalAmount = basketCalc.itemsTotal;
+    const deliveryFee = basketCalc.deliveryFee;
+    const voucherAmount = basketCalc.appliedVoucherAmount;
+    const totalAmount = basketCalc.total;
+    const totalWithoutVoucher = basketCalc.totalWithoutVoucher;
 
     const convertedSubtotal = await currencyCoversion(subTotalAmount, currency);
     const convertedDeliveryFee = await currencyCoversion(deliveryFee, currency);
@@ -696,6 +682,7 @@ const getBasketTotal = async (req, res) => {
       totalWithoutVoucher,
       currency
     );
+
     const total = {
       currency,
       subTotal: convertedSubtotal,
