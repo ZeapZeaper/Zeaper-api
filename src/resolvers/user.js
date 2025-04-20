@@ -310,16 +310,11 @@ const createUser = async (req, res) => {
     if (req.file) {
       imageUrl = await addImage(req, req.file.filename);
     }
-    if (req.body?.social) {
+    if (typeof req.body?.social === "string") {
       req.body.social = JSON.parse(req.body.social);
     }
 
     const userId = await generateUniqueUserId();
-
-    let social = {};
-    if (Object.keys(req.body.social).length > 0) {
-      social = JSON.parse(req.body.social);
-    }
 
     const params = {
       ...req.body,
