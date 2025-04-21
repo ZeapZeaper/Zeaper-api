@@ -323,7 +323,6 @@ const createUser = async (req, res) => {
       userId,
       uid: firebaseUser.uid,
       emailVerified: firebaseUser.emailVerified,
-      social,
     };
 
     const user = new UserModel({ ...params });
