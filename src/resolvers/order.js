@@ -292,6 +292,29 @@ const createOrder = async (param) => {
   };
 };
 
+const getProductOrderPercentage = (allocatedPercentage, productOrder) => {
+  const status = orderStatusEnums?.find(
+    (status) => status.value === productOrder?.status?.value
+  );
+  if (!status) return 0;
+  // allocatedPercentage is the percentage of the item in the overall order
+  const statusPercentage = status?.percentage || 0;
+  const productOrderPercentage = (allocatedPercentage / 100) * statusPercentage;
+  return productOrderPercentage;
+};
+const calcOrderProgress = (productOrders) => {
+  const total = productOrders?.filter(
+    (productOrder) => productOrder?.status?.value !== "order cancelled"
+  ).length;
+  return productOrders?.reduce((acc, productOrder) => {
+    const allocatedPercentage = 100 / total;
+    const productOrderPercentage = getProductOrderPercentage(
+      allocatedPercentage,
+      productOrder
+    );
+    return acc + productOrderPercentage;
+  }, 0);
+};
 const getAuthBuyerOrders = async (req, res) => {
   try {
     const authUser = await getAuthUser(req);
@@ -301,7 +324,20 @@ const getAuthBuyerOrders = async (req, res) => {
     const orders = await OrderModel.find({ user: authUser._id })
       .populate("productOrders")
       .populate("productOrders.product")
+      .populate("payment")
       .lean();
+    if (!orders) {
+      return res.status(200).send({ data: [], message: "No orders found" });
+    }
+    orders.forEach((order) => {
+      const progressValue = calcOrderProgress(order.productOrders);
+      const progress = {
+        value: progressValue,
+        max: 100,
+        min: 0,
+      };
+      order.progress = progress;
+    });
     return res
       .status(200)
       .send({ data: orders, message: "Orders fetched successfully" });
@@ -340,7 +376,18 @@ const getOrders = async (req, res) => {
       .populate("user")
       .populate("productOrders")
       .lean();
-
+    if (!orders) {
+      return res.status(200).send({ data: [], message: "No orders found" });
+    }
+    orders.forEach((order) => {
+      const progressValue = calcOrderProgress(order.productOrders);
+      const progress = {
+        value: progressValue,
+        max: 100,
+        min: 0,
+      };
+      order.progress = progress;
+    });
     return res
       .status(200)
       .send({ data: orders, message: "Orders fetched successfully" });

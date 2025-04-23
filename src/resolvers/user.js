@@ -548,7 +548,7 @@ const mergePasswordLoginGuestUser = async (req, res) => {
 
     const updateGuestDeliveryAddresses = await DeliveryAddressModel.updateMany(
       { user: guestUser._id },
-      { user: alreadyExisting._id }
+      { user: authUser._id }
     );
 
     const updateGuestWishes = await WishModel.updateMany(

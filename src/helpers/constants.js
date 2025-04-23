@@ -843,33 +843,40 @@ const orderStatusEnums = [
   {
     name: "placed",
     value: "order placed",
+    percentage: 0,
   },
   {
     name: "confirmed",
     value: "order confirmed",
     sellerAction: true,
+    percentage: 20,
   },
   {
     name: "processing",
     value: "order processing",
     sellerAction: true,
+    percentage: 40,
   },
   {
     name: "ready",
     value: "order ready for delivery",
     sellerAction: true,
+    percentage: 60,
   },
   {
     name: "dispatched",
     value: "order dispatched",
+    percentage: 80,
   },
   {
     name: "delivered",
     value: "order delivered",
+    percentage: 100,
   },
   {
     name: "cancelled",
     value: "order cancelled",
+    percentage: 0,
   },
 ];
 const nairaToOtherCurrencyEnums = {
