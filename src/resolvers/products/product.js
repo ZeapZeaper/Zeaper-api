@@ -2057,12 +2057,7 @@ const getAuthUserRecommendedProducts = async (req, res) => {
         recommendedProductList.push(...recentProducts);
       }
     }
-    if (recommendedProductList.length === 0) {
-      return res.status(200).send({
-        data: [],
-        message: "No recommended products found",
-      });
-    }
+
     const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
 
     const filteredProducts = recommendedProductList.filter(
@@ -2097,10 +2092,17 @@ const getAuthUserRecommendedProducts = async (req, res) => {
 
       products.push(...moreProducts);
     }
+    if (products?.length === 0) {
+      return res.status(200).send({
+        data: [],
+        message: "No recommended products found",
+      });
+    }
     const productsData = await addPreferredAmountAndCurrency(
       products,
       currency
     );
+
     return res.status(200).send({
       data: productsData,
       message: "Recommended products fetched successfully",
