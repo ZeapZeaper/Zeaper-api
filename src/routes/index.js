@@ -206,6 +206,11 @@ let routes = (app) => {
     productResolver.getBuyAgainList
   );
   router.get(
+    "/products/live/recommended",
+    authMiddleware,
+    productResolver.getAuthUserRecommendedProducts
+  );
+  router.get(
     "/products/searchProducts",
     authMiddleware,
     authUserAdminMiddleware,
@@ -830,7 +835,7 @@ let routes = (app) => {
 
   // recent views routes
   router.get(
-    "/recentViews/products",
+    "/products/recentViews",
     authMiddleware,
     recentViewsResolver.getAuthRecentViews
   );

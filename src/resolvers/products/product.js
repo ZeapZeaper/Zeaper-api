@@ -79,6 +79,7 @@ const ProductOrderModel = require("../../models/productOrder");
 const { all } = require("axios");
 const { type } = require("os");
 const { addRecentView } = require("../recentviews");
+const RecentViewsModel = require("../../models/recentViews");
 
 //saving image to firebase storage
 const addImage = async (destination, filename) => {
@@ -1183,7 +1184,6 @@ const getCategoryProducts = async (req, res) => {
 };
 const getProducts = async (req, res) => {
   try {
-    console.log("getProducts");
     const sort = req.query.sort || -1;
     const limit = parseInt(req.query.limit);
     const pageNumber = parseInt(req.query.pageNumber);
@@ -1888,30 +1888,227 @@ const getShopDraftProducts = async (req, res) => {
 };
 
 const getBuyAgainList = async (req, res) => {
-  try{
+  try {
     const authUser = await getAuthUser(req);
     if (!authUser) {
       return res.status(400).send({ error: "user not found" });
     }
     const userId = authUser._id;
     const buyAgainProducts = await ProductOrderModel.find({
-      user : userId,
+      user: userId,
       status: "delivered",
     })
       .populate("product")
       .sort({ createdAt: -1 })
       .lean();
-    const products = buyAgainProducts.map((p) => p.product).filter((p) => p.status === "live");
+    const products = buyAgainProducts
+      .map((p) => p.product)
+      .filter((p) => p.status === "live");
     return res.status(200).send({
       data: products,
       message: "Buy again list fetched successfully",
     });
-  }
-  catch (err) {
+  } catch (err) {
     return res.status(500).send({ error: err.message });
   }
-}
+};
+const searchSimilarProductsByProductId = async (productId) => {
+  const product = await ProductModel.findOne({ productId }).exec();
+  if (!product) {
+    return res.status(400).send({ error: "product not found" });
+  }
 
+  const styles = product.categories.style;
+  const design = product.categories.design;
+  const occasion = product.categories.occasion;
+  const search = [...styles, ...design, ...occasion].join(" ");
+  const productType = product.productType;
+  const main = product.categories.main;
+  const gender = product.categories.gender;
+  const queryParam = {
+    status: "live",
+    productType,
+    "categories.main": { $in: main },
+    "categories.gender": { $in: gender },
+  };
+
+  const should = [
+    {
+      text: {
+        query: search,
+        path: {
+          wildcard: "*",
+        },
+      },
+    },
+    {
+      autocomplete: {
+        query: search,
+        path: "title",
+      },
+    },
+    {
+      autocomplete: {
+        query: search,
+        path: "categories.design",
+      },
+    },
+    {
+      autocomplete: {
+        query: search,
+        path: "categories.style",
+      },
+    },
+    {
+      autocomplete: {
+        query: search,
+        path: "categories.occasion",
+      },
+    },
+  ];
+  const aggregate = [
+    {
+      $search: {
+        index: "products",
+        compound: {
+          should,
+          minimumShouldMatch: 1,
+        },
+      },
+    },
+    {
+      $match: { ...queryParam, productId: { $ne: productId } },
+    },
+    {
+      $limit: 20,
+    },
+  ];
+  const products = await ProductModel.aggregate(aggregate).exec();
+  return products;
+};
+const getAuthUserRecommendedProducts = async (req, res) => {
+  try {
+    const authUser = await getAuthUser(req);
+    if (!authUser) {
+      return res.status(400).send({ error: "user not found" });
+    }
+    const products = [];
+    const recommendedProductList = [];
+    const user_id = authUser._id;
+    const userOrders = await ProductOrderModel.find({
+      user: user_id,
+      status: { $ne: "cancelled" },
+    })
+      .populate("product")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const productIds = userOrders.map((o) => o.product._id);
+    const recommendedProducts = await ProductOrderModel.aggregate([
+      {
+        $match: {
+          product: { $in: productIds },
+          user: { $ne: user_id },
+        },
+      },
+      {
+        $group: {
+          _id: "$product",
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { count: -1 } },
+    ]);
+
+    const recommendedProductIds = recommendedProducts.map((r) => r._id);
+
+    const recommendedProductsData = await ProductModel.find({
+      _id: { $in: recommendedProductIds },
+      status: "live",
+    }).lean();
+    recommendedProductList.push(...recommendedProductsData);
+
+    if (recommendedProductList.length < 20) {
+      // if no recommended products, similar products to their orders
+      const lastOrder = userOrders[0];
+      const lastProduct = lastOrder?.product;
+      const lastProductId = lastProduct?.productId;
+      if (lastProductId) {
+        const similarLastOrder = await searchSimilarProductsByProductId(
+          lastProductId
+        );
+
+        recommendedProductList.push(...similarLastOrder);
+      }
+    }
+
+    if (recommendedProductList.length < 20) {
+      // check recently viewed products
+      const recentViews = await RecentViewsModel.findOne({ user: user_id })
+        .populate("products")
+        .sort({ createdAt: -1 })
+        .lean();
+
+      const recentProducts = recentViews?.products?.filter(
+        (p) => p.status === "live"
+      );
+
+      if (recentProducts) {
+        recommendedProductList.push(...recentProducts);
+      }
+    }
+    if (recommendedProductList.length === 0) {
+      return res.status(200).send({
+        data: [],
+        message: "No recommended products found",
+      });
+    }
+    const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
+
+    const filteredProducts = recommendedProductList.filter(
+      (p) => !productIds.includes(p._id.toString())
+    );
+    // ensure unique products
+    const uniqueProducts = Array.from(
+      new Set(filteredProducts.map((p) => p._id.toString()))
+    ).map((id) => {
+      return filteredProducts.find((p) => p._id.toString() === id);
+    });
+    const filterLiveProducts = uniqueProducts.filter(
+      (p) => p.status === "live"
+    );
+    const sortedProducts = filterLiveProducts.sort((a, b) => {
+      const aDate = new Date(a.createdAt);
+      const bDate = new Date(b.createdAt);
+      return bDate - aDate;
+    });
+    const limitedProducts = sortedProducts.slice(0, 20);
+    products.push(...limitedProducts);
+    if (products.length < 20) {
+      const addedProductIds = products.map((p) => p._id.toString());
+      const remainingLimit = 20 - products.length;
+      const moreProducts = await ProductModel.find({
+        status: "live",
+        productId: { $nin: addedProductIds },
+      })
+        .sort({ createdAt: -1 })
+        .limit(remainingLimit)
+        .lean();
+
+      products.push(...moreProducts);
+    }
+    const productsData = await addPreferredAmountAndCurrency(
+      products,
+      currency
+    );
+    return res.status(200).send({
+      data: productsData,
+      message: "Recommended products fetched successfully",
+    });
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
+};
 
 const getProductOptions = async (req, res) => {
   try {
@@ -2344,4 +2541,5 @@ module.exports = {
   submitProduct,
   searchSimilarProducts,
   getBuyAgainList,
+  getAuthUserRecommendedProducts,
 };
