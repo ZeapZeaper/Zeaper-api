@@ -323,9 +323,14 @@ const getAuthBuyerOrders = async (req, res) => {
     }
     const orders = await OrderModel.find({ user: authUser._id })
       .populate("productOrders")
-      .populate("productOrders.product")
       .populate("payment")
+      // populate product inside productOrders
+      .populate({
+        path: "productOrders",
+        populate: ["product"],
+      })
       .lean();
+
     if (!orders) {
       return res.status(200).send({ data: [], message: "No orders found" });
     }

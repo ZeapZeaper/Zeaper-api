@@ -2003,7 +2003,8 @@ const getAuthUserRecommendedProducts = async (req, res) => {
       .sort({ createdAt: -1 })
       .lean();
 
-    const productIds = userOrders.map((o) => o.product._id);
+    const productIds = userOrders.map((o) => o.product._id.toString());
+    console.log("productIds", productIds);
     const recommendedProducts = await ProductOrderModel.aggregate([
       {
         $match: {
@@ -2050,7 +2051,7 @@ const getAuthUserRecommendedProducts = async (req, res) => {
         .lean();
 
       const recentProducts = recentViews?.products?.filter(
-        (p) => p.status === "live"
+        (p) => p.status === "live" && !productIds.includes(p._id.toString())
       );
 
       if (recentProducts) {
