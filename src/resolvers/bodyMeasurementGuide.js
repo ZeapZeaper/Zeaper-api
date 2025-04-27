@@ -441,8 +441,20 @@ const addBodyMeasurementGuide = async (req, res) => {
 };
 const getBodyMeasurementFields = async (req, res) => {
   try {
-    const bodyMeasurementGuideFields =
-      await BodyMeasurementGuideFieldModel.find().lean();
+    const bodyMeasurementGuide = await BodyMeasurementGuideModel.find({
+      ...req.query,
+    }).lean();
+    const bodyGuideFields = bodyMeasurementGuide
+      .map((guide) => guide.fields)
+      .flat();
+
+    const fields = bodyGuideFields.map((field) => field.field);
+    const uniqueFields = [...new Set(fields)];
+    const bodyMeasurementGuideFields = uniqueFields.map((field, index) => ({
+      field,
+      _id: index,
+    }));
+
     return res.status(200).send({ data: bodyMeasurementGuideFields });
   } catch (err) {
     return res.status(500).send({ error: err.message });

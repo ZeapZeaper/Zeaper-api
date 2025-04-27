@@ -8,7 +8,7 @@ const BodyMeasurementTemplateSchema = new mongoose.Schema({
     required: true,
   },
   templateName: { type: String, required: true },
-
+  gender: { type: String, required: true },
   measurements: [
     {
       field: { type: String, required: true },

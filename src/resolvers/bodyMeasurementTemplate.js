@@ -10,10 +10,14 @@ const BodyMeasurementGuideFieldModel = require("../models/BodyMeasurementGuideFi
 
 const addBodyMeasurementTemplate = async (req, res) => {
   try {
-    const { templateName, measurements, user_id } = req.body;
+    const { templateName, measurements, user_id, gender } = req.body;
     if (!templateName) {
       return res.status(400).send({ error: "required template name" });
     }
+    if (!gender) {
+      return res.status(400).send({ error: "required gender" });
+    }
+
     if (!measurements) {
       return res
         .status(400)
@@ -34,12 +38,15 @@ const addBodyMeasurementTemplate = async (req, res) => {
     // field must be in bodyMeasurementGuideFields
     // value must be number
     let measurementInvalidError;
+
     const isValidMeasurement = measurements.every((measurement, index) => {
       if (typeof measurement !== "object") {
         measurementInvalidError = `measurement at index ${index} must be object`;
         return false;
       }
+
       const { field, value } = measurement;
+
       if (!field) {
         measurementInvalidError = `measurement at index ${index} must contain field`;
         return false;
@@ -128,6 +135,7 @@ const addBodyMeasurementTemplate = async (req, res) => {
     const bodyMeasurementTemplate = new BodyMeasurementTemplateModel({
       user: user_id || authUser._id,
       templateName,
+      gender,
       measurements: formattedMeasurements,
     });
     const bodyMeasurementTemplateRes = await bodyMeasurementTemplate.save();
@@ -304,7 +312,7 @@ const updateBodyMeasurementTemplate = async (req, res) => {
 
 const deleteBodyMeasurementTemplate = async (req, res) => {
   try {
-    const { user_id, template_id } = req.query;
+    const { user_id, template_id } = req.body;
     if (!template_id) {
       return res.status(400).send({ error: "required template_id" });
     }
@@ -315,7 +323,8 @@ const deleteBodyMeasurementTemplate = async (req, res) => {
     if (
       !authUser.isAdmin &&
       !authUser.superAdmin &&
-      authUser._id.toString() !== user_id
+      authUser._id.toString() !== user_id &&
+      user_id
     ) {
       return res.status(400).send({
         error:
@@ -341,6 +350,20 @@ const getBodyMeasurementEums = async (req, res) => {
     const bodyMeasurementEums = await getBodyMeasurementEnumsFromGuide();
     return res.status(200).send({
       data: bodyMeasurementEums,
+      message: "Body Measurement Eums fetched successfully",
+    });
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
+};
+const getBodyMeasurementTemplateFields = async (req, res) => {
+  try {
+    const bodyMeasurementFields = [];
+    const bodyMeasurementGuide = await BodyMeasurementGuideModel.find().lean();
+    const bodyMeasurementGuideFields =
+      await BodyMeasurementGuideFieldModel.find().lean();
+    return res.status(200).send({
+      data: bodyMeasurementFields,
       message: "Body Measurement Eums fetched successfully",
     });
   } catch (err) {

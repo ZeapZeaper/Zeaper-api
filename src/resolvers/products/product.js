@@ -2004,7 +2004,7 @@ const getAuthUserRecommendedProducts = async (req, res) => {
       .lean();
 
     const productIds = userOrders.map((o) => o.product._id.toString());
-    console.log("productIds", productIds);
+    
     const recommendedProducts = await ProductOrderModel.aggregate([
       {
         $match: {
