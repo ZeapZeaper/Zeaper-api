@@ -163,10 +163,20 @@ const getProductBodyMeasurement = async (req, res) => {
     }
     const measurement = await BodyMeasurementModel.findOne({
       productId,
+    }).lean();
+    const product = await ProductModel.findOne({
+      productId,
     });
+    const gender = product?.categories?.gender[0] || "Female";
+
+    const data = {
+      gender,
+      ...measurement,
+    };
+
     return res
       .status(200)
-      .send({ data: measurement, message: "Measurement fetched successfully" });
+      .send({ data, message: "Measurement fetched successfully" });
   } catch (err) {
     return res.status(500).send({ error: err.message });
   }
