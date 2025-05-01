@@ -1077,6 +1077,8 @@ const getProduct = async (req, res) => {
     if (!productId) {
       return res.status(400).send({ error: "productId is required" });
     }
+    let showReadyMadeSizeGuide = false;
+    let showBespokeSizeGuide = false;
     const productData = await ProductModel.findOne({ productId })
       .populate("shop")
       .populate("postedBy")
@@ -1095,6 +1097,16 @@ const getProduct = async (req, res) => {
     if (product?.status === "live" && !authUser.isGuest) {
       const updateRecentView = await addRecentView(product._id, authUser._id);
     }
+
+    const productType = product.productType;
+    if (productType === "readyMadeCloth" || productType === "readyMadeShoe") {
+      showReadyMadeSizeGuide = true;
+    }
+    if (productType === "bespokeCloth" || productType === "bespokeShoe") {
+      showBespokeSizeGuide = true;
+    }
+    product.showReadyMadeSizeGuide = showReadyMadeSizeGuide;
+    product.showBespokeSizeGuide = showBespokeSizeGuide;
 
     return res.status(200).send({ data: product });
   } catch (err) {
@@ -2004,7 +2016,7 @@ const getAuthUserRecommendedProducts = async (req, res) => {
       .lean();
 
     const productIds = userOrders.map((o) => o.product._id.toString());
-    
+
     const recommendedProducts = await ProductOrderModel.aggregate([
       {
         $match: {

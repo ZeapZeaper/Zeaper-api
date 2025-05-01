@@ -6,7 +6,7 @@ const { v4: uuidv4 } = require("uuid");
 const sharp = require("sharp");
 const { deleteLocalFile, deleLocalImages } = require("../helpers/utils");
 const { error } = require("console");
-const BodyMeasurementGuideFieldModel = require("../models/BodyMeasurementGuideField");
+const readyMadeSizeGuide  = require("../helpers/readyMadeSizeGuide");
 
 //saving image to firebase storage
 const addImage = async (req, filename) => {
@@ -71,20 +71,8 @@ const getBodyMeasurementGuide = async (req, res) => {
       });
     }
     const bodyMeasurementGuide = await BodyMeasurementGuideModel.find({
-      gender,
+      gender: gender.toLowerCase(),
     }).lean();
-    // update field.imageUrl from string to object with link and name properties and remove the old imageUrl property in the database and save
-    // const promises = bodyMeasurementGuide.map(async (guide) => {
-    //   const fields = guide.fields.map((field) => {
-    //     return { ...field, imageUrl: { link: "", name: "" }, description: "" };
-    //   });
-    //   console.log("f", fields);
-    //   guide.fields = fields;
-    //     await BodyMeasurementGuideModel.findByIdAndUpdate(guide._id, guide, {
-    //       new: true,
-    //     });
-    // });
-    // await Promise.all(promises);
 
     return res.status(200).send({ data: bodyMeasurementGuide });
   } catch (err) {
@@ -441,8 +429,13 @@ const addBodyMeasurementGuide = async (req, res) => {
 };
 const getBodyMeasurementFields = async (req, res) => {
   try {
+    const queryParams = Object.keys(req.query).reduce((acc, key) => {
+      acc[key.toLowerCase()] = req.query[key];
+      return acc;
+    }, {});
+    console.log("queryParams", queryParams);
     const bodyMeasurementGuide = await BodyMeasurementGuideModel.find({
-      ...req.query,
+      ...queryParams,
     }).lean();
     const bodyGuideFields = bodyMeasurementGuide
       .map((guide) => guide.fields)
@@ -461,6 +454,18 @@ const getBodyMeasurementFields = async (req, res) => {
   }
 };
 
+const getReadyMadeSizeGuide = async (req, res) => {
+  try {
+    const guide = readyMadeSizeGuide;
+    if (!guide) {
+      return res.status(404).send({ error: "guide not found" });
+    }
+    return res.status(200).send({ data: guide });
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
+};
+
 module.exports = {
   getBodyMeasurementGuide,
   getFieldImagesGallery,
@@ -473,4 +478,5 @@ module.exports = {
   addBodyMeasurementGuideField,
   addBodyMeasurementGuide,
   getBodyMeasurementFields,
+  getReadyMadeSizeGuide,
 };

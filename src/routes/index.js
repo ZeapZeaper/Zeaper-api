@@ -234,7 +234,7 @@ let routes = (app) => {
   router.get(
     "/products/dynamicFilters",
     authMiddleware,
-    productResolver.getQueryProductsDynamicFilters,
+    productResolver.getQueryProductsDynamicFilters
   );
   router.get(
     "/products/shop/draft",
@@ -242,7 +242,12 @@ let routes = (app) => {
     productResolver.getShopDraftProducts
   );
   router.get("/product", authMiddleware, productResolver.getProduct);
-  router.get("/product/id", authMiddleware, productResolver.getProductById);
+  router.get(
+    "/product/id",
+    authMiddleware,
+    authUserAdminMiddleware,
+    productResolver.getProductById
+  );
   router.put("/product/update", authMiddleware, productResolver.editProduct);
   router.put(
     "/product/update/status",
@@ -357,7 +362,7 @@ let routes = (app) => {
     authMiddleware,
     promoResolver.getAvailablePromos
   );
-  router.get("/promos/live",  promoResolver.getLivePromos);
+  router.get("/promos/live", promoResolver.getLivePromos);
   router.get("/promos/draft", authMiddleware, promoResolver.getDraftPromos);
   router.get(
     "/promos/scheduled",
@@ -580,7 +585,7 @@ let routes = (app) => {
     orderResolver.getOrders
   );
   router.get("/order", orderResolver.getOrder);
-  router.get("/order/authUser/buyer/orderId", orderResolver.getOrderByOrderId,);
+  router.get("/order/authUser/buyer/orderId", orderResolver.getOrderByOrderId);
   router.get(
     "/order/authUser/buyer/order",
     authMiddleware,
@@ -697,6 +702,11 @@ let routes = (app) => {
   );
 
   // Body Measurement Guide routes
+  router.get(
+    "/bodyMeasurementGuide/readyMade",
+    authMiddleware,
+    bodyMeasurementGuideResolver.getReadyMadeSizeGuide
+  );
   router.get(
     "/bodyMeasurementGuide/bespoke",
     authMiddleware,
@@ -830,8 +840,6 @@ let routes = (app) => {
     authMiddleware,
     emailTemplateResolver.getEmailTemplate
   );
-
-
 
   // recent views routes
   router.get(
