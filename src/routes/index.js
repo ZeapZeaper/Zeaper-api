@@ -320,6 +320,7 @@ let routes = (app) => {
   //Review routes
   router.post("/review/create", authMiddleware, reviewResolver.createReview);
   router.get("/reviews", authMiddleware, reviewResolver.getReviews);
+  router.get("/reviews/user", authMiddleware, reviewResolver.getAuthUserReviews);
   router.get(
     "/reviews/shop",
     authMiddleware,

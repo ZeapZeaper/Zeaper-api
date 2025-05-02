@@ -111,6 +111,22 @@ const getReviews = async (req, res) => {
     res.status(400).send({ error: error.message });
   }
 };
+const getAuthUserReviews = async (req, res) => {
+  try {
+    const user = await getAuthUser(req);
+    const reviews = await ReviewModel.find({ user: user._id })
+      .populate("user")
+      .exec();
+
+    res.status(200).send({
+      data: reviews,
+
+      message: "Reviews retrieved successfully",
+    });
+  } catch (error) {
+    res.status(400).send({ error: error.message });
+  }
+};
 
 const getReview = async (req, res) => {
   try {
@@ -337,4 +353,5 @@ module.exports = {
   getReviewsForShopProducts,
   likeReview,
   dislikeReview,
+  getAuthUserReviews
 };
