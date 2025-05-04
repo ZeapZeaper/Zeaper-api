@@ -271,16 +271,12 @@ const getAuthUserReviews = async (req, res) => {
     });
     const givenReviews = await Promise.all(
       reviews.map(async (review) => {
-        console.log("review", review);
-        const product = review.product;
-        console.log("product", product);
-        console.log("orderId", review.orderId);
+        const product = review.product;   
         const order = await ProductOrderModel.findOne({
           user: user._id.toString(),
           product: product._id,
           orderId: review.orderId,
         }).lean();
-        console.log("order", order);
         return {
           ...review,
           order: {
