@@ -1,13 +1,90 @@
 const { getAuthUser } = require("../middleware/firebaseUserAuth");
+const OrderModel = require("../models/order");
+const ProductOrderModel = require("../models/productOrder");
 const ProductModel = require("../models/products");
 const ReviewModel = require("../models/review");
 const ShopModel = require("../models/shop");
 const { notifyShop } = require("./notification");
 
+const canUserReview = async (user, product_id) => {
+  const result = {
+    canReview: true,
+    isadmin: user?.isAdmin || user?.isSuperAdmin,
+    orderId: null,
+  };
+  if (result.isadmin) {
+    return result;
+  }
+  const review = await ReviewModel.findOne({
+    user: user._id,
+    product: product_id,
+  }).exec();
+  if (review) {
+    
+    result.canReview = false;
+    result.denyReason = "You have already reviewed this product";
+    return result;
+  }
+  const orders = await OrderModel.find({
+    user: user._id,
+    status: "delivered",
+  })
+    .populate("productOrders")
+    .lean();
+  const foundOrder = orders.find((order) =>
+    order.productOrders.some(
+      (productOrder) =>
+        productOrder.product.toString() === product_id.toString()
+    )
+  );
+
+  if (!foundOrder) {
+    result.canReview = false;
+    result.denyReason =
+      "You can only review products that you have purchased and received";
+    return result;
+  }
+  result.orderId = foundOrder.orderId;
+  return result;
+};
+const getUserCanReview = async (req, res) => {
+  try {
+    const { productId } = req.query;
+    if (!productId) {
+      return res.status(400).send({ error: "productId is required" });
+    }
+    const user = await getAuthUser(req);
+    if (!user) {
+      return res.status(200).send({ message: "User not found", data: {} });
+    }
+    const product = await ProductModel.findOne({ productId }).lean();
+    if (!product) {
+      return res.status(400).send({ error: "Product not found" });
+    }
+    const canReview = await canUserReview(user, product._id);
+
+    return res.status(200).send({
+      data: canReview,
+      message: canReview.canReview
+        ? "You can review this product"
+        : `You cannot review this product because ${canReview.denyReason}`,
+    });
+  } catch (error) {
+    res.status(400).send({ error: error.message });
+  }
+};
+
 const createReview = async (req, res) => {
   try {
-    const { productId, rating, title, review, displayName, imageMatch } =
-      req.body;
+    const {
+      productId,
+      rating,
+      title,
+      review,
+      displayName,
+      imageMatch,
+      orderId,
+    } = req.body;
     if (!productId) {
       return res.status(400).send({ error: "productId is required" });
     }
@@ -29,11 +106,47 @@ const createReview = async (req, res) => {
     if (!review) {
       return res.status(400).send({ error: "review is required" });
     }
+
+    const user = await getAuthUser(req);
+    if (!user) {
+      return res.status(200).send({ message: "User not found", data: {} });
+    }
+    if (!orderId && !user.isAdmin && !user.isSuperAdmin) {
+      return res.status(400).send({ error: "orderId is required" });
+    }
     const product = await ProductModel.findOne({ productId }).exec();
     if (!product) {
       return res.status(400).send({ error: "Product not found" });
     }
-    const user = await getAuthUser(req);
+    let order = null;
+    let images = [];
+    let deliveryDate = null;
+    if (orderId) {
+      order = await OrderModel.findOne({ orderId })
+        .populate("productOrders")
+        .exec();
+      if (!order) {
+        return res.status(400).send({ error: "Order not found" });
+      }
+      const productOrder = order.productOrders.find(
+        (productOrder) =>
+          productOrder.product.toString() === product._id.toString()
+      );
+      if (!productOrder) {
+        return res.status(400).send({ error: "Product not found in order" });
+      }
+      images = productOrder.images;
+      deliveryDate = productOrder.deliveryDate;
+    }
+
+    const canReview = await canUserReview(user, product._id);
+    if (!canReview.canReview) {
+      return res.status(400).send({
+        error:
+          "You cannot review this product as neither admin nor pourchased and received the product",
+      });
+    }
+
     const shop = await ShopModel.findOne({ shopId: product.shopId }).exec();
     if (!shop) {
       return res.status(400).send({ error: "This product has no shop" });
@@ -46,13 +159,17 @@ const createReview = async (req, res) => {
     }
 
     const reviewData = {
+      product: product._id,
       productId,
+      orderId,
       user: user._id,
       rating,
       title,
       review,
       displayName,
       imageMatch,
+      images,
+      deliveryDate,
     };
     const reviewInstance = new ReviewModel(reviewData);
     await reviewInstance.save();
@@ -115,12 +232,76 @@ const getAuthUserReviews = async (req, res) => {
   try {
     const user = await getAuthUser(req);
     const reviews = await ReviewModel.find({ user: user._id })
-      .populate("user")
-      .exec();
+      .populate("product", "productId title")
+      .lean();
 
+    const product_ids = reviews.map((review) => review?.product._id) || [];
+
+    // const orderWithoutReviewQuery = {
+    //   user: user._id,
+    //   status: "delivered",
+    // };
+    // if (product_ids.length > 0) {
+    //   orderWithoutReviewQuery.product = { $nin: product_ids };
+    // }
+    const ordersWithoutReview =
+      (await ProductOrderModel.find({
+        user: user._id.toString(),
+        product: { $nin: product_ids },
+        "status.value": "order delivered",
+      })
+        .populate("product", "productId title")
+        .lean()) || [];
+
+    const pendingReviews = ordersWithoutReview.map((order) => {
+      return {
+        order: {
+          productId: order.product.productId,
+          title: order.product.title,
+          images: order.images,
+          orderId: order.orderId,
+          color: order.color,
+          size: order.size,
+          sku: order.sku,
+          quantity: order.quantity,
+          deliveryDate: order.deliveryDate,
+        },
+        rating: null,
+      };
+    });
+    const givenReviews = await Promise.all(
+      reviews.map(async (review) => {
+        console.log("review", review);
+        const product = review.product;
+        console.log("product", product);
+        console.log("orderId", review.orderId);
+        const order = await ProductOrderModel.findOne({
+          user: user._id.toString(),
+          product: product._id,
+          orderId: review.orderId,
+        }).lean();
+        console.log("order", order);
+        return {
+          ...review,
+          order: {
+            productId: product.productId,
+            title: product.title,
+            color: order.color,
+            size: order?.size,
+            sku: order?.sku,
+            quantity: order?.quantity,
+            deliveryDate: order?.deliveryDate,
+            images: order?.images,
+          },
+        };
+      })
+    );
+    const data = {
+      givenReviews,
+      pendingReviews,
+    };
     res.status(200).send({
-      data: reviews,
-
+      data,
       message: "Reviews retrieved successfully",
     });
   } catch (error) {
@@ -151,10 +332,10 @@ const getReview = async (req, res) => {
 
 const updateReview = async (req, res) => {
   try {
-    const { _id, productId, rating, title, review, displayName, imageMatch } =
+    const { review_id, productId, rating, title, review, displayName, imageMatch } =
       req.body;
-    if (!_id) {
-      return res.status(400).send({ error: "_id is required" });
+    if (!review_id) {
+      return res.status(400).send({ error: "review_id is required" });
     }
     if (!productId) {
       return res.status(400).send({ error: "productId is required" });
@@ -182,7 +363,7 @@ const updateReview = async (req, res) => {
       return res.status(400).send({ error: "Product not found" });
     }
 
-    const currentReview = await ReviewModel.findOne({ _id: _id }).exec();
+    const currentReview = await ReviewModel.findOne({ _id: review_id }).exec();
     if (!currentReview) {
       return res.status(400).send({ error: "Review not found" });
     }
@@ -194,7 +375,7 @@ const updateReview = async (req, res) => {
     }
     const updatedReview = await ReviewModel.findOneAndUpdate(
       {
-        _id: _id,
+        _id: review_id,
       },
       { ...req.body },
       { new: true }
@@ -353,5 +534,6 @@ module.exports = {
   getReviewsForShopProducts,
   likeReview,
   dislikeReview,
-  getAuthUserReviews
+  getAuthUserReviews,
+  getUserCanReview,
 };

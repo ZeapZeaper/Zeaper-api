@@ -42,12 +42,10 @@ const addWish = async (req, res) => {
       color,
     });
     await newWish.save();
-    return res
-      .status(200)
-      .send({
-        message: "Product added to wish list successfully",
-        data: newWish,
-      });
+    return res.status(200).send({
+      message: "Product added to wish list successfully",
+      data: newWish,
+    });
   } catch (error) {
     res.status(400).send({ error: error.message });
   }
@@ -88,11 +86,16 @@ const getAuthUserWishes = async (req, res) => {
     const wishes = await WishModel.find({
       user: user_id,
     }).populate("product");
+    if (!wishes || wishes.length === 0) {
+      return res.status(200).send({ message: "No wishes found", data: [] });
+    }
+
     // add the applied image from product to the wish
     wishes.forEach((wish) => {
       const product = wish.product;
       const color = wish.color;
       const appliedColor = product.colors.find((c) => c.value === color);
+
       if (appliedColor) {
         wish.image = appliedColor.images.find((img) => img.link).link;
       } else {
