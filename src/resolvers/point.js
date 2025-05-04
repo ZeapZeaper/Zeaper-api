@@ -71,10 +71,16 @@ const convertPointToVoucher = async (req, res) => {
     if (!pointToConvert) {
       return res.status(400).send({ error: "required pointToConvert" });
     }
-    // check if pointToConvert is a number and greater than 1000
-    if (isNaN(pointToConvert) || pointToConvert < 1000) {
+    // check if pointToConvert is a number
+    if (isNaN(pointToConvert)) {
       return res.status(400).send({
-        error: "pointToConvert must be a number and greater than 1000",
+        error: "pointToConvert must be a number",
+      });
+    }
+    // check if pointToConvert is greater than 1000
+    if (pointToConvert < 1000) {
+      return res.status(400).send({
+        error: "pointToConvert must be a greater than 1000",
       });
     }
     const authUser = await getAuthUser(req);
@@ -84,7 +90,8 @@ const convertPointToVoucher = async (req, res) => {
     if (
       authUser._id !== user_id &&
       !authUser.isAdmin &&
-      !authUser.superAdmin
+      !authUser.superAdmin &&
+      user_id
     ) {
       return res
         .status(400)

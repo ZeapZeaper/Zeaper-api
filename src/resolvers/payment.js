@@ -447,7 +447,8 @@ const verifyPayment = async (req, res) => {
       }
       // 1000 naira = 10 points
       // round down to the nearest 1000
-      const pointToAdd = Math.floor(amount / 1000) * 10;
+      const amountInNaira = covertToNaira(amount, currency);
+      const pointToAdd = Math.floor(amountInNaira / 1000) * 10;
       const existingOrder = await OrderModel.findOne({
         payment: updatedPayment._id,
       }).lean();

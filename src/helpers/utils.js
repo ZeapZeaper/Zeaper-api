@@ -308,6 +308,28 @@ const currencyCoversion = async (amount, currency) => {
   }
   return amount;
 };
+const covertToNaira = async (amount, currency) => {
+  if (amount === 0) {
+    return 0;
+  }
+  if (currency === "NGN") {
+    return amount;
+  }
+  const currencyRates = await ExchangeRateModel.find();
+  let rate;
+  if (currency === "USD") {
+    rate = currencyRates.find((rate) => rate.currency === "USD").rate;
+    const convertedAmount = amount * rate;
+    return convertedAmount;
+  }
+  if (currency === "GBP") {
+    rate = currencyRates.find((rate) => rate.currency === "GBP").rate;
+    const convertedAmount = amount * rate;
+    return convertedAmount;
+  }
+
+  return amount;
+};
 
 const addWeekDays = (startDate, count) =>
   Array.from({ length: count }).reduce((date) => {
@@ -477,6 +499,7 @@ module.exports = {
   validateBodyMeasurements,
   codeGenerator,
   currencyCoversion,
+  covertToNaira,
   addWeekDays,
   getBodyMeasurementEnumsFromGuide,
   getDaysDifference,

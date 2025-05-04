@@ -292,7 +292,6 @@ const deleteNotification = async (req, res) => {
       return res.status(400).send({ error: "Notification not found" });
     }
     const notifications = userNotification.notifications;
-    console.log("notifications", notifications);
     const newNotifications = notifications.filter(
       (notification) =>
         notification._id.toString() !== notification_id.toString()
