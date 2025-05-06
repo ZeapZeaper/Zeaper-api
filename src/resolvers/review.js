@@ -1,3 +1,4 @@
+
 const { getAuthUser } = require("../middleware/firebaseUserAuth");
 const OrderModel = require("../models/order");
 const ProductOrderModel = require("../models/productOrder");
@@ -5,6 +6,7 @@ const ProductModel = require("../models/products");
 const ReviewModel = require("../models/review");
 const ShopModel = require("../models/shop");
 const { notifyShop } = require("./notification");
+
 
 const canUserReview = async (user, product_id) => {
   const result = {
@@ -20,7 +22,6 @@ const canUserReview = async (user, product_id) => {
     product: product_id,
   }).exec();
   if (review) {
-    
     result.canReview = false;
     result.denyReason = "You have already reviewed this product";
     return result;
@@ -228,8 +229,10 @@ const getReviews = async (req, res) => {
     res.status(400).send({ error: error.message });
   }
 };
+
 const getAuthUserReviews = async (req, res) => {
   try {
+   
     const user = await getAuthUser(req);
     const reviews = await ReviewModel.find({ user: user._id })
       .populate("product", "productId title")
@@ -271,7 +274,7 @@ const getAuthUserReviews = async (req, res) => {
     });
     const givenReviews = await Promise.all(
       reviews.map(async (review) => {
-        const product = review.product;   
+        const product = review.product;
         const order = await ProductOrderModel.findOne({
           user: user._id.toString(),
           product: product._id,
@@ -328,8 +331,15 @@ const getReview = async (req, res) => {
 
 const updateReview = async (req, res) => {
   try {
-    const { review_id, productId, rating, title, review, displayName, imageMatch } =
-      req.body;
+    const {
+      review_id,
+      productId,
+      rating,
+      title,
+      review,
+      displayName,
+      imageMatch,
+    } = req.body;
     if (!review_id) {
       return res.status(400).send({ error: "review_id is required" });
     }

@@ -1,3 +1,5 @@
+const geoip = require("geoip-lite");
+const requestIp = require("request-ip");
 const UserModel = require("../models/user");
 const ShopModel = require("../models/shop");
 const { storageRef } = require("../config/firebase"); // reference to our db
@@ -11,6 +13,8 @@ const {
   cryptoEncrypt,
   replaceUserVariablesinTemplate,
   replaceShopVariablesinTemplate,
+  allowedLocations,
+  getServerIp,
 } = require("../helpers/utils");
 const validator = require("email-validator");
 const { firebase } = require("../config/firebase");
@@ -28,7 +32,6 @@ const BasketModel = require("../models/basket");
 const { generateUniqueBasketId } = require("./basket");
 const WishModel = require("../models/wish");
 const BodyMeasurementTemplateModel = require("../models/bodyMeasurementTemplate");
-const { console } = require("inspector");
 const OrderModel = require("../models/order");
 const VoucherModel = require("../models/voucher");
 const PaymentModel = require("../models/payment");
@@ -156,6 +159,22 @@ const creatGuestUser = async (req, res) => {
     const email = "";
     // const displayName = "Guest User";
     const imageUrl = {};
+    let prefferedCurrency = "NGN";
+
+    const clientIp = requestIp.getClientIp(req);
+    let ip = clientIp;
+    if (clientIp === "::1") {
+      ip = await getServerIp();
+    }
+    const geo = geoip.lookup(ip);
+    const countryCode = geo?.country || "NG";
+    const location = allowedLocations.find(
+      (location) => location.countryCode === countryCode
+    );
+    if (location) {
+      prefferedCurrency = location.currency;
+    }
+
     const newUser = new UserModel({
       email,
       firstName,
@@ -164,13 +183,58 @@ const creatGuestUser = async (req, res) => {
       userId,
       uid,
       isGuest,
+      prefferedCurrency,
     });
     const savedUser = await newUser.save();
+    console.log("savedUser", savedUser);
     if (!savedUser) {
       return res.status(400).send({ error: "User not created" });
     }
 
     return res.status(200).send({ data: savedUser });
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
+};
+const getRecommendedCurrency = async (req, res) => {
+  try {
+    const clientIp = requestIp.getClientIp(req);
+    let ip = clientIp;
+    if (clientIp === "::1") {
+      ip = await getServerIp();
+    }
+
+    const geo = geoip.lookup(ip);
+
+    const countryCode = geo?.country || "NG";
+    let prefferedCurrency = "NGN";
+    let location = allowedLocations.find(
+      (location) => location.countryCode === countryCode
+    );
+    if (location) {
+      prefferedCurrency = location.currency;
+      return res.status(200).send({
+        data: prefferedCurrency || "NGN",
+        message: "Location found and country currency supported",
+      });
+    }
+    const timezoneContinent = geo?.timezone.split("/")[0] || "Africa";
+    const foundLocation = allowedLocations.find(
+      (location) => location.timezone.split("/")[0] === timezoneContinent
+    );
+    if (foundLocation) {
+      prefferedCurrency = foundLocation.currency;
+      return res.status(200).send({
+        data: prefferedCurrency || "NGN",
+        message: "Location found but country currency not supported",
+      });
+    }
+
+    return res.status(200).send({
+      message:
+        "Location found but country currency not supported as well as timezone",
+      data: "NGN",
+    });
   } catch (err) {
     return res.status(500).send({ error: err.message });
   }
@@ -1272,4 +1336,5 @@ module.exports = {
   convertGuestUserWithEmailPasswordProvider,
   mergeGoogleAppleLoginGuestUser,
   mergePasswordLoginGuestUser,
+  getRecommendedCurrency,
 };

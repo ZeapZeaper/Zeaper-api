@@ -87,6 +87,7 @@ let routes = (app) => {
     userResolver.getUsers
   );
   router.get("/user", authMiddleware, userResolver.getUser);
+  router.get("/user/currency/recommended", authMiddleware, userResolver.getRecommendedCurrency);
   router.get("/userByUid", authMiddleware, userResolver.getUserByUid);
   router.get(
     "/userById",

@@ -17,6 +17,7 @@ const algorithm = "aes-256-ctr";
 const ENCRYPTION_KEY = process.env.ZEAPCRYPTOKEY;
 //const ENCRYPTION_KEY = "emVhcCBmYXNoaW9uIGFwcCBpcyBvd25l==";
 const IV_LENGTH = 16;
+const { exec } = require("child_process");
 
 const deleteLocalFile = async (path) => {
   return new Promise((resolve) => {
@@ -288,6 +289,9 @@ const codeGenerator = (length) => {
   return code;
 };
 const currencyCoversion = async (amount, currency) => {
+  if (amount === null || amount === undefined || amount === "") {
+    return null;
+  }
   if (amount === 0) {
     return 0;
   }
@@ -299,16 +303,19 @@ const currencyCoversion = async (amount, currency) => {
   if (currency === "USD") {
     rate = currencyRates.find((rate) => rate.currency === "USD").rate;
     const convertedAmount = amount * rate;
-    return convertedAmount;
+    return convertedAmount.toFixed(2);
   }
   if (currency === "GBP") {
     rate = currencyRates.find((rate) => rate.currency === "GBP").rate;
     const convertedAmount = amount * rate;
-    return convertedAmount;
+    return convertedAmount.toFixed(2);
   }
   return amount;
 };
 const covertToNaira = async (amount, currency) => {
+  if (amount === null || amount === undefined || amount === "") {
+    return null;
+  }
   if (amount === 0) {
     return 0;
   }
@@ -320,12 +327,12 @@ const covertToNaira = async (amount, currency) => {
   if (currency === "USD") {
     rate = currencyRates.find((rate) => rate.currency === "USD").rate;
     const convertedAmount = amount * rate;
-    return convertedAmount;
+    return convertedAmount.toFixed(2);
   }
   if (currency === "GBP") {
     rate = currencyRates.find((rate) => rate.currency === "GBP").rate;
     const convertedAmount = amount * rate;
-    return convertedAmount;
+    return convertedAmount.toFixed(2);
   }
 
   return amount;
@@ -481,7 +488,46 @@ const replaceOrderVariablesinTemplate = (template, order) => {
 
   return replacedTemplate;
 };
+const allowedLocations = [
+  {
+    currency: "USD",
+    label: "United States Dollar",
+    symbol: "$",
+    countryCode: "US",
+    timezone: "America/New_York",
+    default: false,
+  },
+  {
+    currency: "NGN",
+    label: "Nigerian Naira",
+    symbol: "₦",
+    countryCode: "NG",
+    timezone: "Africa/Lagos",
+    default: true,
+  },
 
+  {
+    currency: "GBP",
+    label: "British Pound Sterling",
+    symbol: "£",
+    countryCode: "GB",
+    timezone: "Europe/London",
+    default: false,
+  },
+];
+const getServerIp = async () => {
+  return new Promise((resolve, reject) => {
+    exec("curl ip-adresim.app", (error, stdout, stderr) => {
+      if (error) {
+        console.error(`exec error: ${error}`);
+        reject(error);
+      }
+      const ip = stdout.trim();
+
+      resolve(ip);
+    });
+  });
+};
 module.exports = {
   deleteLocalFile,
   numberWithCommas,
@@ -507,4 +553,6 @@ module.exports = {
   replaceUserVariablesinTemplate,
   replaceShopVariablesinTemplate,
   replaceOrderVariablesinTemplate,
+  getServerIp,
+  allowedLocations,
 };
