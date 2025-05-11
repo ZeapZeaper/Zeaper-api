@@ -87,7 +87,11 @@ let routes = (app) => {
     userResolver.getUsers
   );
   router.get("/user", authMiddleware, userResolver.getUser);
-  router.get("/user/currency/recommended", authMiddleware, userResolver.getRecommendedCurrency);
+  router.get(
+    "/user/currency/recommended",
+    authMiddleware,
+    userResolver.getRecommendedCurrency
+  );
   router.get("/userByUid", authMiddleware, userResolver.getUserByUid);
   router.get(
     "/userById",
@@ -195,6 +199,11 @@ let routes = (app) => {
     "/products/live/newest",
     authMiddleware,
     productResolver.getNewestArrivals
+  );
+  router.get(
+    "/products/live/bespoke",
+    authMiddleware,
+    productResolver.getBespoke
   );
   router.get(
     "/products/live/mostPopular",
@@ -321,8 +330,16 @@ let routes = (app) => {
   //Review routes
   router.post("/review/create", authMiddleware, reviewResolver.createReview);
   router.get("/reviews", authMiddleware, reviewResolver.getReviews);
-  router.get("/review/permission", authMiddleware, reviewResolver.getUserCanReview);
-  router.get("/reviews/user", authMiddleware, reviewResolver.getAuthUserReviews);
+  router.get(
+    "/review/permission",
+    authMiddleware,
+    reviewResolver.getUserCanReview
+  );
+  router.get(
+    "/reviews/user",
+    authMiddleware,
+    reviewResolver.getAuthUserReviews
+  );
   router.get(
     "/reviews/shop",
     authMiddleware,

@@ -1554,6 +1554,74 @@ const getNewestArrivals = async (req, res) => {
     return res.status(500).send({ error: err.message });
   }
 };
+const getBespoke = async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit);
+    const pageNumber = parseInt(req.query.pageNumber);
+    if (!limit) {
+      return res.status(400).send({
+        error: "limit is required. This is maximum number you want per page",
+      });
+    }
+
+    if (!pageNumber) {
+      return res.status(400).send({
+        error:
+          "pageNumber is required. This is the current page number in the pagination",
+      });
+    }
+
+    const query = getQuery(req.query);
+
+    query.status = "live";
+    query.productType = {
+      $in: ["bespokeCloth", "bespokeShoe"],
+    };
+    const aggregate = [
+      {
+        $facet: {
+          products: [
+            { $match: { ...query } },
+            { $sort: { createdAt: -1 } },
+            { $skip: limit * (pageNumber - 1) },
+            { $limit: limit },
+          ],
+          allProducts: [
+            { $match: { ...query } },
+            {
+              $project: {
+                productType: 1,
+                categories: 1,
+                sizes: 1,
+                colors: 1,
+                variations: 1,
+              },
+            },
+          ],
+        },
+      },
+    ];
+    const productQuery = await ProductModel.aggregate(aggregate).exec();
+    const authUser = await getAuthUser(req);
+    const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
+    const productsData = productQuery[0].products;
+    const products = await addPreferredAmountAndCurrency(
+      productsData,
+      currency
+    );
+    const allProducts = productQuery[0].allProducts;
+    const totalCount = allProducts?.length || 0;
+    const dynamicFilters = getDynamicFilters(allProducts);
+    const data = {
+      products,
+      totalCount,
+      dynamicFilters,
+    };
+    return res.status(200).send({ data: data });
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
+};
 const getMostPopular = async (req, res) => {
   try {
     const limit = parseInt(req.query.limit);
@@ -2536,6 +2604,7 @@ module.exports = {
   getLiveProducts,
   getPromoWithLiveProducts,
   getNewestArrivals,
+  getBespoke,
   getMostPopular,
   searchProducts,
   searchLiveProducts,

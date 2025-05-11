@@ -15,6 +15,7 @@ const BodyMeasurementModel = require("../models/bodyMeasurement");
 const BodyMeasurementGuideModel = require("../models/bodyMeasurementGuide");
 
 const BodyMeasurementTemplateModel = require("../models/bodyMeasurementTemplate");
+const ExchangeRateModel = require("../models/exchangeRate");
 const ProductOrderModel = require("../models/productOrder");
 const ProductModel = require("../models/products");
 

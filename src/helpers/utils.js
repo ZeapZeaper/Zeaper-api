@@ -430,10 +430,17 @@ const getDaysDifference = (date) => {
   return diffDays;
 };
 const calcRate = (rate, currency, amount) => {
-  if ((currency = "NGN")) {
+  if (amount === null || amount === undefined || amount === "") {
+    return null;
+  }
+  if (amount === 0) {
+    return 0;
+  }
+  if (currency === "NGN") {
     return amount;
   }
-  amount * rate;
+  const convertedAmount = amount * rate;
+  return convertedAmount.toFixed(2);
 };
 
 const replaceUserVariablesinTemplate = (template, user) => {
