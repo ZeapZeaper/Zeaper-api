@@ -1,3 +1,5 @@
+
+
 const clothStyleEnums = [
   "T-Shirt",
   "Trousers",
@@ -913,6 +915,7 @@ const allowedDeliveryCountries = [
   "United Kingdom",
   "Canada",
 ];
+
 module.exports = {
   genderEnums,
   ageGroupEnums,
@@ -945,6 +948,6 @@ module.exports = {
   shopVariables,
   orderVariables,
   searchQueryAllowedPaths,
-  allowedDeliveryCountries
+  allowedDeliveryCountries,
 
 };

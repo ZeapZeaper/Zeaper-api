@@ -41,7 +41,22 @@ const generateUniqueShopId = async () => {
 
 const createShop = async (req, res) => {
   try {
-    const { shopName } = req.body;
+    const { shopName, country, region,phoneNumber, address} = req.body;
+    if (!shopName) {
+      return res.status(400).send({ error: "shopName is required" });
+    }
+    if (!country) {
+      return res.status(400).send({ error: "country is required" });
+    }
+    if (!region) {
+      return res.status(400).send({ error: "region is required" });
+    }
+    if (!phoneNumber) {
+      return res.status(400).send({ error: "phoneNumber is required" });
+    }
+    if (!address) {
+      return res.status(400).send({ error: "address is required" });
+    }
 
     const authUser = await getAuthUser(req);
 

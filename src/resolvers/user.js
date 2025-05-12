@@ -27,7 +27,6 @@ const { sendOTP, verifyOTP } = require("../helpers/sms");
 const PointModel = require("../models/points");
 const { sendEmail } = require("../helpers/emailer");
 const EmailTemplateModel = require("../models/emailTemplate");
-const { userVariables, shopVariables } = require("../helpers/constants");
 const BasketModel = require("../models/basket");
 const { generateUniqueBasketId } = require("./basket");
 const WishModel = require("../models/wish");
@@ -130,16 +129,7 @@ const deleteUserFromFirebase = async (uid) => {
     return error;
   }
 };
-const addShop = async (user) => {
-  const shopId = await generateUniqueShopId();
-  const shop = new ShopModel({
-    shopId,
-    userId: user?.userId,
-    user: user?._id,
-  });
-  const newShop = await shop.save();
-  return newShop;
-};
+
 
 const creatGuestUser = async (req, res) => {
   try {
@@ -314,10 +304,10 @@ const convertGuestUserWithEmailPasswordProvider = async (req, res) => {
 };
 
 const createUser = async (req, res) => {
-  const { email, password, isVendor } = req.body;
+  const { email, password } = req.body;
   let firebaseUser = {};
   let newUser;
-  let shopId;
+
 
   try {
     if (!email) {
@@ -349,17 +339,6 @@ const createUser = async (req, res) => {
         });
       }
     }
-
-    //const authUser = await getAuthUser(req);
-    // if (authUser) {
-
-    //   const isAdmin = authUser.isAdmin || authUser.superAdmin;
-    //   if(!isAdmin){
-    //     return res.status(400).send({ error: "You are not authorized to create user" });
-    //   }
-
-    //   req.body.createdBy = authUser.userId;
-    // }
 
     const decriptedPassword = cryptoDecrypt(password);
 
@@ -408,30 +387,7 @@ const createUser = async (req, res) => {
     const newPoint = await point.save();
 
     const data = {};
-    let shop = {};
 
-    if (isVendor) {
-      shop = await addShop(newUser);
-
-      shopId = shop.shopId;
-      if (!shopId) {
-        return res.status(500).send({ error: "Error creating shop" });
-      }
-      const updatedUser = await UserModel.findByIdAndUpdate(
-        newUser._id,
-        {
-          shopId,
-          shopEnabled: true,
-        },
-        { new: true }
-      );
-      if (!updatedUser) {
-        return res.status(500).send({ error: "Error updating user shop" });
-      }
-      newUser = updatedUser;
-      data.shop = shop;
-      data.user = newUser;
-    }
     const welcomeUserEmailTemplate = await EmailTemplateModel.findOne({
       name: "welcome-user",
     }).lean();
@@ -452,26 +408,11 @@ const createUser = async (req, res) => {
       body: formattedUserTemplateBody || "Welcome to Zeap",
     };
     const userMail = await sendEmail(param);
-    if (isVendor && shopId) {
-      const welcomeShopEmailTemplate = await EmailTemplateModel.findOne({
-        name: "welcome-shop",
-      }).lean();
-      const formattedShopTemplateBody = replaceShopVariablesinTemplate(
-        replaceUserVariablesinTemplate(welcomeShopEmailTemplate?.body, user),
-        shop
-      );
-      const formattedShopTemplateSubject = replaceShopVariablesinTemplate(
-        replaceUserVariablesinTemplate(welcomeShopEmailTemplate?.subject, user),
-        shop
-      );
-      param.body = formattedShopTemplateBody || "Welcome to Zeap";
-      param.subject = formattedShopTemplateSubject?.subject || "Welcome";
-      const shopMail = await sendEmail(param);
-    }
+
     return res.status(200).send({
       data,
       message:
-        "User created successfully and phone number OTP verification sent",
+        "User created successfully",
     });
   } catch (error) {
     if (firebaseUser.uid) {
@@ -486,12 +427,7 @@ const createUser = async (req, res) => {
         console.log("Error deleting user", newUser._id);
       }
     }
-    if (shopId) {
-      const deleteShop = await ShopModel.findOneAndDelete({ shopId }).lean();
-      if (!deleteShop) {
-        console.log("Error deleting shop", shopId);
-      }
-    }
+  
     return res
       .status(500)
       .send({ error: error.message, message: "Error creating user" });
