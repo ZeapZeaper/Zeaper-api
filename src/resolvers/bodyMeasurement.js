@@ -71,9 +71,9 @@ const addBodyMeasurement = async (req, res) => {
         fields: fields.map((f) => f.field),
       };
     });
-
-    const mergedBodyMeasurementEnums = mappedBodyMeasurementEnums.reduce(
-      (acc, cur) => {
+    const measurementNames = measurements.map((m) => m.name);
+    const mergedBodyMeasurementEnums = mappedBodyMeasurementEnums
+      .reduce((acc, cur) => {
         const found = acc.find((m) => m.name === cur.name);
         if (found) {
           found.fields = [...found.fields, ...cur.fields];
@@ -81,9 +81,10 @@ const addBodyMeasurement = async (req, res) => {
           acc.push(cur);
         }
         return acc;
-      },
-      []
-    );
+      }, [])
+      .filter((m) => measurementNames.includes(m.name));
+    console.log("mergedBodyMeasurementEnums", mergedBodyMeasurementEnums);
+    console.log("measurements", measurements);
 
     const validate = validateBodyMeasurement(
       measurements,

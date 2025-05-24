@@ -24,6 +24,7 @@ const {
   accessorySizeEnums,
   currencyEnums,
   searchQueryAllowedPaths,
+  sizeStandardEnums,
 } = require("../../helpers/constants");
 const {
   checkForDuplicates,
@@ -2213,6 +2214,7 @@ const getProductOptions = async (req, res) => {
       brandEnums: brandEnums.sort(),
       clothSizeEnums: clothSizeEnums.sort(),
       colorEnums: colorEnums.sort((a, b) => a.name.localeCompare(b.name)),
+      sizeStandardEnums: sizeStandardEnums.sort(),
     };
     const bespokeClothesParams = {
       mainEnums: mainEnums.filter((m) => !nonClothMainEnums.includes(m)).sort(),
@@ -2245,6 +2247,7 @@ const getProductOptions = async (req, res) => {
       colorEnums: colorEnums.sort((a, b) => a.name.localeCompare(b.name)),
       heelHeightEnums: heelHightEnums.sort(),
       heelTypeEnums: heelTypeEnums.sort(),
+      sizeStandardEnums: sizeStandardEnums.sort(),
     };
     const bespokeShoeParams = {
       genderEnums: genderEnums.sort(),
@@ -2570,7 +2573,7 @@ const updateAutoPriceAdjustment = async (req, res) => {
       isAdjustable,
       adjustmentPercentage: isAdjustable ? adjustmentPercentage : 0,
     };
-    console.log("autoPriceAdjustment", autoPriceAdjustment);
+
     const updatedProduct = await ProductModel.findOneAndUpdate(
       { productId },
       {

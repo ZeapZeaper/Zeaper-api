@@ -5,7 +5,6 @@ const path = require("path");
 const { v4: uuidv4 } = require("uuid");
 const sharp = require("sharp");
 const { deleteLocalFile, deleLocalImages } = require("../helpers/utils");
-const { error } = require("console");
 const readyMadeSizeGuide  = require("../helpers/readyMadeSizeGuide");
 
 //saving image to firebase storage
@@ -162,10 +161,7 @@ const updateFieldImage = async (req, res) => {
         link: existingLink,
         name: imageUrlName,
       };
-      console.log(
-        "bodyMeasurementGuide",
-        bodyMeasurementGuide.fields[fieldIndex]
-      );
+      
       await bodyMeasurementGuide.save();
       return res.status(200).send({ data: bodyMeasurementGuide });
     }
@@ -433,7 +429,7 @@ const getBodyMeasurementFields = async (req, res) => {
       acc[key.toLowerCase()] = req.query[key];
       return acc;
     }, {});
-    console.log("queryParams", queryParams);
+  
     const bodyMeasurementGuide = await BodyMeasurementGuideModel.find({
       ...queryParams,
     }).lean();

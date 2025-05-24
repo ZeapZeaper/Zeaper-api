@@ -143,10 +143,9 @@ let routes = (app) => {
     shopResolver.getShops
   );
   router.get(
-    "/shops/auth",
+    "/shop/auth",
     authMiddleware,
-    authUserAdminMiddleware,
-    shopResolver.getAuthUserShops
+    shopResolver.getAuthUserShop
   );
   router.get("/shop", authMiddleware, shopResolver.getShop);
   router.get(

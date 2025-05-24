@@ -190,16 +190,17 @@ const getShops = async (req, res) => {
     return res.status(500).send({ error: err.message });
   }
 };
-const getAuthUserShops = async (req, res) => {
+const getAuthUserShop = async (req, res) => {
   try {
+ 
     const authUser = await getAuthUser(req);
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
     }
-    const shops = await ShopModel.find({
+    const shop = await ShopModel.findOne({
       user: authUser._id,
     }).populate("user");
-    return res.status(200).send({ data: shops });
+    return res.status(200).send({ data: shop });
   } catch (err) {
     return res.status(500).send({ error: err.message });
   }
@@ -428,7 +429,7 @@ module.exports = {
   createShop,
   getShops,
   getShop,
-  getAuthUserShops,
+  getAuthUserShop,
   updateShop,
   deleteShop,
   restoreShop,

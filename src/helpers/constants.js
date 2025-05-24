@@ -1,5 +1,3 @@
-
-
 const clothStyleEnums = [
   "T-Shirt",
   "Trousers",
@@ -24,6 +22,7 @@ const clothStyleEnums = [
   "Maxi Skirt",
   "Waistcoat",
   "BodySuit",
+  "Suit",
   "Jeans",
   "Crop-Top",
   "Tube-Top",
@@ -175,7 +174,19 @@ const designEnums = [
   "Tribal",
   "Camouflage",
   "Marble",
+  "Rubber",
+  "Metallic",
+  "Reflective",
+  "Iridescent",
+  "Glitter",
+  "Chain",
+  "Studded",
+  "Rhinestone",
+  "Beaded",
+  
 ];
+
+const sizeStandardEnums = ["INTL","UK", "US", "EU", "AUS", "CAN"]
 const fasteningEnums = [
   "Button",
   "Zipper",
@@ -446,6 +457,19 @@ const brandEnums = [
   "Vivobarefoot",
   "Preety Little Thing",
   "Zeap",
+  "Zara",
+  "Boohoo",
+  "H&M",
+  "Forever 21",
+  "ASOS",
+  "Mango",
+  "Topshop",
+  "Topman",
+  "Tommy Hilfiger",
+  "Calvin Klein",
+  "Levi's",
+  "Wrangler",
+  "Lee",
   "Other",
 ];
 const clothSizeEnums = [
@@ -935,6 +959,7 @@ module.exports = {
   mainEnums,
   shoeStyleEnums,
   heelHightEnums,
+  sizeStandardEnums,
   heelTypeEnums,
   shoeSizeEnums,
   accessoryTypeEnums,
@@ -949,5 +974,4 @@ module.exports = {
   orderVariables,
   searchQueryAllowedPaths,
   allowedDeliveryCountries,
-
 };

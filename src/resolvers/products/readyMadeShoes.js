@@ -14,6 +14,7 @@ const {
   heelHightEnums,
   heelTypeEnums,
   shoeSizeEnums,
+  sizeStandardEnums,
 } = require("../../helpers/constants");
 const ProductModel = require("../../models/products");
 const {
@@ -31,6 +32,7 @@ const editReadyMadeShoes = async (req) => {
       colors,
       variations,
       autoPriceAdjustment,
+      sizeStandard,
     } = params;
 
     if (
@@ -40,7 +42,17 @@ const editReadyMadeShoes = async (req) => {
       return { error: "sizes is required and must be unique" };
     }
     if (sizes?.some((s) => shoeSizeEnums.indexOf(s) === -1)) {
-      return { error: "invalid size category" };
+      return { error: `invalid size category. size must be one of ${shoeSizeEnums.join(", ")}` };
+    }
+    if (sizes && !sizeStandard) {
+      return { error: "sizeStandard is required when sizes is provided" };
+    }
+    if (sizeStandard && sizeStandardEnums.indexOf(sizeStandard) === -1) {
+      return {
+        error: `invalid sizeStandard category. sizeStandard must be one of ${sizeStandardEnums.join(
+          ", "
+        )}`,
+      };
     }
     if (autoPriceAdjustment) {
       return {

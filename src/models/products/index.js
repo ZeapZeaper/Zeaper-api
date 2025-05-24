@@ -23,7 +23,9 @@ const {
   accessoryTypeEnums,
   accessoryStyleEnums,
   accessorySizeEnums,
+  sizeStandardEnums,
 } = require("../../helpers/constants");
+const { size } = require("lodash");
 
 const ProductSchema = new mongoose.Schema({
   productId: { type: String, required: true },
@@ -113,6 +115,11 @@ const ProductSchema = new mongoose.Schema({
       required: true,
     },
   ],
+  sizeStandard: {
+    type: String,
+    required: false,
+    enum:[...sizeStandardEnums,"Custom"],
+  },
   colors: [
     {
       value: { type: String, required: true },

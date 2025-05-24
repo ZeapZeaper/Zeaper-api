@@ -989,7 +989,7 @@ const downloadReciept = async (req, res) => {
     });
 
     const order = await OrderModel.findOne({ _id: order_id.toString() });
-    console.log("order is", order);
+  
     if (!order) {
       return res.status(400).send({
         error:

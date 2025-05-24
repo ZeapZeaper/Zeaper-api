@@ -150,6 +150,7 @@ const editBespokeShoes = async (req) => {
     // remove productId from params
     delete params.productId;
     params.sizes = ["Custom"];
+    params. sizeStandard = "Custom";
 
     const bespokeShoe = await ProductModel.findOneAndUpdate(
       { productId },

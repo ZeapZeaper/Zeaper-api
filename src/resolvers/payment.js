@@ -48,6 +48,7 @@ const getReference = async (req, res) => {
       address,
       phoneNumber,
       postCode,
+      method,
     } = req.query;
 
     let paymentStatus = "pending";
@@ -71,11 +72,9 @@ const getReference = async (req, res) => {
     }
 
     if (!allowedDeliveryCountries.includes(country)) {
-      return res
-        .status(400)
-        .send({
-          error: `country not supported. Supported countries are ${allowedDeliveryCountries}`,
-        });
+      return res.status(400).send({
+        error: `country not supported. Supported countries are ${allowedDeliveryCountries}`,
+      });
     }
     if (!region) {
       return res
@@ -91,6 +90,14 @@ const getReference = async (req, res) => {
       return res
         .status(400)
         .send({ error: "required phoneNumber in delivery address" });
+    }
+    if (!method) {
+      return res.status(400).send({ error: "required delivery method" });
+    }
+    if (method !== "standard" && method !== "express") {
+      return res
+        .status(400)
+        .send({ error: "delivery method must be either standard or express" });
     }
     const deliveryDetails = {
       address,
@@ -237,7 +244,7 @@ const getReference = async (req, res) => {
         }
       });
     }
-    const calculateTotal = await calculateTotalBasketPrice(basket, country);
+    const calculateTotal = await calculateTotalBasketPrice(basket, country, method);
 
     // convert amount to kobo or cent
     const amountDue = calculateTotal.total * 100;
