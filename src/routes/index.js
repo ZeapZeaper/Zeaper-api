@@ -142,11 +142,7 @@ let routes = (app) => {
     authUserAdminMiddleware,
     shopResolver.getShops
   );
-  router.get(
-    "/shop/auth",
-    authMiddleware,
-    shopResolver.getAuthUserShop
-  );
+  router.get("/shop/auth", authMiddleware, shopResolver.getAuthUserShop);
   router.get("/shop", authMiddleware, shopResolver.getShop);
   router.get(
     "/shop/auth/revenues",
@@ -465,6 +461,11 @@ let routes = (app) => {
     authMiddleware,
     basketResolver.addProductToBasket
   );
+  router.put(
+    "/basket/product/update",
+    authMiddleware,
+    basketResolver.updateBasketItem
+  );
   router.get(
     "/baskets",
     authMiddleware,
@@ -472,6 +473,8 @@ let routes = (app) => {
     basketResolver.getBaskets
   );
   router.get("/basket/total", authMiddleware, basketResolver.getBasketTotal);
+  router.get("/basket/deliveryFees", authMiddleware, basketResolver.getBasketDeliveryFees);
+  router.get("/basket/deliveryDates", authMiddleware, basketResolver.getBasketExpectedDeliveryDays);
   router.get("/basket", authMiddleware, basketResolver.getBasket);
   router.delete("/basket/delete", authMiddleware, basketResolver.deleteBasket);
   router.put(
@@ -839,6 +842,11 @@ let routes = (app) => {
     "/notification/inbox/delete",
     authMiddleware,
     notificationResolver.deleteNotification
+  );
+  router.put(
+    "/notification/inbox/all/delete",
+    authMiddleware,
+    notificationResolver.clearAllAuthUserNotifications
   );
 
   // Email Template routes

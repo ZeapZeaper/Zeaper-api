@@ -31,16 +31,15 @@ const registerPushToken = async (req, res) => {
     const pushTokenDate = new Date();
 
     const authUser = await getAuthUser(req);
-    
+
     if (isAdminPanel && !authUser.isAdmin && !authUser.superAdmin) {
       return res.status(400).send({ error: "Unauthorized" });
     }
     if (isAdminPanel) {
-      
       const adminNotification = await NotificationModel.findOne({
         isAdminPanel: true,
       });
-     
+
       if (adminNotification) {
         const existed = adminNotification.pushToken.find(
           (token) => token === pushToken
@@ -51,7 +50,7 @@ const registerPushToken = async (req, res) => {
         adminNotification.pushToken.push(pushToken);
         adminNotification.pushTokenDate = pushTokenDate;
         await adminNotification.save();
-      
+
         return res.status(200).send({ data: adminNotification });
       }
       const notification = new NotificationModel({
@@ -305,6 +304,24 @@ const deleteNotification = async (req, res) => {
     return res.status(500).send({ error: err.message });
   }
 };
+const clearAllAuthUserNotifications = async (req, res) => {
+  try {
+    const authUser = await getAuthUser(req);
+    const userNotification = await NotificationModel.findOne({
+      user: authUser._id,
+    });
+    if (!userNotification) {
+      return res.status(400).send({ error: "Notification not found" });
+    }
+    userNotification.notifications = [];
+    await userNotification.save();
+    return res
+      .status(200)
+      .send({ data: userNotification, message: "All notifications cleared" });
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
+}
 const addNotification = async (param) => {
   try {
     const { title, body, image, isAdminPanel, user_id } = param;
@@ -390,6 +407,7 @@ module.exports = {
   getNotifications,
   getAdminsNotifications,
   deleteNotification,
+  clearAllAuthUserNotifications,
   addNotification,
   sendPushOneDevice,
   sendPushMultipleDevice,

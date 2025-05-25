@@ -7,6 +7,7 @@ const {
   currencyCoversion,
   replaceUserVariablesinTemplate,
   replaceOrderVariablesinTemplate,
+  covertToNaira,
 } = require("../helpers/utils");
 const request = require("request");
 const { getAuthUser } = require("../middleware/firebaseUserAuth");

@@ -1,3 +1,4 @@
+const { method } = require("lodash");
 const {
   currencyEnums,
   allowedDeliveryCountries,
@@ -8,6 +9,8 @@ const {
   currencyCoversion,
 
   calcRate,
+  getExpectedStandardDeliveryDate,
+  getExpectedExpressDeliveryDate,
 } = require("../helpers/utils");
 const { getAuthUser } = require("../middleware/firebaseUserAuth");
 const BasketModel = require("../models/basket");
@@ -276,9 +279,10 @@ const getBasket = async (req, res) => {
 
     const items = basketCalc.items;
     for (let i = 0; i < basket.basketItems.length; i++) {
-      const item = items.find(
-        (item) => item.item.sku === basket.basketItems[i].sku
-      );
+      const item = items[i];
+      if (!item) {
+        continue; // Skip if item is not found
+      }
       basket.basketItems[i].currency = currency;
       basket.basketItems[i].actualAmount = calcRate(
         rate,
@@ -317,6 +321,65 @@ const getBasket = async (req, res) => {
     return res.status(200).send({
       message: basket ? "Basket fetched successfully" : "No basket found",
       data: basket,
+    });
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
+};
+const getBasketExpectedDeliveryDays = async (req, res) => {
+  try {
+    const { country } = req.query;
+    if (!country) {
+      return res.status(400).send({ error: "required country" });
+    }
+    if (!allowedDeliveryCountries.includes(country)) {
+      return res.status(400).send({
+        error: `country not supported. Supported countries are ${allowedDeliveryCountries}`,
+      });
+    }
+
+    // Get the user from the request
+    const user = await getAuthUser(req);
+    if (!user) {
+      return res.status(400).send({ error: "User not found, please login" });
+    }
+    const currency = user.prefferedCurrency || "NGN";
+
+    const basket = await BasketModel.findOne({ user: user._id })
+      .populate("basketItems.product", "productType")
+      .lean();
+    if (!basket) {
+      return res
+        .status(200)
+        .send({ data: {}, message: "No basket found / empty basket" });
+    }
+    const items = basket.basketItems;
+    if (!items || items.length === 0) {
+      return res.status(200).send({
+        data: {},
+        message: "No items in basket to calculate delivery days",
+      });
+    }
+    const deliveryDates = [];
+    items.forEach((item) => {
+      const productType = item.product.productType;
+      const standard = getExpectedStandardDeliveryDate(productType, country);
+      if (country.toLowerCase() === "nigeria") {
+        return deliveryDates.push({
+          sku: item.sku,
+          standardDeliveryDate: standard,
+        });
+      }
+      const express = getExpectedExpressDeliveryDate(productType, country);
+      deliveryDates.push({
+        sku: item.sku,
+        standardDeliveryDate: standard,
+        expressDeliveryDate: express,
+      });
+    });
+    return res.status(200).send({
+      message: "Basket expected delivery dates fetched successfully",
+      data: deliveryDates,
     });
   } catch (err) {
     return res.status(500).send({ error: err.message });
@@ -526,12 +589,105 @@ const addProductToBasket = async (req, res) => {
     return res.status(500).send({ error: err.message });
   }
 };
-const removeProductFromBasket = async (req, res) => {
+const updateBasketItem = async (req, res) => {
   try {
-    const { sku } = req.body;
+    const {
+      _id,
+      productId,
+      quantity,
+      sku,
+      bespokeColor,
+      bodyMeasurements,
+      bespokeInstruction,
+    } = req.body;
+    if (!_id) {
+      return res.status(400).send({ error: "required _id" });
+    }
 
+    if (!productId) {
+      return res.status(400).send({ error: "required productId" });
+    }
+    if (!quantity) {
+      return res.status(400).send({ error: "required quantity" });
+    }
     if (!sku) {
       return res.status(400).send({ error: "required sku" });
+    }
+    const user = await getAuthUser(req);
+    if (!user) {
+      return res.status(400).send({ error: "User not found, please login" });
+    }
+    const product = await ProductModel.findOne({ productId }).lean();
+    if (!product) {
+      return res.status(400).send({ error: "Product not found" });
+    }
+    if (product?.status !== "live") {
+      return res.status(400).send({ error: "Product is not live" });
+    }
+    const validSku = product.variations.find((v) => v.sku === sku);
+    if (!validSku) {
+      return res.status(400).send({ error: "Invalid sku" });
+    }
+
+    const validation = await validateProductAvailability(
+      product,
+      quantity,
+      sku,
+      bespokeColor
+    );
+    if (validation.error) {
+      return res.status(400).send({ error: validation.error });
+    }
+
+    const bodyMeasurementValidation = await validateProductBodyMeasurements(
+      product,
+      bodyMeasurements
+    );
+    if (bodyMeasurementValidation.error) {
+      return res.status(400).send({ error: bodyMeasurementValidation.error });
+    }
+
+    const basket = await BasketModel.findOne({ user: user._id }).lean();
+    if (!basket) {
+      return res.status(400).send({ error: "Basket not found" });
+    }
+
+    const basketItems = basket.basketItems;
+    const itemIndex = basketItems.findIndex(
+      (item) => item._id.toString() === _id.toString() && item.sku === sku
+    );
+    if (itemIndex === -1) {
+      return res.status(400).send({ error: "Product not found in basket" });
+    }
+    // If the item exists, update its quantity and other details
+
+    basketItems[itemIndex].quantity += quantity;
+    basketItems[itemIndex].bespokeColor = bespokeColor;
+    basketItems[itemIndex].bodyMeasurements = bodyMeasurements;
+    basketItems[itemIndex].bespokeInstruction = bespokeInstruction;
+
+    const updatedBasket = await BasketModel.findByIdAndUpdate(
+      basket._id,
+      { basketItems },
+      { new: true }
+    ).lean();
+    if (!updatedBasket) {
+      return res.status(400).send({ error: "Product not added to basket" });
+    }
+    return res.status(200).send({
+      message: "Product added to basket successfully",
+      data: updatedBasket,
+    });
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
+};
+const removeProductFromBasket = async (req, res) => {
+  try {
+    const { _id } = req.body;
+
+    if (!_id) {
+      return res.status(400).send({ error: "required _id" });
     }
     const user = await getAuthUser(req);
     if (!user) {
@@ -542,10 +698,14 @@ const removeProductFromBasket = async (req, res) => {
       return res.status(400).send({ error: "Basket not found" });
     }
     const basketItems = basket.basketItems;
-    const itemIndex = basketItems.findIndex((item) => item.sku === sku);
-    if (itemIndex === -1) {
-      return res.status(400).send({ error: "Product not found in basket" });
+    if (!basketItems || basketItems.length === 0) {
+      return res.status(400).send({ error: "Basket is empty" });
     }
+
+    // Find the item in the basketItems array
+    const itemIndex = basketItems.findIndex(
+      (item) => item._id.toString() === _id
+    );
     basketItems.splice(itemIndex, 1);
     const updatedBasket = await BasketModel.findByIdAndUpdate(
       basket._id,
@@ -565,10 +725,10 @@ const removeProductFromBasket = async (req, res) => {
 };
 const increaseProductQuantity = async (req, res) => {
   try {
-    const { sku } = req.body;
+    const { _id } = req.body;
 
-    if (!sku) {
-      return res.status(400).send({ error: "required sku" });
+    if (!_id) {
+      return res.status(400).send({ error: "required _id" });
     }
     const user = await getAuthUser(req);
     if (!user) {
@@ -579,7 +739,14 @@ const increaseProductQuantity = async (req, res) => {
       return res.status(400).send({ error: "Basket not found" });
     }
     const basketItems = basket.basketItems;
-    const itemIndex = basketItems.findIndex((item) => item.sku === sku);
+    if (!basketItems || basketItems.length === 0) {
+      return res.status(400).send({ error: "Basket is empty" });
+    }
+
+    // Find the item in the basketItems array
+    const itemIndex = basketItems.findIndex(
+      (item) => item._id.toString() === _id
+    );
     if (itemIndex === -1) {
       return res.status(400).send({ error: "Product not found in basket" });
     }
@@ -603,10 +770,10 @@ const increaseProductQuantity = async (req, res) => {
 
 const decreaseProductQuantity = async (req, res) => {
   try {
-    const { sku } = req.body;
+    const { _id } = req.body;
 
-    if (!sku) {
-      return res.status(400).send({ error: "required sku" });
+    if (!_id) {
+      return res.status(400).send({ error: "required _id" });
     }
     const user = await getAuthUser(req);
     if (!user) {
@@ -617,10 +784,18 @@ const decreaseProductQuantity = async (req, res) => {
       return res.status(400).send({ error: "Basket not found" });
     }
     const basketItems = basket.basketItems;
-    const itemIndex = basketItems.findIndex((item) => item.sku === sku);
+    if (!basketItems || basketItems.length === 0) {
+      return res.status(400).send({ error: "Basket is empty" });
+    }
+
+    // Find the item in the basketItems array
+    const itemIndex = basketItems.findIndex(
+      (item) => item._id.toString() === _id
+    );
     if (itemIndex === -1) {
       return res.status(400).send({ error: "Product not found in basket" });
     }
+
     if (basketItems[itemIndex].quantity === 1) {
       basketItems.splice(itemIndex, 1);
     } else {
@@ -648,7 +823,7 @@ const getBasketTotal = async (req, res) => {
     if (!user) {
       return res.status(400).send({ error: "User not found, please login" });
     }
-    const { country } = req.query;
+    const { country, method } = req.query;
     if (!country) {
       return res.status(400).send({ error: "required country" });
     }
@@ -657,6 +832,14 @@ const getBasketTotal = async (req, res) => {
         error: `country not supported. Supported countries are ${allowedDeliveryCountries}`,
       });
     }
+    if (!method) {
+      return res.status(400).send({ error: "required delivery method" });
+    }
+    if (method !== "standard" && method !== "express") {
+      return res
+        .status(400)
+        .send({ error: "delivery method must be either standard or express" });
+    }
     const currency = user.prefferedCurrency || "NGN";
     const basket = await BasketModel.findOne({ user: user._id }).lean();
     if (!basket) {
@@ -664,7 +847,7 @@ const getBasketTotal = async (req, res) => {
     }
     // use Promise to wait for the total to be calculated
 
-    const basketCalc = await calculateTotalBasketPrice(basket, country);
+    const basketCalc = await calculateTotalBasketPrice(basket, country, method);
 
     const subTotalAmount = basketCalc.itemsTotal;
     const deliveryFee = basketCalc.deliveryFee;
@@ -702,15 +885,81 @@ const getBasketTotal = async (req, res) => {
     return res.status(500).send({ error: err.message });
   }
 };
+const getBasketDeliveryFees = async (req, res) => {
+  try {
+    const user = await getAuthUser(req);
+    if (!user) {
+      return res.status(400).send({ error: "User not found, please login" });
+    }
+    const { country } = req.query;
+    if (!country) {
+      return res.status(400).send({ error: "required country" });
+    }
+    if (!allowedDeliveryCountries.includes(country)) {
+      return res.status(400).send({
+        error: `country not supported. Supported countries are ${allowedDeliveryCountries}`,
+      });
+    }
+
+    const currency = user.prefferedCurrency || "NGN";
+    const basket = await BasketModel.findOne({ user: user._id }).lean();
+    if (!basket) {
+      return res.status(400).send({ error: "Basket not found" });
+    }
+    // use Promise to wait for the total to be calculated
+
+    const standard = await calculateTotalBasketPrice(
+      basket,
+      country,
+      "standard"
+    );
+    const standardDeliveryFee = standard.deliveryFee;
+    const convertedStandardDeliveryFee = await currencyCoversion(
+      standardDeliveryFee,
+      currency
+    );
+    const express = await calculateTotalBasketPrice(basket, country, "express");
+    const expressDeliveryFee = express.deliveryFee;
+    const convertedExpressDeliveryFee = await currencyCoversion(
+      expressDeliveryFee,
+      currency
+    );
+    const deliveryFees = {
+      currency,
+      country,
+      deliveryFees: [
+        {
+          label: `Standard Delivery Fee (${country})`,
+          fee: convertedStandardDeliveryFee,
+          method: "standard",
+        },
+        {
+          label: `Express Delivery Fee (${country})`,
+          fee: convertedExpressDeliveryFee,
+          method: "express",
+        },
+      ],
+    };
+    return res.status(200).send({
+      message: "Basket delivery fees fetched successfully",
+      data: deliveryFees,
+    });
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
+};
 
 module.exports = {
   getBasket,
   getBaskets,
   getBasketTotal,
+  getBasketDeliveryFees,
   deleteBasket,
   addProductToBasket,
+  updateBasketItem,
   removeProductFromBasket,
   increaseProductQuantity,
   decreaseProductQuantity,
   generateUniqueBasketId,
+  getBasketExpectedDeliveryDays,
 };

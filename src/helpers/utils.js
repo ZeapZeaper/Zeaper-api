@@ -174,7 +174,8 @@ const calculateDeliveryFee = async (country, method, quantity, itemsTotal) => {
   if (quantity === 1) {
     return fee;
   }
-  const freeDeliveryThreshold = currentDeliveryFee?.freeDeliveryThreshold?.enabled
+  const freeDeliveryThreshold = currentDeliveryFee?.freeDeliveryThreshold
+    ?.enabled
     ? currentDeliveryFee.freeDeliveryThreshold.amount
     : null;
   if (freeDeliveryThreshold && itemsTotal >= freeDeliveryThreshold) {
@@ -186,7 +187,7 @@ const calculateDeliveryFee = async (country, method, quantity, itemsTotal) => {
   } else {
     totalFee = calcInternationalDeliveryFee(fee, quantity);
   }
- 
+
   return totalFee;
 };
 
@@ -212,7 +213,7 @@ const calculateTotalBasketPrice = async (basket, country, method) => {
   const quantity = basketItems.reduce((acc, item) => {
     return acc + item.quantity;
   }, 0);
-  
+
   return new Promise(async (resolve) => {
     let itemsTotal = 0;
     let items = [];
@@ -238,14 +239,20 @@ const calculateTotalBasketPrice = async (basket, country, method) => {
     if (itemsTotal < 0) {
       itemsTotal = 0;
     }
-    const deliveryFee = await calculateDeliveryFee(country, method, quantity, itemsTotal);
+    const deliveryFee = await calculateDeliveryFee(
+      country,
+      method,
+      quantity,
+      itemsTotal
+    );
+
     const total = itemsTotal + deliveryFee;
     resolve({
-      itemsTotal,
-      total,
+      itemsTotal: itemsTotal.toFixed(2),
+      total: total.toFixed(2),
       items,
       appliedVoucherAmount: voucherAmount,
-      deliveryFee,
+      deliveryFee: deliveryFee.toFixed(2),
 
       ...(voucher && { totalWithoutVoucher: itemsTotal + voucherAmount }),
     });
@@ -578,6 +585,70 @@ const getServerIp = async () => {
     });
   });
 };
+const getExpectedStandardDeliveryDate = (productType, country) => {
+  const bespokes = ["bespokeCloth", "bespokeShoe"];
+  const isBespoke = bespokes.includes(productType);
+  const method = "standard";
+
+  let min;
+  let max;
+  if (country === "NG") {
+    if (isBespoke) {
+      min = 14;
+      max = 21;
+    } else {
+      min = 3;
+      max = 7;
+    }
+  } else {
+    if (isBespoke) {
+      min = 21;
+      max = 28;
+    } else {
+      min = 10;
+      max = 17;
+    }
+  }
+  return { min, max, method, country };
+  // const minDate = addWeekDays(today, min);
+  // const maxDate = addWeekDays(today, max);
+  // return {
+  //   minDate: minDate.toISOString().split("T")[0],
+  //   maxDate: maxDate.toISOString().split("T")[0],
+  // };
+};
+const getExpectedExpressDeliveryDate = (productType, country) => {
+  const bespokes = ["bespokeCloth", "bespokeShoe"];
+  const isBespoke = bespokes.includes(productType);
+  const method = "express";
+  const today = new Date();
+  let min;
+  let max;
+  if (country === "NG") {
+    if (isBespoke) {
+      min = 7;
+      max = 14;
+    } else {
+      min = 2;
+      max = 4;
+    }
+  } else {
+    if (isBespoke) {
+      min = 14;
+      max = 21;
+    } else {
+      min = 7;
+      max = 14;
+    }
+  }
+  return { min, max, method, country };
+  // const minDate = addWeekDays(today, min);
+  // const maxDate = addWeekDays(today, max);
+  // return {
+  //   minDate: minDate.toISOString().split("T")[0],
+  //   maxDate: maxDate.toISOString().split("T")[0],
+  // };
+};
 module.exports = {
   deleteLocalFile,
   numberWithCommas,
@@ -605,4 +676,6 @@ module.exports = {
   replaceOrderVariablesinTemplate,
   getServerIp,
   allowedLocations,
+  getExpectedExpressDeliveryDate,
+  getExpectedStandardDeliveryDate,
 };
