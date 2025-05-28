@@ -7,7 +7,12 @@ const OrderModel = require("../models/order");
 const ProductOrderModel = require("../models/productOrder");
 const ProductModel = require("../models/products");
 const ShopModel = require("../models/shop");
-const { currencyCoversion, addWeekDays } = require("../helpers/utils");
+const {
+  currencyCoversion,
+  addWeekDays,
+  getExpectedStandardDeliveryDate,
+  getExpectedExpressDeliveryDate,
+} = require("../helpers/utils");
 const { default: mongoose } = require("mongoose");
 const {
   addNotification,
@@ -53,7 +58,12 @@ const generateUniqueOrderId = async () => {
   return orderId.toString();
 };
 
-const buildProductOrders = async (order, basketItems, currency) => {
+const buildProductOrders = async (
+  order,
+  basketItems,
+  currency,
+  deliveryMethod
+) => {
   const productOrders = [];
   const orderId = order.orderId;
 
@@ -136,6 +146,7 @@ const buildProductOrders = async (order, basketItems, currency) => {
       images,
       size,
       shopRevenue,
+      deliveryMethod,
       user: order.user,
     });
 
@@ -200,6 +211,7 @@ const updateVariationQuantity = async (basketItems, action) => {
 
 const createOrder = async (param) => {
   const { payment, user } = param;
+  const deliveryMethod = payment?.deliveryMethod;
   const basket = await BasketModel.findOne({
     _id: payment.basket,
   }).lean();
@@ -237,7 +249,8 @@ const createOrder = async (param) => {
   const productOrders = await buildProductOrders(
     savedOrder,
     basketItems,
-    currency
+    currency,
+    deliveryMethod
   );
   if (!productOrders || productOrders.length === 0) {
     return {
@@ -345,7 +358,7 @@ const getAuthBuyerOrders = async (req, res) => {
     });
     return res
       .status(200)
-      .send({ data: orders, message: "Orders fetched successfully" });
+      .send({ data: orders.reverse(), message: "Orders fetched successfully" });
   } catch (error) {
     res.status(400).send({ error: error.message });
   }
@@ -565,12 +578,31 @@ const getProductOrder = async (req, res) => {
 
       .lean();
     if (!productOrder) {
-      return res.status(400).send({ error: "Product Order not found" });
+      return res.status(200).send({
+        data: null,
+        message: "Product Order not found",
+      });
+    }
+    const authUser = await getAuthUser(req);
+    if (
+      !authUser ||
+      (productOrder.user &&
+        productOrder.user.toString() !== authUser._id.toString() &&
+        !authUser.superAdmin &&
+        !authUser.admin &&
+        productOrder.shop &&
+        productOrder.shop.shopId !== authUser.shopId)
+    ) {
+      return res.status(200).send({
+        data: null,
+        error: "You are not authorized to view this product order",
+      });
     }
 
     const order = await OrderModel.findOne({
       _id: productOrder.order,
     }).lean();
+    console.log("order", order, productOrder.order);
     const deliveryDetails = order.deliveryDetails;
     productOrder.order = order;
     productOrder.deliveryDetails = deliveryDetails;
@@ -717,26 +749,34 @@ const updateProductOrderStatus = async (req, res) => {
 
     if (selectedStatus.value === "order confirmed") {
       confirmedAt = new Date();
+      const createdAt = productOrder.createdAt;
       const productType = productOrder.product.productType;
       const bespokes = ["bespokeCloth", "bespokeShoe"];
-      expectedVendorCompletionDate = {
-        min: new Date(),
-        // max will plus 2 working days to the current date
-        max: addWeekDays(new Date(), 2),
-      };
+      const deliveryMethod = productOrder.deliveryMethod || "standard";
+      const order = await OrderModel.findOne({
+        _id: productOrder.order,
+      }).lean();
+      const country = order?.deliveryDetails?.country || "nigeria";
+      const expectedDeliveryDays =
+        deliveryMethod === "express"
+          ? getExpectedStandardDeliveryDate(productType, country)
+          : getExpectedExpressDeliveryDate(productType, country);
       expectedDeliveryDate = {
-        min: addWeekDays(new Date(), 5),
-        max: addWeekDays(new Date(), 7),
+        min: addWeekDays(createdAt, expectedDeliveryDays.min),
+        max: addWeekDays(createdAt, expectedDeliveryDays.max),
       };
+
+      expectedVendorCompletionDate = {
+        min: createdAt,
+        // max will plus 2 working days to the current date
+        max: addWeekDays(createdAt, 2),
+      };
+
       if (bespokes.includes(productType)) {
         expectedVendorCompletionDate = {
-          min: addWeekDays(new Date(), 20),
+          min: addWeekDays(createdAt, 20),
           // max will plus 5 working days to the current date
-          max: addWeekDays(new Date(), 30),
-        };
-        expectedDeliveryDate = {
-          min: addWeekDays(new Date(), 30),
-          max: addWeekDays(new Date(), 40),
+          max: addWeekDays(createdAt, 30),
         };
       }
     }
@@ -901,7 +941,7 @@ const cancelOrder = async (req, res) => {
     ) {
       return res.status(400).send({
         error:
-          "You are not authorized to cancel this product order at the stage. Contact tech",
+          "You are not authorized to cancel this product order at the stage. Contact admin",
       });
     }
     const cancelledStatus = orderStatusEnums.find(
@@ -989,7 +1029,7 @@ const downloadReciept = async (req, res) => {
     });
 
     const order = await OrderModel.findOne({ _id: order_id.toString() });
-  
+
     if (!order) {
       return res.status(400).send({
         error:

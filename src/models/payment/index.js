@@ -29,6 +29,12 @@ const PaymentSchema = new mongoose.Schema({
   appliedVoucherAmount: { type: Number, required: true },
   total: { type: Number, required: true },
   paidAt: { type: String, required: false },
+  deliveryMethod: {
+    type: String,
+    required: false,
+    enum: ["standard", "express"],
+    default: "standard",
+  },
   channel: { type: String, required: false },
   transactionDate: { type: String, required: false },
   cardType: { type: String, required: false },

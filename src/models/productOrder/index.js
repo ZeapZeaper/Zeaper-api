@@ -85,6 +85,12 @@ const ProductOrderSchema = new mongoose.Schema({
     min: { type: String, required: false },
     max: { type: String, required: false },
   },
+  deliveryMethod: {
+    type: String,
+    required: false,
+    enum: ["standard", "express"],
+    default: "standard",
+  },
   deliveryDate: { type: String, required: false },
   deliveryFee: { type: Number, required: false },
   deliveryCompany: { type: String, required: false },

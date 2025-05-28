@@ -200,6 +200,7 @@ const getReference = async (req, res) => {
                 bank,
                 countryCode: country_code,
                 gatewayResponse: gateway_response,
+                deliveryMethod: method,
               },
               { new: true }
             );
@@ -239,6 +240,7 @@ const getReference = async (req, res) => {
                 paymentStatus,
                 orderId,
                 order,
+                
               },
             });
           }
@@ -295,6 +297,7 @@ const getReference = async (req, res) => {
           total,
           appliedVoucherAmount,
           reference,
+          deliveryMethod: method,
         },
         { new: true }
       );
@@ -331,6 +334,7 @@ const getReference = async (req, res) => {
       deliveryFee,
       total,
       appliedVoucherAmount,
+      deliveryMethod: method,
     });
 
     await newPayment.save();
