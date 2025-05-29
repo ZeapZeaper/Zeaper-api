@@ -450,7 +450,7 @@ const getOrder = async (req, res) => {
     //   website_url,
     // });
     const user = order.user;
-    const isAdmin = authUser.superAdmin || authUser.admin;
+    const isAdmin = authUser.superAdmin || authUser.isAdmin;
     if (user._id.toString() !== authUser._id.toString() && !isAdmin) {
       return res
         .status(400)
@@ -494,7 +494,7 @@ const getOrderByOrderId = async (req, res) => {
 
       .lean();
     const user = order.user;
-    const isAdmin = authUser.superAdmin || authUser.admin;
+    const isAdmin = authUser.superAdmin || authUser.isAdmin;
     if (user._id.toString() !== authUser._id.toString() && !isAdmin) {
       return res
         .status(400)
@@ -589,7 +589,7 @@ const getProductOrder = async (req, res) => {
       (productOrder.user &&
         productOrder.user.toString() !== authUser._id.toString() &&
         !authUser.superAdmin &&
-        !authUser.admin &&
+        !authUser.isAdmin &&
         productOrder.shop &&
         productOrder.shop.shopId !== authUser.shopId)
     ) {
@@ -720,7 +720,7 @@ const updateProductOrderStatus = async (req, res) => {
     if (
       !selectedStatus?.sellerAction &&
       !authUser.superAdmin &&
-      !authUser?.admin
+      !authUser?.isAdmin
     ) {
       return res.status(400).send({
         error: `You are not authorized to update this order status to ${selectedStatus.name}`,
@@ -738,7 +738,7 @@ const updateProductOrderStatus = async (req, res) => {
     }
     const shopid = productOrder.shop.shopId;
 
-    if (authUser.shopId !== shopid && !authUser.superAdmin && !authUser.admin) {
+    if (authUser.shopId !== shopid && !authUser.superAdmin && !authUser.isAdmin) {
       return res
         .status(400)
         .send({ error: "You are not authorized to update this product order" });
@@ -918,7 +918,7 @@ const cancelOrder = async (req, res) => {
     if (
       productOrder.status.value !== "order placed" &&
       !authUser.superAdmin &&
-      !authUser.admin
+      !authUser.isAdmin
     ) {
       return res.status(400).send({
         error:
@@ -928,7 +928,7 @@ const cancelOrder = async (req, res) => {
     if (
       productOrder.user !== authUser._id &&
       !authUser.superAdmin &&
-      !authUser.admin
+      !authUser.isAdmin
     ) {
       return res
         .status(400)
