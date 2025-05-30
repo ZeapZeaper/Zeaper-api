@@ -63,12 +63,17 @@ const getProductStat = async (productOrders) => {
     }
   );
   data.productGroupsCount = productGroupsCount;
-
   const shopRevenuesByPaymentStatus = productOrders.reduce(
     (acc, order) => {
       const { shopRevenue } = order;
+      if (!shopRevenue) {
+        return acc;
+      }
       const status = shopRevenue.status;
-      const value = shopRevenue.value;
+      if (status !== "pending" && status !== "paid") {
+        return acc;
+      }
+      const value = shopRevenue?.value || 0;
       if (!acc[status]) {
         acc[status].value = 0;
         acc[status].currency = "NGN";

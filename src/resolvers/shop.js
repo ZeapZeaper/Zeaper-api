@@ -396,7 +396,7 @@ const getShopRevenues = async (req, res) => {
       const productOrder_id = order._id;
       const shopRevenue = order.shopRevenue;
       shopRevenue.status =
-        order.status.value === "order cancelled"
+        order?.status?.value === "order cancelled"
           ? "cancelled"
           : shopRevenue.status;
       const amount = order.amount.find((a) => a.currency === "NGN");
