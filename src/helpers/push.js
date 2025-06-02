@@ -32,7 +32,7 @@ const sendOneDevicePushNotification = async (token, title, body, image) => {
 };
 
 const removeToken = async (token) => {
-  console.log("removeToken", token);
+
   const userNotifications = await NotificationModel.findOne({
     pushToken: token,
   })
@@ -56,7 +56,7 @@ const sendMultipleDevicePushNotification = async (
   body,
   image
 ) => {
-  console.log("tokens", tokens, title, body, image);
+ 
   const message = {
     notification: {
       title,
@@ -71,7 +71,7 @@ const sendMultipleDevicePushNotification = async (
   return messaging
     .sendEachForMulticast(message)
     .then((response) => {
-      console.log("response", response);
+    
       if (response.failureCount > 0) {
         const failedTokens = [];
         response.responses.forEach((resp, idx) => {

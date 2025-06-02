@@ -1264,6 +1264,7 @@ const getProducts = async (req, res) => {
 };
 const getAuthShopProducts = async (req, res) => {
   try {
+    console.log("getAuthShopProducts called");
     const sort = req.query.sort || -1;
     const limit = parseInt(req.query.limit);
     const pageNumber = parseInt(req.query.pageNumber);

@@ -585,28 +585,44 @@ const getServerIp = async () => {
     });
   });
 };
+const getExpectedVendorCompletionDate = (productType) => {
+  const bespokes = ["bespokeCloth", "bespokeShoe"];
+  const isBespoke = bespokes.includes(productType);
+  let min;
+  let max;
+  if (isBespoke) {
+    min = 10;
+    max = 15;
+  } else {
+    min = 1;
+    max = 2;
+  }
+  return { min, max, productType };
+};
+
 const getExpectedStandardDeliveryDate = (productType, country) => {
+  console.log("country", country);
   const bespokes = ["bespokeCloth", "bespokeShoe"];
   const isBespoke = bespokes.includes(productType);
   const method = "standard";
 
   let min;
   let max;
-  if (country === "NG") {
+  if (country.toLowerCase() === "nigeria") {
     if (isBespoke) {
-      min = 14;
-      max = 21;
+      min = 15;
+      max = 20;
     } else {
       min = 3;
-      max = 7;
+      max = 5;
     }
   } else {
     if (isBespoke) {
-      min = 21;
-      max = 28;
+      min = 25;
+      max = 30;
     } else {
       min = 10;
-      max = 17;
+      max = 15;
     }
   }
   return { min, max, method, country };
@@ -624,21 +640,21 @@ const getExpectedExpressDeliveryDate = (productType, country) => {
   const today = new Date();
   let min;
   let max;
-  if (country === "NG") {
+  if (country.toLowerCase() === "nigeria") {
     if (isBespoke) {
-      min = 7;
-      max = 14;
+      min = 15;
+      max = 20;
     } else {
-      min = 2;
-      max = 4;
+      min = 3;
+      max = 5;
     }
   } else {
     if (isBespoke) {
-      min = 14;
-      max = 21;
+      min = 15;
+      max = 20;
     } else {
-      min = 7;
-      max = 14;
+      min = 5;
+      max = 10;
     }
   }
   return { min, max, method, country };
@@ -678,4 +694,5 @@ module.exports = {
   allowedLocations,
   getExpectedExpressDeliveryDate,
   getExpectedStandardDeliveryDate,
+  getExpectedVendorCompletionDate
 };

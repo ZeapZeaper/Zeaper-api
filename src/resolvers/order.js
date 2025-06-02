@@ -12,6 +12,7 @@ const {
   addWeekDays,
   getExpectedStandardDeliveryDate,
   getExpectedExpressDeliveryDate,
+  getExpectedVendorCompletionDate,
 } = require("../helpers/utils");
 const { default: mongoose } = require("mongoose");
 const {
@@ -62,7 +63,8 @@ const buildProductOrders = async (
   order,
   basketItems,
   currency,
-  deliveryMethod
+  deliveryMethod,
+  deliveryDetails
 ) => {
   const productOrders = [];
   const orderId = order.orderId;
@@ -127,7 +129,25 @@ const buildProductOrders = async (
       // value is 75% of the amount due
       value: amountDue * 0.75,
     };
+    let expectedDeliveryDate = null;
 
+    const createdAt = new Date();
+    const productType = product.productType;
+    const country = deliveryDetails?.country || "Nigeria";
+    const expectedDeliveryDays =
+      deliveryMethod === "express"
+        ? getExpectedStandardDeliveryDate(productType, country)
+        : getExpectedExpressDeliveryDate(productType, country);
+    expectedDeliveryDate = {
+      min: addWeekDays(createdAt, expectedDeliveryDays.min),
+      max: addWeekDays(createdAt, expectedDeliveryDays.max),
+    };
+    const expectedVendorCompletionDays =
+      getExpectedVendorCompletionDate(productType);
+    const expectedVendorCompletionDate = {
+      min: addWeekDays(createdAt, expectedVendorCompletionDays.min),
+      max: addWeekDays(createdAt, expectedVendorCompletionDays.max),
+    };
     const productOrder = new ProductOrderModel({
       order: order._id,
       orderId,
@@ -148,6 +168,8 @@ const buildProductOrders = async (
       shopRevenue,
       deliveryMethod,
       user: order.user,
+      expectedDeliveryDate,
+      expectedVendorCompletionDate,
     });
 
     const savedProductOrder = await productOrder.save();
@@ -250,7 +272,8 @@ const createOrder = async (param) => {
     savedOrder,
     basketItems,
     currency,
-    deliveryMethod
+    deliveryMethod,
+    deliveryDetails
   );
   if (!productOrders || productOrders.length === 0) {
     return {
@@ -602,7 +625,7 @@ const getProductOrder = async (req, res) => {
     const order = await OrderModel.findOne({
       _id: productOrder.order,
     }).lean();
-    console.log("order", order, productOrder.order);
+
     const deliveryDetails = order.deliveryDetails;
     productOrder.order = order;
     productOrder.deliveryDetails = deliveryDetails;
@@ -691,8 +714,7 @@ const getOrderStatusOptions = async (req, res) => {
 const updateProductOrderStatus = async (req, res) => {
   try {
     const { productOrder_id, status } = req.body;
-    let expectedVendorCompletionDate = null;
-    let expectedDeliveryDate = null;
+
     let deliveryDate = null;
     let deliveryCompany = null;
     let deliveryTrackingNumber = null;
@@ -738,7 +760,11 @@ const updateProductOrderStatus = async (req, res) => {
     }
     const shopid = productOrder.shop.shopId;
 
-    if (authUser.shopId !== shopid && !authUser.superAdmin && !authUser.isAdmin) {
+    if (
+      authUser.shopId !== shopid &&
+      !authUser.superAdmin &&
+      !authUser.isAdmin
+    ) {
       return res
         .status(400)
         .send({ error: "You are not authorized to update this product order" });
@@ -752,38 +778,9 @@ const updateProductOrderStatus = async (req, res) => {
       const createdAt = productOrder.createdAt;
       const productType = productOrder.product.productType;
       const bespokes = ["bespokeCloth", "bespokeShoe"];
-      const deliveryMethod = productOrder.deliveryMethod || "standard";
-      const order = await OrderModel.findOne({
-        _id: productOrder.order,
-      }).lean();
-      const country = order?.deliveryDetails?.country || "nigeria";
-      const expectedDeliveryDays =
-        deliveryMethod === "express"
-          ? getExpectedStandardDeliveryDate(productType, country)
-          : getExpectedExpressDeliveryDate(productType, country);
-      expectedDeliveryDate = {
-        min: addWeekDays(createdAt, expectedDeliveryDays.min),
-        max: addWeekDays(createdAt, expectedDeliveryDays.max),
-      };
-
-      expectedVendorCompletionDate = {
-        min: createdAt,
-        // max will plus 2 working days to the current date
-        max: addWeekDays(createdAt, 2),
-      };
-
-      if (bespokes.includes(productType)) {
-        expectedVendorCompletionDate = {
-          min: addWeekDays(createdAt, 20),
-          // max will plus 5 working days to the current date
-          max: addWeekDays(createdAt, 30),
-        };
-      }
     }
     if (selectedStatus.value === "order placed") {
       confirmedAt = null;
-      expectedVendorCompletionDate = null;
-      expectedDeliveryDate = null;
     }
     if (selectedStatus.value === "order dispatched") {
       if (!req.body.deliveryCompany) {
@@ -836,8 +833,6 @@ const updateProductOrderStatus = async (req, res) => {
       {
         status: selectedStatus,
         confirmedAt,
-        expectedVendorCompletionDate,
-        expectedDeliveryDate,
         deliveryCompany,
         deliveryTrackingNumber,
         deliveryTrackingLink,
