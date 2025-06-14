@@ -1,4 +1,4 @@
-const { default: mongoose } = require("mongoose");
+
 const { getAuthUser } = require("../middleware/firebaseUserAuth");
 const DeliveryAddressModel = require("../models/deliveryAddresses");
 const OrderModel = require("../models/order");

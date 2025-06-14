@@ -35,6 +35,7 @@ const UserSchema = new mongoose.Schema({
   disabled: { type: Boolean, default: false },
   address: { type: String, required: false },
   isAdmin: { type: Boolean, required: true, default: false },
+  isBlogAuthor: { type: Boolean, required: true, default: false },
   superAdmin: { type: Boolean, required: false, default: false },
   email: { type: String, required: false },
   creationTime: { type: String, required: false },

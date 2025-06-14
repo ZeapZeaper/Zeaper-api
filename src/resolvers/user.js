@@ -130,7 +130,6 @@ const deleteUserFromFirebase = async (uid) => {
   }
 };
 
-
 const creatGuestUser = async (req, res) => {
   try {
     const uid = await getAuthUserUid(req);
@@ -176,7 +175,7 @@ const creatGuestUser = async (req, res) => {
       prefferedCurrency,
     });
     const savedUser = await newUser.save();
-    console.log("savedUser", savedUser);
+
     if (!savedUser) {
       return res.status(400).send({ error: "User not created" });
     }
@@ -308,7 +307,6 @@ const createUser = async (req, res) => {
   let firebaseUser = {};
   let newUser;
 
-
   try {
     if (!email) {
       return res.status(400).send({ error: "email is required" });
@@ -411,8 +409,7 @@ const createUser = async (req, res) => {
 
     return res.status(200).send({
       data,
-      message:
-        "User created successfully",
+      message: "User created successfully",
     });
   } catch (error) {
     if (firebaseUser.uid) {
@@ -427,7 +424,7 @@ const createUser = async (req, res) => {
         console.log("Error deleting user", newUser._id);
       }
     }
-  
+
     return res
       .status(500)
       .send({ error: error.message, message: "Error creating user" });
@@ -784,6 +781,7 @@ const getUsers = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10000;
     const sort = req.query.sort || "desc";
     const search = req.query.search || "";
+  
     const match = {
       ...req.query,
     };
@@ -888,6 +886,7 @@ const getUserById = async (req, res) => {
 
     const user = await UserModel.findById(_id).lean();
     const email = user?.email;
+
     let userAccessRecord = {
       adminAccess: user?.isAdmin || user?.superAdmin,
     };
@@ -1112,6 +1111,7 @@ const getUserByUid = async (req, res) => {
     if (!user) {
       return res.status(404).send({ error: "User not found" });
     }
+
     if (user?.disabled) {
       return res.status(404).send({ error: "User is disabled" });
     }

@@ -34,6 +34,7 @@ const exchangeRateResolver = require("../resolvers/exchangeRate");
 const notificationResolver = require("../resolvers/notification");
 const emailTemplateResolver = require("../resolvers/emailTemplate");
 const recentViewsResolver = require("../resolvers/recentviews");
+const blogResolver = require("../resolvers/blog");
 
 const handleMoreFieldsUploads = uploadMultiple.fields([
   { name: "documents", maxCount: 5 },
@@ -473,8 +474,16 @@ let routes = (app) => {
     basketResolver.getBaskets
   );
   router.get("/basket/total", authMiddleware, basketResolver.getBasketTotal);
-  router.get("/basket/deliveryFees", authMiddleware, basketResolver.getBasketDeliveryFees);
-  router.get("/basket/deliveryDates", authMiddleware, basketResolver.getBasketExpectedDeliveryDays);
+  router.get(
+    "/basket/deliveryFees",
+    authMiddleware,
+    basketResolver.getBasketDeliveryFees
+  );
+  router.get(
+    "/basket/deliveryDates",
+    authMiddleware,
+    basketResolver.getBasketExpectedDeliveryDays
+  );
   router.get("/basket", authMiddleware, basketResolver.getBasket);
   router.delete("/basket/delete", authMiddleware, basketResolver.deleteBasket);
   router.put(
@@ -873,6 +882,71 @@ let routes = (app) => {
     "/products/recentViews",
     authMiddleware,
     recentViewsResolver.getAuthRecentViews
+  );
+
+  //blog
+  router.post(
+    "/blog/post/create",
+    authMiddleware,
+    upload,
+    validateFileSizes,
+    blogResolver.createBlogPost
+  );
+  router.get(
+    "/blog/posts",
+    authMiddleware,
+    authUserAdminMiddleware,
+    blogResolver.getBlogPosts
+  );
+  router.get("/blog/post", authMiddleware, blogResolver.getBlogPost);
+  router.get("/blog/analytics", authMiddleware, blogResolver.getBlogAnalytics);
+  router.get(
+    "/blog/post/comments",
+    authMiddleware,
+    blogResolver.getPostComments
+  );
+  router.put(
+    "/blog/post/update",
+    authMiddleware,
+    upload,
+    validateFileSizes,
+    blogResolver.updateBlogPost
+  );
+  router.put(
+    "/blog/post/update/status",
+    authMiddleware,
+    blogResolver.changeBlogPostStatus
+  );
+  router.put(
+    "/blog/post/author/make",
+    authMiddleware,
+    blogResolver.makeUserBlogAuthor
+  );
+  router.put(
+    "/blog/post/author/remove",
+    authMiddleware,
+    blogResolver.removeUserBlogAuthor
+  );
+
+  router.delete(
+    "/blog/post/delete",
+    authMiddleware,
+    blogResolver.deleteBlogPost
+  );
+  router.post(
+    "/blog/post/comment/create",
+    authMiddleware,
+    blogResolver.addPostComment
+  );
+  router.post(
+    "/blog/post/comment/reply",
+    authMiddleware,
+    blogResolver.replyComment
+  );
+  router.get(
+    "/blog/post/comments",
+    authMiddleware,
+    blogResolver.getPostComments
   );
 
   return app.use("/", router);
