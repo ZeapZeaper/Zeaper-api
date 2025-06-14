@@ -561,6 +561,12 @@ const changeBlogPostStatus = async (req, res) => {
         .status(403)
         .send({ error: "Unauthorized to change blog post status" });
     }
+    const isAdmin = authUser.isAdmin || authUser.superAdmin;
+    if (!isAdmin && status !== "draft") {
+      return res
+        .status(403)
+        .send({ error: "Unauthorized to change blog post status" });
+    }
     blogPost.status = status;
     await blogPost.save();
     res.status(200).send({
