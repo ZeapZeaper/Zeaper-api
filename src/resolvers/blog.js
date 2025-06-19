@@ -187,6 +187,142 @@ const getBlogPosts = async (req, res) => {
     res.status(400).send({ error: error.message });
   }
 };
+const getPublishedBlogPosts = async (req, res) => {
+  try {
+    const blogPosts = await BlogPostModel.find({
+      status: "published",
+      ...req.query, // Allow filtering by other query parameters
+    })
+      .populate("author", "firstname lastName email social")
+      .sort({ createdAt: -1 })
+      .lean();
+    res.status(200).send({
+      data: blogPosts,
+      message: "Blog posts fetched successfully",
+    });
+  } catch (error) {
+    res.status(400).send({ error: error.message });
+  }
+};
+const getSimilarPublisedBlogPosts = async (req, res) => {
+  try {
+    const { blogPostId } = req.query;
+    if (!blogPostId) {
+      return res.status(400).send({ error: "Blog post ID is required" });
+    }
+    // Fetch the blog post to get its tags
+    const blogPost = await BlogPostModel.findOne({ blogPostId });
+    if (!blogPost) {
+      return res.status(404).send({ error: "Blog post not found" });
+    }
+    // Find similar published blog posts based on tags
+    const similarPosts = await BlogPostModel.find({
+      status: "published",
+      tags: { $in: blogPost.tags },
+      blogPostId: { $ne: blogPostId }, // Exclude the current blog post
+    })
+      .populate("author", "firstname lastName email social")
+      .sort({ createdAt: -1 })
+      .limit(5) // Limit to 5 similar posts
+      .lean();
+
+    res.status(200).send({
+      data: similarPosts,
+      message: "Similar published blog posts fetched successfully",
+    });
+  } catch (error) {
+    res.status(400).send({ error: error.message });
+  }
+}
+const getPublishedTags = async (req, res) => {
+  try {
+    // sort tags by most used
+    // get distinct tags from published blog posts
+    // and return them as an array
+    // if no tags found, []
+    const tags = await BlogPostModel.aggregate([
+      { $match: { status: "published" } },
+      { $unwind: "$tags" },
+      {
+        $group: {
+          _id: "$tags",
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { count: -1 } }, // Sort by count in descending order
+      {
+        $project: {
+          _id: 0,
+          tag: "$_id",
+          count: 1,
+        },
+      },
+    ]);
+    if (!tags || tags.length === 0) {
+      return res.status(200).send({
+        data: [],
+        message: "No published tags found",
+      });
+    }
+    const mappedTags = tags.map((tag) => tag.tag); // Extract tag names
+    // Map tags to a simpler format
+    res.status(200).send({
+      data: mappedTags,
+      message: "Published tags fetched successfully",
+    });
+  } catch (error) {
+    res.status(400).send({ error: error.message });
+  }
+};
+const getPublishedBlogPostsByTag = async (req, res) => {
+  try {
+    const { tags } = req.query;
+    console.log("tags", tags, typeof tags);
+    if (!tags || tags.length === 0) {
+      return res
+        .status(400)
+        .send({ error: "Tags are required and must not be empty" });
+    }
+    // if tags include all then return all published blog posts
+    const query = {};
+    if (tags.includes("All")) {
+      console.log("Fetching all published blog posts");
+      query.status = "published";
+    } else {
+      // if tags is a string, convert it to an array
+      if (typeof tags === "string") {
+        query.tags = tags
+          .split(",")
+          .map((tag) => tag.trim().replace(/[^a-zA-Z0-9 ]/g, ""));
+      }
+      if (query.tags && !Array.isArray(query.tags)) {
+        return res.status(400).send({ error: "Tags must be an array" });
+      }
+      if (query.tags && query.tags.length < 1) {
+        return res.status(400).send({ error: "At least one tag is required" });
+      }
+      // Fetch all published blog posts with the specified tags
+      // Use $in operator to match any of the tags in the array
+      if (query.tags) {
+        query.tags = { $in: query.tags };
+      }
+    }
+    const blogPosts = await BlogPostModel.find({
+      status: "published",
+      ...query, // Allow filtering by other query parameters
+    })
+      .populate("author", "firstname lastName email social")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.status(200).send({
+      data: blogPosts,
+      message: "Published blog posts by tag fetched successfully",
+    });
+  } catch (error) {
+    res.status(400).send({ error: error.message });
+  }
+};
 
 const getBlogPost = async (req, res) => {
   try {
@@ -785,6 +921,8 @@ const removeUserBlogAuthor = async (req, res) => {
 module.exports = {
   createBlogPost,
   getBlogPosts,
+  getPublishedBlogPosts,
+  getSimilarPublisedBlogPosts,
   getBlogPost,
   updateBlogPost,
   addPostComment,
@@ -795,4 +933,6 @@ module.exports = {
   getBlogAnalytics,
   makeUserBlogAuthor,
   removeUserBlogAuthor,
+  getPublishedTags,
+  getPublishedBlogPostsByTag,
 };

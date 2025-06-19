@@ -898,11 +898,17 @@ let routes = (app) => {
     authUserAdminMiddleware,
     blogResolver.getBlogPosts
   );
-  router.get("/blog/post", authMiddleware, blogResolver.getBlogPost);
+  router.get("/blog/posts/published", blogResolver.getPublishedBlogPosts);
+  router.get("/blog/posts/published/tags", blogResolver.getPublishedTags);
+  router.get(
+    "/blog/posts/tag/published",
+    blogResolver.getPublishedBlogPostsByTag
+  );
+  router.get("/blog/post", blogResolver.getBlogPost);
+  router.get("/blog/post/similar", blogResolver.getSimilarPublisedBlogPosts);
   router.get("/blog/analytics", authMiddleware, blogResolver.getBlogAnalytics);
   router.get(
     "/blog/post/comments",
-    authMiddleware,
     blogResolver.getPostComments
   );
   router.put(
@@ -935,17 +941,17 @@ let routes = (app) => {
   );
   router.post(
     "/blog/post/comment/create",
-    authMiddleware,
+ 
     blogResolver.addPostComment
   );
   router.post(
     "/blog/post/comment/reply",
-    authMiddleware,
+  
     blogResolver.replyComment
   );
   router.get(
     "/blog/post/comments",
-    authMiddleware,
+  
     blogResolver.getPostComments
   );
 
