@@ -781,7 +781,7 @@ const getUsers = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10000;
     const sort = req.query.sort || "desc";
     const search = req.query.search || "";
-  
+
     const match = {
       ...req.query,
     };

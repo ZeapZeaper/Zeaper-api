@@ -643,6 +643,7 @@ const accessorySizeEnums = [
   "One Size",
 ];
 
+
 const genderEnums = ["Male", "Female"];
 const ageGroupEnums = ["Adults", "Kids"];
 const ageRangeEnums = ["0-3", "4-7", "8-12", "13-17"];
@@ -939,6 +940,22 @@ const allowedDeliveryCountries = [
   "United Kingdom",
   "Canada",
 ];
+const helpCenterCategoryEnums = ["customer","vendor","account"];
+const helpCenterSubCategoryEnums = [
+  "beforeOrdering",
+  "checkoutAndPayment",
+  "deliveryAndShipping",
+  "returnsAndRefunds",
+  "authentication",
+  "myListings",
+  "payments",
+  "ratings",
+  "loginAndSecurity",
+  "notifications",
+  "privacy",
+  "support",
+
+];
 
 module.exports = {
   genderEnums,
@@ -974,4 +991,6 @@ module.exports = {
   orderVariables,
   searchQueryAllowedPaths,
   allowedDeliveryCountries,
+  helpCenterCategoryEnums,
+  helpCenterSubCategoryEnums
 };

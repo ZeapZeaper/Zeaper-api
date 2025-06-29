@@ -238,6 +238,7 @@ const getBaskets = async (req, res) => {
         baskets[i].totalWithoutVoucher = basketCalc.totalWithoutVoucher;
       }
     }
+   
 
     return res
       .status(200)

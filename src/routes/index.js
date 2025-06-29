@@ -34,6 +34,7 @@ const exchangeRateResolver = require("../resolvers/exchangeRate");
 const notificationResolver = require("../resolvers/notification");
 const emailTemplateResolver = require("../resolvers/emailTemplate");
 const recentViewsResolver = require("../resolvers/recentviews");
+const helpArticlesResolver = require("../resolvers/helpArticles");
 const blogResolver = require("../resolvers/blog");
 
 const handleMoreFieldsUploads = uploadMultiple.fields([
@@ -883,6 +884,50 @@ let routes = (app) => {
     authMiddleware,
     recentViewsResolver.getAuthRecentViews
   );
+  // help articles routes
+  router.post(
+    "/help/article/add",
+    authMiddleware,
+    authUserAdminMiddleware,
+    helpArticlesResolver.addArticle
+  );
+  router.get(
+    "/help/articles",
+    authMiddleware,
+    authUserAdminMiddleware,
+    helpArticlesResolver.getArticles
+  );
+  router.get(
+    "/help/articles/popular",
+    authMiddleware,
+    authUserAdminMiddleware,
+    helpArticlesResolver.getPopularTopicsByCategory
+  );
+  router.get("/help/article", helpArticlesResolver.getArticle);
+  router.put(
+    "/help/article/update",
+    authMiddleware,
+    authUserAdminMiddleware,
+    helpArticlesResolver.updateArticle
+  );
+  router.put(
+    "/help/article/update/popular",
+    authMiddleware,
+    authUserAdminMiddleware,
+    helpArticlesResolver.addToPopularTopics
+  );
+  router.put(
+    "/help/article/update/unpopular",
+    authMiddleware,
+    authUserAdminMiddleware,
+    helpArticlesResolver.removeFromPopularTopics
+  );
+  router.delete(
+    "/help/article/delete",
+    authMiddleware,
+    authUserAdminMiddleware,
+    helpArticlesResolver.deleteArticle
+  );
 
   //blog
   router.post(
@@ -907,10 +952,7 @@ let routes = (app) => {
   router.get("/blog/post", blogResolver.getBlogPost);
   router.get("/blog/post/similar", blogResolver.getSimilarPublisedBlogPosts);
   router.get("/blog/analytics", authMiddleware, blogResolver.getBlogAnalytics);
-  router.get(
-    "/blog/post/comments",
-    blogResolver.getPostComments
-  );
+  router.get("/blog/post/comments", blogResolver.getPostComments);
   router.put(
     "/blog/post/update",
     authMiddleware,
@@ -941,17 +983,17 @@ let routes = (app) => {
   );
   router.post(
     "/blog/post/comment/create",
- 
+
     blogResolver.addPostComment
   );
   router.post(
     "/blog/post/comment/reply",
-  
+
     blogResolver.replyComment
   );
   router.get(
     "/blog/post/comments",
-  
+
     blogResolver.getPostComments
   );
 
