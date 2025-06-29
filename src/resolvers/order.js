@@ -442,10 +442,7 @@ const getOrder = async (req, res) => {
     if (!order_id) {
       return res.status(400).send({ error: "required order_id" });
     }
-    const authUser = await getAuthUser(req);
-    if (!authUser) {
-      return res.status(400).send({ error: "User not found" });
-    }
+    
 
     const order = await OrderModel.findOne({ _id: order_id })
       .populate("productOrders")
