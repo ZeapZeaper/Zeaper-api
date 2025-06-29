@@ -442,7 +442,10 @@ const getOrder = async (req, res) => {
     if (!order_id) {
       return res.status(400).send({ error: "required order_id" });
     }
-    
+    const authUser = await getAuthUser(req);
+    if (!authUser) {
+      return res.status(400).send({ error: "User not found" });
+    }
 
     const order = await OrderModel.findOne({ _id: order_id })
       .populate("productOrders")
@@ -476,6 +479,39 @@ const getOrder = async (req, res) => {
         .status(400)
         .send({ error: "You are not authorized to view this order" });
     }
+
+    return res
+      .status(200)
+      .send({ data: order, message: "Order fetched successfully" });
+  } catch (error) {
+    res.status(400).send({ error: error.message });
+  }
+};
+const getOrderForReceipt = async (req, res) => {
+  try {
+    const { order_id } = req.query;
+    if (!order_id) {
+      return res.status(400).send({ error: "required order_id" });
+    }
+
+    const order = await OrderModel.findOne({ _id: order_id })
+      .populate("productOrders")
+      .populate("payment")
+      .populate("user")
+      .populate({
+        path: "productOrders",
+        populate: [
+          { path: "product" },
+          {
+            path: "user",
+          },
+          {
+            path: "shop",
+          },
+        ],
+      })
+
+      .lean();
 
     return res
       .status(200)
@@ -1071,6 +1107,7 @@ module.exports = {
   getOrderStatusOptions,
   updateProductOrderStatus,
   getOrder,
+  getOrderForReceipt,
   getOrderByOrderId,
   getProductOrder,
   getProductOrderStatusHistory,
