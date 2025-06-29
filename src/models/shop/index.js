@@ -8,6 +8,7 @@ const BusinessSocialSchema = new mongoose.Schema({
   instagram: String,
   website: String,
   linkedin: String,
+  tikTok: String,
 });
 const BankDetailSchema = new mongoose.Schema({
   bankName: { type: String, required: false },
@@ -24,7 +25,7 @@ const ShopSchema = new mongoose.Schema({
   },
   userId: { type: String, required: true },
   shopName: { type: String, required: false },
-  businessName: { type: String, required: false },
+  email: { type: String, required: false },
   address: { type: String, required: false },
   phoneNumber: { type: String, required: false },
   region: { type: String, required: false },
@@ -32,24 +33,29 @@ const ShopSchema = new mongoose.Schema({
   country: { type: String, required: false },
   isTailor: { type: Boolean, required: false, default: false },
   isShoeMaker: { type: Boolean, required: false, default: false },
-  disabled: { type: Boolean, required: false, default: false },
+  // isMakeUpArtist: { type: Boolean, required: false, default: false },
+  disabled: { type: Boolean, required: false, default: true },
   sellerType: {
     type: String,
     enum: ["individual", "registered business"],
   },
   businessSocial: BusinessSocialSchema,
-  currency: {
-    type: {
-      name: { type: String, required: true },
-      symbol: { type: String, required: true },
-    },
-    required: false,
-    default: {
-      name: "Naira",
-      symbol: "₦",
-    },
-  },
+  // currency: {
+  //   type: {
+  //     name: { type: String, required: true },
+  //     symbol: { type: String, required: true },
+  //   },
+  //   required: false,
+  //   default: {
+  //     name: "Naira",
+  //     symbol: "₦",
+  //   },
+  // },
   bankDetails: BankDetailSchema,
+  imageUrl: {
+    link: { type: String, required: false },
+    name: { type: String, required: false },
+  },
 });
 
 ShopSchema.plugin(timestamp);

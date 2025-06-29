@@ -32,29 +32,81 @@ const storage = multer.diskStorage({
   },
 });
 
+const validateFileSizes = (request, response, next) => {
+  if (request.fileValidationError) {
+    return response.status(400).json({ error: request.fileValidationError });
+  }
+  if (request?.file) {
+    if (request.file.size > 1500 * 1500 * 1) {
+      return response
+        .status(400)
+        .json({ error: "File is too large. Max file size is 1.5MB" });
+    }
+  }
+ 
+  if (request?.files) {
+    const images = request.files.images;
+
+    if (images) {
+      let valid = true;
+      images.forEach((file) => {
+        if (file.size > 1500 * 1500 * 1) {
+          valid = false;
+        }
+      });
+      if (!valid) {
+        return response.status(400).json({
+          error: "one or more files are too large. Max file size is 1.5MB",
+        });
+      }
+    }
+    const smallScreenImageUrl = request.files.smallScreenImageUrl;
+    if (smallScreenImageUrl) {
+      if (smallScreenImageUrl.size > 2500 * 2500 * 1) {
+        return response
+          .status(400)
+          .json({ error: "File is too large. Max file size is 2.5MB" });
+      }
+    }
+    const largeScreenImageUrl = request.files.largeScreenImageUrl;
+    if (largeScreenImageUrl) {
+      if (largeScreenImageUrl.size > 2500 * 2500 * 1) {
+        return response
+          .status(400)
+          .json({ error: "File is too large. Max file size is 2.5MB" });
+      }
+    }
+  }
+
+  next();
+};
+
 const upload = multer({
   storage: storage,
-  limits: {
-    fileSize: 1024 * 1024 * 5,
-  },
+  // limits: {
+  //   fileSize: 1024 * 1024 * 5,
+  // },
 }).single("file");
 
 const uploadMultiple = multer({
   storage: storage,
-  limits: {
-    fileSize: 1024 * 1024 * 5,
-  },
+  // limits: {
+  //   fileSize: 1024 * 1024 * 1,
+  // },
   fileFilter: (req, file, cb) => {
-   
     if (
       file.mimetype == "image/png" ||
       file.mimetype == "image/jpg" ||
       file.mimetype == "image/jpeg" ||
-      file.mimetype == "image/webp"
+      file.mimetype == "image/webp" ||
+      file.mimetype == "image/avif" ||
+      file.mimetype == "video/mp4"
     ) {
       cb(null, true);
     } else {
-      cb(null, false);
+      req.fileValidationError =
+        "Only .png, .jpg, .jpeg, .webp and .avif format allowed!";
+      return cb(null, false, req.fileValidationError);
     }
   },
 });
@@ -94,4 +146,4 @@ const uploadMultiple = multer({
 //   },
 // });
 
-module.exports = { upload, uploadMultiple };
+module.exports = { upload, uploadMultiple, validateFileSizes };
