@@ -200,12 +200,28 @@ const getArticle = async (req, res) => {
     if (!articleId) {
       throw new Error("Article ID is required");
     }
-    const article = await HelpArticleModel.findOne({ articleId }).populate(
-      "createdBy",
-      "name email"
-    );
+
+    const article = await HelpArticleModel.findOne({ articleId })
+      .populate("createdBy", "name email")
+      .lean();
     if (!article) {
       return res.status(404).send({ error: "Article not found" });
+    }
+    if (article) {
+      const authUser = await getAuthUser(req);
+      // check if user marked this article as helpful or not helpful
+      if (authUser) {
+        article.markedIsHelpful = article.helpfulCount.find((userId) =>
+          userId.equals(authUser._id)
+        )
+          ? true
+          : false;
+        article.markedIsNotHelpful = article.notHelpfulCount.find((userId) =>
+          userId.equals(authUser._id)
+        )
+          ? true
+          : false;
+      }
     }
     res.status(200).send({ data: article });
   } catch (error) {
@@ -312,6 +328,58 @@ const getPopularTopicsByCategory = async (req, res) => {
     res.status(400).send({ error: error.message });
   }
 };
+const markHelpful = async (req, res) => {
+  try {
+    const { articleId, isHelpful } = req.body;
+    if (!articleId) {
+      return res.status(400).send({ error: "Article ID is required" });
+    }
+    const authUser = await getAuthUser(req);
+    if (!authUser) {
+      return res.status(400).send({ error: "User not found" });
+    }
+    const article = await HelpArticleModel.findOne({ articleId });
+    if (!article) {
+      return res.status(404).send({ error: "Article not found" });
+    }
+    if (isHelpful === undefined) {
+      return res.status(400).send({ error: "isHelpful is required" });
+    }
+    if (isHelpful !== "yes" && isHelpful !== "no") {
+      return res
+        .status(400)
+        .send({ error: "isHelpful must be either yes or no" });
+    }
+    // Check if the user has already marked this article as helpful or not helpful
+    if (isHelpful === "yes") {
+      if (article.helpfulCount.includes(authUser._id)) {
+        return res.status(200).send({ message: "Already marked as helpful" });
+      }
+      // Remove from notHelpfulCount if exists
+      article.notHelpfulCount = article.notHelpfulCount.filter(
+        (userId) => !userId.equals(authUser._id)
+      );
+      article.helpfulCount.push(authUser._id);
+    } else {
+      if (article.notHelpfulCount.includes(authUser._id)) {
+        return res
+          .status(200)
+          .send({ message: "Already marked as not helpful" });
+      }
+      // Remove from helpfulCount if exists
+      article.helpfulCount = article.helpfulCount.filter(
+        (userId) => !userId.equals(authUser._id)
+      );
+      article.notHelpfulCount.push(authUser._id);
+    }
+    // Save the article
+    await article.save();
+    res.status(200).send({ message: "Marked as helpful successfully" });
+  } catch (error) {
+    res.status(400).send({ error: error.message });
+  }
+};
+
 module.exports = {
   addArticle,
   getArticles,
@@ -321,4 +389,5 @@ module.exports = {
   updateArticle,
   addToPopularTopics,
   removeFromPopularTopics,
+  markHelpful,
 };

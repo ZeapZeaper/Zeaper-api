@@ -911,6 +911,12 @@ let routes = (app) => {
     helpArticlesResolver.updateArticle
   );
   router.put(
+    "/help/article/update/markHelpful",
+    authMiddleware,
+    authUserAdminMiddleware,
+    helpArticlesResolver.markHelpful
+  );
+  router.put(
     "/help/article/update/popular",
     authMiddleware,
     authUserAdminMiddleware,
