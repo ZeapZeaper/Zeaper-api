@@ -894,27 +894,21 @@ let routes = (app) => {
   );
   router.get(
     "/help/articles",
-    authMiddleware,
-    authUserAdminMiddleware,
     helpArticlesResolver.getArticles
   );
   router.get(
     "/help/articles/popular",
-    authMiddleware,
-    authUserAdminMiddleware,
     helpArticlesResolver.getPopularTopicsByCategory
   );
   router.get("/help/article", helpArticlesResolver.getArticle);
   router.put(
     "/help/article/update",
     authMiddleware,
-    authUserAdminMiddleware,
     helpArticlesResolver.updateArticle
   );
   router.put(
     "/help/article/update/markHelpful",
     authMiddleware,
-    authUserAdminMiddleware,
     helpArticlesResolver.markHelpful
   );
   router.put(
