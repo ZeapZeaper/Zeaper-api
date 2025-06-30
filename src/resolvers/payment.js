@@ -207,7 +207,16 @@ const getReference = async (req, res) => {
 
             // 1000 naira = 10 points
             // round down to the nearest 1000
-            const pointToAdd = Math.floor(amount / 1000) * 10;
+            const itemsTotalAmount = updatedPayment.itemsTotal;
+            const itemsTotalAmountInNairaAndKobo = await covertToNaira(
+              itemsTotalAmount,
+              updatedPayment.currency
+            );
+            // convert all from kobo to naira
+            const itemsTotalAmountInNaira =
+              itemsTotalAmountInNairaAndKobo / 100;
+            const pointToAdd = Math.floor(itemsTotalAmountInNaira / 1000) * 10;
+            // check if order already exists
             const existingOrder = await OrderModel.findOne({
               payment: updatedPayment._id,
             }).lean();
@@ -217,6 +226,7 @@ const getReference = async (req, res) => {
               const newOrder = await createOrder({
                 payment: updatedPayment,
                 user: updatedPayment.user,
+                gainedPoints: pointToAdd,
               });
               if (newOrder.error) {
                 return res.status(400).send({ error: newOrder.error });
@@ -240,14 +250,17 @@ const getReference = async (req, res) => {
                 paymentStatus,
                 orderId,
                 order,
-                
               },
             });
           }
         }
       });
     }
-    const calculateTotal = await calculateTotalBasketPrice(basket, country, method);
+    const calculateTotal = await calculateTotalBasketPrice(
+      basket,
+      country,
+      method
+    );
 
     // convert amount to kobo or cent
     const amountDue = calculateTotal.total * 100;
@@ -408,7 +421,7 @@ const verifyPayment = async (req, res) => {
     //     .send({ message: "Payment already verified", data: { payment } });
     // }
 
-    verifyPaystack(reference, async (error, body) => {
+    return verifyPaystack(reference, async (error, body) => {
       if (error) {
         reject(error.message);
       }
@@ -457,40 +470,26 @@ const verifyPayment = async (req, res) => {
             "Payment successful but unable to update payment. Please contact support",
         });
       }
+      // convert itemAmount to naira
+
       // 1000 naira = 10 points
       // round down to the nearest 1000
-      const amountInNaira = covertToNaira(amount, currency);
-      const pointToAdd = Math.floor(amountInNaira / 1000) * 10;
+      const itemsTotalAmount = updatedPayment.itemsTotal;
+
+      const itemsTotalAmountInNairaAndKobo = await covertToNaira(
+        itemsTotalAmount,
+        currency
+      );
+
+      // convert all from kobo to naira
+      const itemsTotalAmountInNaira = itemsTotalAmountInNairaAndKobo / 100;
+
+      const pointToAdd = Math.floor(itemsTotalAmountInNaira / 1000) * 10;
+
       const existingOrder = await OrderModel.findOne({
         payment: updatedPayment._id,
       }).lean();
       if (existingOrder) {
-        // const orderEmailTemplate = await EmailTemplateModel.findOne({
-        //   name: "successful-order",
-        // }).lean();
-        // const user = await UserModel.findOne({
-        //   _id: updatedPayment.user,
-        // }).lean();
-        // const email = user.email;
-        // const formattedOrderTemplateBody = replaceOrderVariablesinTemplate(
-        //   replaceUserVariablesinTemplate(orderEmailTemplate?.body, user),
-        //   existingOrder
-        // );
-
-        // const formattedOrderTemplateSubject = replaceOrderVariablesinTemplate(
-        //   replaceUserVariablesinTemplate(orderEmailTemplate?.subject, user),
-        //   existingOrder
-        // );
-
-        // const param = {
-        //   from: "admin@zeaper.com",
-        //   to: [email],
-        //   subject: formattedOrderTemplateSubject || "Welcome",
-        //   body: formattedOrderTemplateBody || "Welcome to Zeap",
-        //   attach: true,
-        //   order_id: existingOrder._id,
-        // };
-        // const orderMail = await sendEmail(param);
         return res.status(200).send({
           message: "Payment verified successfully",
           data: {
@@ -504,6 +503,7 @@ const verifyPayment = async (req, res) => {
       const newOrder = await createOrder({
         payment: updatedPayment,
         user: updatedPayment.user,
+        gainedPoints: pointToAdd,
       });
       if (newOrder.error) {
         return res.status(400).send({ error: newOrder.error });

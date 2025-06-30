@@ -232,7 +232,7 @@ const updateVariationQuantity = async (basketItems, action) => {
 };
 
 const createOrder = async (param) => {
-  const { payment, user } = param;
+  const { payment, user, gainedPoints } = param;
   const deliveryMethod = payment?.deliveryMethod;
   const basket = await BasketModel.findOne({
     _id: payment.basket,
@@ -258,6 +258,7 @@ const createOrder = async (param) => {
     basket: basket?._id,
     deliveryDetails,
     payment: payment?._id,
+    gainedPoints,
   });
 
   const savedOrder = await order.save();
@@ -1043,7 +1044,6 @@ const downloadReciept = async (req, res) => {
     const sockets = req.app.get("sockets");
 
     const thisSocketId = sockets[socketId];
-    console.log("thisSocketId", thisSocketId);
     const socketInstance = io.to(thisSocketId);
 
     socketInstance.emit("downloadProgress", {
@@ -1072,7 +1072,6 @@ const downloadReciept = async (req, res) => {
       status: "Generating PDF...",
     });
     const website_url = `${url}/${order_id}`;
-    console.log("website_url", website_url);
     pdf = await generatePdf({
       type: "url",
       website_url,

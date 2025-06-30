@@ -7,7 +7,6 @@ const path = require("path");
 const crypto = require("crypto");
 const CryptoJS = require("crypto-js");
 const ProductModel = require("../models/products");
-const { error } = require("console");
 const VoucherModel = require("../models/voucher");
 const DeliveryFeeModel = require("../models/deliveryFee");
 const ExchangeRateModel = require("../models/exchangeRate");
@@ -601,7 +600,7 @@ const getExpectedVendorCompletionDate = (productType) => {
 };
 
 const getExpectedStandardDeliveryDate = (productType, country) => {
-  console.log("country", country);
+
   const bespokes = ["bespokeCloth", "bespokeShoe"];
   const isBespoke = bespokes.includes(productType);
   const method = "standard";

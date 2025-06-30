@@ -30,6 +30,11 @@ const OrderSchema = new mongoose.Schema({
     type: deliveryDetailsSchema,
     required: false,
   },
+  gainedPoints: {
+    type: Number,
+    required: false,
+    default: 0,
+  },
 
   voucher: {
     type: mongoose.Schema.Types.ObjectId,
