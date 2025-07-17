@@ -864,12 +864,16 @@ const createProduct = async (req, res) => {
         actionBy: user._id,
       },
     ];
+    const readyMadeProductTypeEnums = ["readyMadeCloth", "readyMadeShoe"];
+    const bespokeProductTypeEnums = ["bespokeCloth", "bespokeShoe"];
     const param = {
       title,
       subTitle,
       description,
       productType,
       shopId: shopId || user.shopId,
+      isBespoke: bespokeProductTypeEnums.includes(productType),
+      isReadyMade: readyMadeProductTypeEnums.includes(productType),
       productId,
       postedBy: user._id,
       shop: shop._id,
@@ -1264,7 +1268,6 @@ const getProducts = async (req, res) => {
 };
 const getAuthShopProducts = async (req, res) => {
   try {
-    console.log("getAuthShopProducts called");
     const sort = req.query.sort || -1;
     const limit = parseInt(req.query.limit);
     const pageNumber = parseInt(req.query.pageNumber);
@@ -1364,6 +1367,7 @@ const getLiveProducts = async (req, res) => {
     }
     const query = getQuery(req.query);
     query.status = "live";
+
     const aggregate = [
       {
         $facet: {
@@ -1407,6 +1411,7 @@ const getLiveProducts = async (req, res) => {
       totalCount,
       dynamicFilters,
     };
+
     return res.status(200).send({ data: data });
   } catch (err) {
     return res.status(500).send({ error: err.message });
@@ -1941,8 +1946,11 @@ const getQueryProductsDynamicFilters = async (req, res) => {
   try {
     const query = getQuery(req.query);
     query.status = "live";
+
     const productsData = await ProductModel.find({ ...query }).lean();
+
     const dynamicFilters = getDynamicFilters(productsData);
+
     return res.status(200).send({ data: dynamicFilters });
   } catch (err) {
     return res.status(500).send({ error: err.message });
@@ -2595,6 +2603,38 @@ const updateAutoPriceAdjustment = async (req, res) => {
     return res.status(500).send({ error: err.message });
   }
 };
+
+const getAllLiveBrandsAndProductCount = async (req, res) => {
+  try {
+    const query = getQuery(req.query);
+    query.status = "live";
+    const brands = await ProductModel.aggregate([
+      {
+        $match: { ...query },
+      },
+      {
+        $group: {
+          _id: "$categories.brand",
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $project: {
+          brand: "$_id",
+          count: 1,
+          _id: 0,
+        },
+      },
+
+      {
+        $sort: { brand: 1 },
+      },
+    ]).exec();
+    return res.status(200).send({ data: brands });
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
+};
 module.exports = {
   editProduct,
   deleteProducts,
@@ -2606,6 +2646,7 @@ module.exports = {
   getProducts,
   getAuthShopProducts,
   getLiveProducts,
+  getAllLiveBrandsAndProductCount,
   getPromoWithLiveProducts,
   getNewestArrivals,
   getBespoke,
