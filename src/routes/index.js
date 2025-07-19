@@ -366,7 +366,6 @@ let routes = (app) => {
       { name: "smallScreenImageUrl", maxCount: 1 },
       { name: "largeScreenImageUrl", maxCount: 1 },
     ]),
-    validateFileSizes,
     promoResolver.createPromo
   );
   router.get(
@@ -403,7 +402,6 @@ let routes = (app) => {
       { name: "smallScreenImageUrl", maxCount: 1 },
       { name: "largeScreenImageUrl", maxCount: 1 },
     ]),
-    validateFileSizes,
     promoResolver.updatePromo
   );
   router.put(

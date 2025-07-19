@@ -1404,6 +1404,7 @@ const getLiveProducts = async (req, res) => {
     );
 
     const allProducts = productQuery[0].allProducts;
+    
     const totalCount = allProducts?.length || 0;
     const dynamicFilters = getDynamicFilters(allProducts);
     const data = {
