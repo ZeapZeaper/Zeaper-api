@@ -312,6 +312,7 @@ const mainEnums = [
 ];
 const occasionEnums = [
   "Casual",
+  "Cultural",
   "Formal",
   "Wedding",
   "Bride",

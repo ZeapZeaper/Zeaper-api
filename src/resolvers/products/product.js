@@ -1873,11 +1873,14 @@ const searchSimilarProducts = async (req, res) => {
     const productType = product.productType;
     const main = product.categories.main;
     const gender = product.categories.gender;
+    const ageGroup = product.categories.age.ageGroup;
+    console.log("ageGroup", ageGroup);
     const queryParam = {
       status: "live",
       productType,
       "categories.main": { $in: main },
       "categories.gender": { $in: gender },
+      "categories.age.ageGroup": ageGroup 
     };
 
     const should = [

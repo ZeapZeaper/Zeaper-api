@@ -378,10 +378,22 @@ const getLivePromos = async (req, res) => {
     }
    
     const promos = await PromoModel.find(param).lean();
+    // get productsCount for each promo
+    
+    const promosWithCounts = await Promise.all(
+      promos.map(async (promo) => {
+        const productsCount = await ProductModel.countDocuments({
+          promo: promo.promoId,
+          ...(permittedProductTypes ? { productType: { $in: permittedProductTypes } } : {})
+        });
+        return { ...promo, productsCount };
+      })
+    );
+    
 
     return res
       .status(200)
-      .send({ data: promos, message: "Promos fetched successfully" });
+      .send({ data: promosWithCounts, message: "Promos fetched successfully" });
   } catch (err) {
     return res.status(500).send({ error: err.message });
   }
