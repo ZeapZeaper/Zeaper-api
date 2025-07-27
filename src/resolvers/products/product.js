@@ -30,6 +30,7 @@ const {
   checkForDuplicates,
   deleteLocalFile,
   getBodyMeasurementEnumsFromGuide,
+  currencyCoversion,
 } = require("../../helpers/utils");
 const ShopModel = require("../../models/shop");
 const { v4: uuidv4 } = require("uuid");
@@ -81,6 +82,7 @@ const { all } = require("axios");
 const { type } = require("os");
 const { addRecentView } = require("../recentviews");
 const RecentViewsModel = require("../../models/recentViews");
+const { min } = require("lodash");
 
 //saving image to firebase storage
 const addImage = async (destination, filename) => {
@@ -1404,13 +1406,56 @@ const getLiveProducts = async (req, res) => {
     );
 
     const allProducts = productQuery[0].allProducts;
-    
+
     const totalCount = allProducts?.length || 0;
     const dynamicFilters = getDynamicFilters(allProducts);
     const data = {
       products,
       totalCount,
       dynamicFilters,
+    };
+
+    return res.status(200).send({ data: data });
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
+};
+const getLiveProductsLeastPrice = async (req, res) => {
+  try {
+    const query = getQuery(req.query);
+    query.status = "live";
+    // sort by variations.discount if its more than zero, else sort by variations.price
+
+    const productQuery = await ProductModel.find(query).select("variations");
+    const products = [];
+    productQuery.forEach((product) => {
+      const productId = product.productId;
+      if (product?.variations && product?.variations.length > 0) {
+        const minPrice = product.variations.reduce((min, variation) => {
+          const price =
+            variation.discount > 0 ? variation.discount : variation.price;
+          return price < min ? price : min;
+        }, Infinity);
+        products.push({
+          minPrice: minPrice,
+        });
+      }
+    });
+    products.sort((a, b) => a.minPrice - b.minPrice);
+
+    const authUser = await getAuthUser(req);
+    const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
+
+    const minPrice = products[0]?.minPrice || 0;
+
+    const convertedAmount = await currencyCoversion(minPrice, currency);
+
+    if (convertedAmount.error) {
+      return res.status(400).send({ error: convertedAmount.error });
+    }
+    const data = {
+      minPrice: convertedAmount,
+      currency: currency,
     };
 
     return res.status(200).send({ data: data });
@@ -1874,13 +1919,13 @@ const searchSimilarProducts = async (req, res) => {
     const main = product.categories.main;
     const gender = product.categories.gender;
     const ageGroup = product.categories.age.ageGroup;
-    console.log("ageGroup", ageGroup);
+
     const queryParam = {
       status: "live",
       productType,
       "categories.main": { $in: main },
       "categories.gender": { $in: gender },
-      "categories.age.ageGroup": ageGroup 
+      "categories.age.ageGroup": ageGroup,
     };
 
     const should = [
@@ -2650,6 +2695,7 @@ module.exports = {
   getProducts,
   getAuthShopProducts,
   getLiveProducts,
+  getLiveProductsLeastPrice,
   getAllLiveBrandsAndProductCount,
   getPromoWithLiveProducts,
   getNewestArrivals,

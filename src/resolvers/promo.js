@@ -360,11 +360,11 @@ const getLivePromos = async (req, res) => {
     const param = {
       status: "live",
     };
+    let requestedPermittedProductTypes = [];
     if (permittedProductTypes) {
       if (typeof permittedProductTypes === "string") {
-        
         // convert string to array
-        const requestedPermittedProductTypes = permittedProductTypes
+        requestedPermittedProductTypes = permittedProductTypes
           .split(",")
           .map((type) => type.trim());
         param.permittedProductTypes = {
@@ -376,20 +376,22 @@ const getLivePromos = async (req, res) => {
         $in: productTypeEnums,
       };
     }
-   
+
     const promos = await PromoModel.find(param).lean();
     // get productsCount for each promo
-    
+
     const promosWithCounts = await Promise.all(
       promos.map(async (promo) => {
         const productsCount = await ProductModel.countDocuments({
-          promo: promo.promoId,
-          ...(permittedProductTypes ? { productType: { $in: permittedProductTypes } } : {})
+          "promo.promoId": promo.promoId,
+          ...(requestedPermittedProductTypes
+            ? { productType: { $in: requestedPermittedProductTypes } }
+            : {}),
         });
+       
         return { ...promo, productsCount };
       })
     );
-    
 
     return res
       .status(200)

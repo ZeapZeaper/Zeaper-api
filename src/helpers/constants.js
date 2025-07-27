@@ -571,6 +571,10 @@ const accessoryTypeEnums = [
   "Sunglasses",
   "Watch",
   "Hair Accessories",
+  "Makeup",
+  "Socks",
+  "Fragrance",
+  "Skin Care",
   "Other",
 ];
 const accessoryStyleEnums = [
