@@ -174,20 +174,23 @@ const getAuthUserActiveVouchers = async (req, res) => {
       expiryDate: { $gte: new Date() },
     });
     const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
-    vouchers.map(async (voucher) => {
+
+    const data = [];
+    const promises = vouchers.map(async (voucher) => {
       const amountInPreferredCurrency = await currencyCoversion(
         voucher.amount,
         currency
       );
-      console.log("amountInPreferredCurrency", amountInPreferredCurrency);
+      
       voucher.amount = amountInPreferredCurrency;
       voucher.currency = currency;
+     
+      data.push(voucher);
       return voucher;
     });
-    await Promise.all(vouchers);
-    console.log;
+    await Promise.all(promises);
     return res.status(200).send({
-      data: vouchers,
+      data,
       message: "Vouchers fetched successfully",
     });
   } catch (error) {
@@ -205,18 +208,20 @@ const getAuthUserInactiveVouchers = async (req, res) => {
       $or: [{ isUsed: true }, { expiryDate: { $lt: new Date() } }],
     });
     const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
-    vouchers.map(async (voucher) => {
+    const data = []
+    const promises = vouchers.map(async (voucher) => {
       const amountInPreferredCurrency = await currencyCoversion(
         voucher.amount,
         currency
       );
       voucher.amount = amountInPreferredCurrency;
       voucher.currency = currency;
+      data.push(voucher);
       return voucher;
     });
-    await Promise.all(vouchers);
+    await Promise.all(promises);
     return res.status(200).send({
-      data: vouchers,
+      data,
       message: "Vouchers fetched successfully",
     });
   } catch (error) {
