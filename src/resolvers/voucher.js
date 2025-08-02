@@ -184,6 +184,7 @@ const getAuthUserActiveVouchers = async (req, res) => {
       
       voucher.amount = amountInPreferredCurrency;
       voucher.currency = currency;
+      
      
       data.push(voucher);
       return voucher;
@@ -284,16 +285,16 @@ const applyVoucher = async (req, res) => {
       code,
     });
     if (!voucher) {
-      return res.status(400).send({ error: "Voucher not found" });
+      return res.status(400).send({ error: "Voucher with this code not found. Please check the code and try again." });
     }
     if (voucher.isUsed) {
-      return res.status(400).send({ error: "Voucher already used" });
+      return res.status(400).send({ error: "Voucher has already been used" });
     }
     if (voucher.expiryDate < new Date()) {
-      return res.status(400).send({ error: "Voucher expired" });
+      return res.status(400).send({ error: "Voucher has expired" });
     }
     if (voucher.user.toString() !== user._id.toString()) {
-      return res.status(400).send({ error: "Voucher not for this user" });
+      return res.status(400).send({ error: "This voucher does not belong to you" });
     }
     const basket = await BasketModel.findOne({
       user: user._id,
@@ -315,6 +316,35 @@ const applyVoucher = async (req, res) => {
     res.status(400).send({ error: error.message });
   }
 };
+const removeVoucher = async (req, res) => {
+  try {
+    const user = await getAuthUser(req);
+    if (!user) {
+      return res.status(400).send({ error: "User not found" });
+    }
+    const basket = await BasketModel.findOne({
+      user: user._id,
+    });
+    if (!basket) {
+      return res.status(400).send({ error: "Basket not found" });
+    }
+    const basketVoucher = basket.voucher;
+    basket.voucher = null;
+    await basket.save();
+    if (basketVoucher) {
+      const voucher = await VoucherModel.findById(basketVoucher);
+      if (voucher) {
+        voucher.isUsed = false;
+        await voucher.save();
+      }
+    }
+    return res.status(200).send({
+      message: "Voucher removed successfully",
+    });
+  } catch (error) {
+    res.status(400).send({ error: error.message });
+  }
+};
 
 module.exports = {
   generateVoucher,
@@ -323,5 +353,6 @@ module.exports = {
   getVouchers,
   getVoucher,
   applyVoucher,
+  removeVoucher,
   issueVoucher,
 };

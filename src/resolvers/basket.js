@@ -272,11 +272,26 @@ const getBasket = async (req, res) => {
     }
 
     const basketCalc = await calculateTotalBasketPrice(basket);
-
+    
     const subTotal = calcRate(rate, currency, basketCalc.itemsTotal);
+    const appliedVoucherAmount = calcRate(
+      rate,
+      currency,
+      basketCalc.appliedVoucherAmount
+    );
+    const totalWithoutVoucher = calcRate(
+      rate,
+      currency,
+      basketCalc.totalWithoutVoucher || basketCalc.total
+    );
+
+    const total = calcRate(rate, currency, basketCalc.total);
     basket.currency = currency;
 
     basket.subTotal = subTotal;
+    basket.appliedVoucherAmount = appliedVoucherAmount;
+    basket.totalWithoutVoucher = totalWithoutVoucher;
+    basket.total = total;
 
     const items = basketCalc.items;
     for (let i = 0; i < basket.basketItems.length; i++) {

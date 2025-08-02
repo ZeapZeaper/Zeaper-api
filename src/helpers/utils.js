@@ -207,7 +207,7 @@ const calculateTotalBasketPrice = async (basket, country, method) => {
     user: basket.user,
     isUsed: true,
   }).lean();
-  const voucherAmount = voucher ? voucher.amount : 0;
+  const voucherAmount = voucher ? Number(voucher.amount) : 0;
 
   const quantity = basketItems.reduce((acc, item) => {
     return acc + item.quantity;
@@ -234,7 +234,7 @@ const calculateTotalBasketPrice = async (basket, country, method) => {
         originalAmount: variation?.price * item.quantity,
       });
     }
-    itemsTotal -= voucherAmount;
+
     if (itemsTotal < 0) {
       itemsTotal = 0;
     }
@@ -245,7 +245,8 @@ const calculateTotalBasketPrice = async (basket, country, method) => {
       itemsTotal
     );
 
-    const total = itemsTotal + deliveryFee;
+    const total = itemsTotal + deliveryFee - voucherAmount;
+    
     resolve({
       itemsTotal: itemsTotal.toFixed(2),
       total: total.toFixed(2),
@@ -253,7 +254,7 @@ const calculateTotalBasketPrice = async (basket, country, method) => {
       appliedVoucherAmount: voucherAmount,
       deliveryFee: deliveryFee.toFixed(2),
 
-      ...(voucher && { totalWithoutVoucher: itemsTotal + voucherAmount }),
+      ...(voucher && { totalWithoutVoucher: itemsTotal + deliveryFee }),
     });
   });
 };
@@ -600,7 +601,6 @@ const getExpectedVendorCompletionDate = (productType) => {
 };
 
 const getExpectedStandardDeliveryDate = (productType, country) => {
-
   const bespokes = ["bespokeCloth", "bespokeShoe"];
   const isBespoke = bespokes.includes(productType);
   const method = "standard";
@@ -693,5 +693,5 @@ module.exports = {
   allowedLocations,
   getExpectedExpressDeliveryDate,
   getExpectedStandardDeliveryDate,
-  getExpectedVendorCompletionDate
+  getExpectedVendorCompletionDate,
 };

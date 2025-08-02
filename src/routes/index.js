@@ -693,6 +693,7 @@ let routes = (app) => {
   router.get("/vouchers", authMiddleware, voucherResolver.getVouchers);
   router.get("/voucher", authMiddleware, voucherResolver.getVoucher);
   router.put("/voucher/apply", authMiddleware, voucherResolver.applyVoucher);
+  router.put("/voucher/remove", authMiddleware, voucherResolver.removeVoucher);
   router.post("/voucher/issue", authMiddleware, voucherResolver.issueVoucher);
 
   // Wish routes
