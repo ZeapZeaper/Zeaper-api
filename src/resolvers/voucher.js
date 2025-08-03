@@ -114,7 +114,7 @@ const issueVoucher = async (req, res) => {
         image
       );
       if (sendPush) {
-        console.log("Push notification sent");
+      
       } else {
         console.log("Failed to send push notification", sendPush);
       }

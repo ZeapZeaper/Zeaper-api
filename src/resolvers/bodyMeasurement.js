@@ -83,8 +83,7 @@ const addBodyMeasurement = async (req, res) => {
         return acc;
       }, [])
       .filter((m) => measurementNames.includes(m.name));
-    console.log("mergedBodyMeasurementEnums", mergedBodyMeasurementEnums);
-    console.log("measurements", measurements);
+
 
     const validate = validateBodyMeasurement(
       measurements,

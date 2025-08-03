@@ -74,7 +74,7 @@ const registerPushToken = async (req, res) => {
       userToken.pushToken.push(pushToken);
       userToken.pushTokenDate = pushTokenDate;
       await userToken.save();
-      console.log("saved", userToken);
+     
       return res.status(200).send({ data: userTokenToken });
     }
     const notification = new NotificationModel({
@@ -136,10 +136,10 @@ const sendPushOneDevice = async (pushToken, title, body, image) => {
       image
     );
     if (sendPush) {
-      console.log("Push notification sent");
+  
       return { message: "Push notification sent", meesageId: sendPush };
     }
-    console.log("Failed to send push notification", sendPush);
+ 
     return { error: "Failed to send push notification" };
   } catch (err) {
     return { error: err.message };

@@ -42,7 +42,7 @@ const getUserPoint = async (req, res) => {
 
 const addPointAfterSales = async (user_id, pointToAdd) => {
   try {
-    console.log("Adding points for user:", user_id, "Points to add:", pointToAdd);
+    
     const point = await PointModel.findOne({
       user: user_id,
     });
@@ -81,7 +81,7 @@ const convertPointToVoucher = async (req, res) => {
     // check if pointToConvert is greater than 1000
     if (pointToConvert < 1000) {
       return res.status(400).send({
-        error: "You can only convert points greater than or equal to 1000",
+        error: "Oops! You need at least 1000 points to convert.",
       });
     }
     const authUser = await getAuthUser(req);
