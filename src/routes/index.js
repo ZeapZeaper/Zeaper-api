@@ -36,6 +36,7 @@ const emailTemplateResolver = require("../resolvers/emailTemplate");
 const recentViewsResolver = require("../resolvers/recentviews");
 const helpArticlesResolver = require("../resolvers/helpArticles");
 const blogResolver = require("../resolvers/blog");
+const emailListResolver = require("../resolvers/emailList");
 
 const handleMoreFieldsUploads = uploadMultiple.fields([
   { name: "documents", maxCount: 5 },
@@ -997,6 +998,22 @@ let routes = (app) => {
     "/blog/post/comments",
 
     blogResolver.getPostComments
+  );
+
+
+  // Email List routes
+  router.post(
+    "/email/waitlist/add",
+    emailListResolver.addToWaitingList
+  );
+  router.post(
+    "/email/newsletter",
+    emailListResolver.addToNewsletter
+  );
+  router.delete(
+    "/email",
+    authMiddleware,
+    emailListResolver.removeFromEmailList
   );
 
   return app.use("/", router);
