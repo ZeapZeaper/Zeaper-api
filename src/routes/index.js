@@ -145,6 +145,12 @@ let routes = (app) => {
     authUserAdminMiddleware,
     shopResolver.getShops
   );
+  router.get(
+    "/shops/new",
+    authMiddleware,
+    authUserAdminMiddleware,
+    shopResolver.getNewShops
+  );
   router.get("/shop/auth", authMiddleware, shopResolver.getAuthUserShop);
   router.get("/shop", authMiddleware, shopResolver.getShop);
   router.get(
@@ -155,6 +161,7 @@ let routes = (app) => {
   router.get("/shop/revenues", authMiddleware, shopResolver.getShopRevenues);
 
   router.put("/shop/update", authMiddleware, shopResolver.updateShop);
+  router.put("/shop/update/status", authMiddleware, shopResolver.changeShopStatus);
   router.put("/shop/delete", authMiddleware, shopResolver.deleteShop);
   router.delete(
     "/shop/delete/absolute",
@@ -1002,6 +1009,12 @@ let routes = (app) => {
 
 
   // Email List routes
+  router.get(
+    "/email/list",
+    authMiddleware,
+    authUserAdminMiddleware,
+    emailListResolver.getEmailList
+  );
   router.post(
     "/email/waitlist/add",
     emailListResolver.addToWaitingList
@@ -1011,7 +1024,7 @@ let routes = (app) => {
     emailListResolver.addToNewsletter
   );
   router.delete(
-    "/email",
+    "/email/remove",
     authMiddleware,
     emailListResolver.removeFromEmailList
   );

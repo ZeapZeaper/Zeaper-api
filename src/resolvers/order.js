@@ -402,6 +402,8 @@ const getAuthVendorProductOrders = async (req, res) => {
       .populate("product")
       .populate("user")
       .lean();
+    // sort by createdAt in descending order
+    productOrders.sort((a, b) => b.createdAt - a.createdAt);
     return res.status(200).send({
       data: productOrders,
       message: "Product Orders fetched successfully",
@@ -429,7 +431,9 @@ const getOrders = async (req, res) => {
         min: 0,
       };
       order.progress = progress;
-    });
+    })
+    // sort by createdAt in descending order
+    orders.sort((a, b) => b.createdAt - a.createdAt);
     return res
       .status(200)
       .send({ data: orders, message: "Orders fetched successfully" });

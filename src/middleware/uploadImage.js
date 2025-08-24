@@ -99,13 +99,12 @@ const uploadMultiple = multer({
       file.mimetype == "image/jpg" ||
       file.mimetype == "image/jpeg" ||
       file.mimetype == "image/webp" ||
-      file.mimetype == "image/avif" ||
       file.mimetype == "video/mp4"
     ) {
       cb(null, true);
     } else {
       req.fileValidationError =
-        "Only .png, .jpg, .jpeg, .webp and .avif format allowed!";
+        "Only .png, .jpg, .jpeg, and .webp  format allowed!";
       return cb(null, false, req.fileValidationError);
     }
   },

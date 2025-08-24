@@ -1,5 +1,19 @@
 const EmailListModel = require("../models/emailList");
 
+const getEmailList = async (req, res) => {
+  try {
+    const { subscribedTo } = req.query;
+    const filter = subscribedTo ? { subscribedTo } : {};
+    const emailList = await EmailListModel.find(filter).lean();
+    return res
+      .status(200)
+      .send({ data: emailList, message: "Email list fetched successfully" });
+  } catch (error) {
+    console.error("Error fetching email list:", error);
+    return res.status(500).send({ error: "Failed to fetch email list." });
+  }
+};
+
 const addToWaitingList = async (req, res) => {
   const { email } = req.body;
 
@@ -39,7 +53,7 @@ const addToWaitingList = async (req, res) => {
 };
 
 const addToNewsletter = async (req, res) => {
-    console.log("Adding to newsletter");
+  console.log("Adding to newsletter");
   const { email } = req.body;
 
   if (!email) {
@@ -87,23 +101,24 @@ const removeFromEmailList = async (req, res) => {
   try {
     const result = await EmailListModel.deleteOne({ email, subscribedTo });
     if (result.deletedCount === 0) {
-        return res.status(404).send({
-            message: "No matching email found in the list.",
-        });
+      return res.status(404).send({
+        message: "No matching email found in the list.",
+      });
     }
     return res.status(200).send({
-        message: `Successfully removed from the email list for ${subscribedTo}.`,
-        data: { email, subscribedTo },
+      message: `Successfully removed from the email list for ${subscribedTo}.`,
+      data: { email, subscribedTo },
     });
   } catch (error) {
     console.error("Error removing from email list:", error);
     return res.status(500).send({
-        message: "Failed to remove from the email list.",
+      message: "Failed to remove from the email list.",
     });
   }
 };
 
 module.exports = {
+  getEmailList,
   addToWaitingList,
   addToNewsletter,
   removeFromEmailList,

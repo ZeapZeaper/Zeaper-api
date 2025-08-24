@@ -470,6 +470,7 @@ const brandEnums = [
   "Levi's",
   "Wrangler",
   "Lee",
+  "Gucci",
   "Other",
 ];
 const clothSizeEnums = [
