@@ -380,6 +380,7 @@ const getAuthBuyerOrders = async (req, res) => {
       };
       order.progress = progress;
     });
+ 
     return res
       .status(200)
       .send({ data: orders.reverse(), message: "Orders fetched successfully" });
@@ -431,7 +432,7 @@ const getOrders = async (req, res) => {
         min: 0,
       };
       order.progress = progress;
-    })
+    });
     // sort by createdAt in descending order
     orders.sort((a, b) => b.createdAt - a.createdAt);
     return res

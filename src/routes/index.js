@@ -1,4 +1,5 @@
 const express = require("express");
+const bodyParser = require("body-parser");
 const router = express.Router();
 //const organisationUsersResolver = require("../resolvers/organisationUsers");
 
@@ -527,6 +528,7 @@ let routes = (app) => {
   router.get("/payment", authMiddleware, paymentResolver.getPayment);
 
   router.post("/payment/verify", authMiddleware, paymentResolver.verifyPayment);
+  
   router.put("/payment/shop", authMiddleware, paymentResolver.payShop);
   router.put(
     "/payment/revert/shop",

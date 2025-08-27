@@ -1,7 +1,6 @@
 const mongoose = require("mongoose");
 const timestamp = require("mongoose-timestamp");
 
-
 const PaymentSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
@@ -20,12 +19,14 @@ const PaymentSchema = new mongoose.Schema({
     required: true,
     default: "pending",
   },
-
+  gateway: { type: String, default: "" },
   amount: { type: Number, required: true },
   itemsTotal: { type: Number, required: true },
   deliveryFee: { type: Number, required: true },
   currency: { type: String, required: true },
   reference: { type: String, required: true, unique: true },
+  stripeClientSecret: { type: String, required: false },
+  stripePaymentIntentId: { type: String, required: false },
   appliedVoucherAmount: { type: Number, required: true },
   total: { type: Number, required: true },
   paidAt: { type: String, required: false },
