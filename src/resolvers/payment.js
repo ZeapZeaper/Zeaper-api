@@ -262,7 +262,8 @@ const getReference = async (req, res) => {
           }
         );
 
-        if (paymentIntent) {
+        if (paymentIntent && paymentIntent?.status === "succeeded") {
+          paymentStatus = "success";
           // get the events to retrieve log
           // format log into obj with properties
           const events = await stripe.events.list({
@@ -511,7 +512,6 @@ const initializePayment = (form, mycallback) => {
 };
 
 const verifyPayment = async (req, res) => {
-
   try {
     const { reference } = req.body;
     if (!reference) {
@@ -658,7 +658,6 @@ const verifyPayment = async (req, res) => {
       payment: updatedPayment._id,
     }).lean();
     if (existingOrder) {
-    
       return res.status(200).send({
         message: "Payment verified successfully",
         data: {
@@ -717,12 +716,15 @@ const verifyPayment = async (req, res) => {
 };
 
 const stripeWebhook = async (req, res) => {
-
   const sig = req.headers["stripe-signature"];
   let event;
 
   try {
-    event = await stripe.webhooks.constructEvent(req.body, sig, stripewebhookSecret);
+    event = await stripe.webhooks.constructEvent(
+      req.body,
+      sig,
+      stripewebhookSecret
+    );
   } catch (err) {
     console.error("Error constructing webhook event:", err);
     return res.status(400).send({ error: "Webhook error" });
@@ -731,144 +733,148 @@ const stripeWebhook = async (req, res) => {
   switch (event.type) {
     case "payment_intent.payment_failed":
       const paymentError = event.data.object;
-  
+
       break;
     case "payment_intent.succeeded":
       try {
-      const paymentIntent = event.data.object;
-     
-      // Handle successful payment here, e.g., update your database
-      const reference = paymentIntent.metadata.reference;
-      const payment = await PaymentModel.findOne({ reference }).lean();
-      const currency = payment?.currency || "USD";
-      console.log(`💳 Webhook received for order ${reference}, waiting before DB update...`);
-      // Introduce a delay to give manual verification priority in updating the payment status
-      await new Promise((resolve) => setTimeout(resolve, 60000));
-      console.log(`💳 Processing webhook for order ${reference}...`);
- 
-      if (payment && payment.status !== "success") {
-        // Take the latest charge (if present
-        const charge = paymentIntent.charges?.data?.[0] || null;
-        if (paymentIntent.status !== "succeeded") {
-          return res.status(400).send({
-            error: "Payment not successful",
+        const paymentIntent = event.data.object;
+
+        // Handle successful payment here, e.g., update your database
+        const reference = paymentIntent.metadata.reference;
+        const payment = await PaymentModel.findOne({ reference }).lean();
+        const currency = payment?.currency || "USD";
+        console.log(
+          `💳 Webhook received for order ${reference}, waiting before DB update...`
+        );
+        // Introduce a delay to give manual verification priority in updating the payment status
+        await new Promise((resolve) => setTimeout(resolve, 60000));
+        console.log(`💳 Processing webhook for order ${reference}...`);
+
+        if (payment && payment.status !== "success") {
+          // Take the latest charge (if present
+          const charge = paymentIntent.charges?.data?.[0] || null;
+          if (paymentIntent.status !== "succeeded") {
+            return res.status(400).send({
+              error: "Payment not successful",
+            });
+          }
+          const log = [];
+          // get the events to retrieve log
+          // format log into obj with properties
+          const events = await stripe.events.list({
+            limit: 50,
           });
-        }
-        const log = [];
-        // get the events to retrieve log
-        // format log into obj with properties
-        const events = await stripe.events.list({
-          limit: 50,
-        });
-        const piEvents = events.data.filter(
-          (e) => e.data.object.id === paymentIntent.id
-        );
-        piEvents.forEach((e) => {
-          log.push({
-            id: e.id,
-            type: e.type,
-            created: new Date(e.created * 1000),
-            data: e.data.object,
+          const piEvents = events.data.filter(
+            (e) => e.data.object.id === paymentIntent.id
+          );
+          piEvents.forEach((e) => {
+            log.push({
+              id: e.id,
+              type: e.type,
+              created: new Date(e.created * 1000),
+              data: e.data.object,
+            });
           });
-        });
-     // ✅ The payment_method id
-      const paymentMethodId = paymentIntent.payment_method;
-      // Retrieve the PaymentMethod object
-      const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId);
+          // ✅ The payment_method id
+          const paymentMethodId = paymentIntent.payment_method;
+          // Retrieve the PaymentMethod object
+          const paymentMethod = await stripe.paymentMethods.retrieve(
+            paymentMethodId
+          );
 
-        const updatedPayment = await PaymentModel.findOneAndUpdate(
-          { reference },
-          {
-            status: "success",
-            paidAt: new Date(paymentIntent.created * 1000),
-            channel: paymentMethod?.type || "card",
-            currency: paymentIntent.currency.toUpperCase(),
-            transactionDate: paymentIntent.created,
-            log,
-            fees: charge?.balance_transaction?.fee || 0,
-            cardType: paymentMethod?.card?.brand || "",
-            bank: paymentMethod?.card?.funding || "",
-            countryCode: paymentMethod.card.country,
-            gatewayResponse: charge?.outcome?.seller_message || "",
-            gateway: "stripe",
-          },
-          { new: true }
-        );
-        // convert itemAmount to naira
-
-        // 1000 naira = 10 points
-        // round down to the nearest 1000
-        const itemsTotalAmount = updatedPayment.itemsTotal;
-
-        const itemsTotalAmountInNairaAndKobo = await covertToNaira(
-          itemsTotalAmount,
-          currency
-        );
-
-        // convert all from kobo to naira
-        const itemsTotalAmountInNaira = itemsTotalAmountInNairaAndKobo / 100;
-
-        const pointToAdd = Math.floor(itemsTotalAmountInNaira / 1000) * 10;
-
-        const existingOrder = await OrderModel.findOne({
-          payment: updatedPayment._id
-        }).lean();
-        if (existingOrder) {
-          return res.status(200).send({
-            message: "Payment verified successfully",
-            data: {
-              payment: updatedPayment,
-              order: existingOrder,
-              addedPoints: pointToAdd,
+          const updatedPayment = await PaymentModel.findOneAndUpdate(
+            { reference },
+            {
+              status: "success",
+              paidAt: new Date(paymentIntent.created * 1000),
+              channel: paymentMethod?.type || "card",
+              currency: paymentIntent.currency.toUpperCase(),
+              transactionDate: paymentIntent.created,
+              log,
+              fees: charge?.balance_transaction?.fee || 0,
+              cardType: paymentMethod?.card?.brand || "",
+              bank: paymentMethod?.card?.funding || "",
+              countryCode: paymentMethod.card.country,
+              gatewayResponse: charge?.outcome?.seller_message || "",
+              gateway: "stripe",
             },
+            { new: true }
+          );
+          // convert itemAmount to naira
+
+          // 1000 naira = 10 points
+          // round down to the nearest 1000
+          const itemsTotalAmount = updatedPayment.itemsTotal;
+
+          const itemsTotalAmountInNairaAndKobo = await covertToNaira(
+            itemsTotalAmount,
+            currency
+          );
+
+          // convert all from kobo to naira
+          const itemsTotalAmountInNaira = itemsTotalAmountInNairaAndKobo / 100;
+
+          const pointToAdd = Math.floor(itemsTotalAmountInNaira / 1000) * 10;
+
+          const existingOrder = await OrderModel.findOne({
+            payment: updatedPayment._id,
+          }).lean();
+          if (existingOrder) {
+            return res.status(200).send({
+              message: "Payment verified successfully",
+              data: {
+                payment: updatedPayment,
+                order: existingOrder,
+                addedPoints: pointToAdd,
+              },
+            });
+          }
+
+          const newOrder = await createOrder({
+            payment: updatedPayment,
+            user: updatedPayment.user,
+            gainedPoints: pointToAdd,
           });
+          if (newOrder.error) {
+            return res.status(400).send({ error: newOrder.error });
+          }
+          const order = newOrder.order;
+          const addPoints = await addPointAfterSales(
+            updatedPayment.user,
+            pointToAdd
+          );
+          order.orderPoints = pointToAdd;
+          const orderEmailTemplate = await EmailTemplateModel.findOne({
+            name: "successful-order",
+          }).lean();
+          const user = await UserModel.findOne({
+            _id: updatedPayment.user,
+          }).lean();
+          const email = user.email;
+          const formattedOrderTemplateBody = replaceOrderVariablesinTemplate(
+            replaceUserVariablesinTemplate(orderEmailTemplate?.body, user),
+            order
+          );
+
+          const formattedOrderTemplateSubject = replaceOrderVariablesinTemplate(
+            replaceUserVariablesinTemplate(orderEmailTemplate?.subject, user),
+            order
+          );
+
+          const param = {
+            from: "admin@zeaper.com",
+            to: [email],
+            subject: formattedOrderTemplateSubject || "Welcome",
+            body: formattedOrderTemplateBody || "Welcome to Zeap",
+            attach: true,
+            order_id: order._id,
+          };
+          const orderMail = await sendEmail(param);
         }
-
-        const newOrder = await createOrder({
-          payment: updatedPayment,
-          user: updatedPayment.user,
-          gainedPoints: pointToAdd,
-        });
-        if (newOrder.error) {
-          return res.status(400).send({ error: newOrder.error });
-        }
-        const order = newOrder.order;
-        const addPoints = await addPointAfterSales(
-          updatedPayment.user,
-          pointToAdd
-        );
-        order.orderPoints = pointToAdd;
-        const orderEmailTemplate = await EmailTemplateModel.findOne({
-          name: "successful-order",
-        }).lean();
-        const user = await UserModel.findOne({
-          _id: updatedPayment.user,
-        }).lean();
-        const email = user.email;
-        const formattedOrderTemplateBody = replaceOrderVariablesinTemplate(
-          replaceUserVariablesinTemplate(orderEmailTemplate?.body, user),
-          order
-        );
-
-        const formattedOrderTemplateSubject = replaceOrderVariablesinTemplate(
-          replaceUserVariablesinTemplate(orderEmailTemplate?.subject, user),
-          order
-        );
-
-        const param = {
-          from: "admin@zeaper.com",
-          to: [email],
-          subject: formattedOrderTemplateSubject || "Welcome",
-          body: formattedOrderTemplateBody || "Welcome to Zeap",
-          attach: true,
-          order_id: order._id,
-        };
-        const orderMail = await sendEmail(param);
+      } catch (error) {
+        console.error("Error handling payment_intent.succeeded:", error);
+        return res.status(400).send({ error: "Webhook handler error" });
       }
-    } catch (error) {
-      console.error("Error handling payment_intent.succeeded:", error);
-      return res.status(400).send({ error: "Webhook handler error" });
-    }
       break;
 
     default:
