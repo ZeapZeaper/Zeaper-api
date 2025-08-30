@@ -17,6 +17,7 @@ const ENCRYPTION_KEY = process.env.ZEAPCRYPTOKEY;
 //const ENCRYPTION_KEY = "emVhcCBmYXNoaW9uIGFwcCBpcyBvd25l==";
 const IV_LENGTH = 16;
 const { exec } = require("child_process");
+const UAParser = require("ua-parser-js");
 
 const deleteLocalFile = async (path) => {
   return new Promise((resolve) => {
@@ -246,7 +247,7 @@ const calculateTotalBasketPrice = async (basket, country, method) => {
     );
 
     const total = itemsTotal + deliveryFee - voucherAmount;
-    
+
     resolve({
       itemsTotal: itemsTotal.toFixed(2),
       total: total.toFixed(2),
@@ -664,6 +665,14 @@ const getExpectedExpressDeliveryDate = (productType, country) => {
   //   maxDate: maxDate.toISOString().split("T")[0],
   // };
 };
+const detectDeviceType = (req) => {
+  const ua = req.headers["user-agent"] || "";
+
+  const parser = new UAParser(ua);
+  const device = parser.getDevice()
+  const deviceType = device.type || "desktop";
+  return deviceType;
+};
 module.exports = {
   deleteLocalFile,
   numberWithCommas,
@@ -694,4 +703,5 @@ module.exports = {
   getExpectedExpressDeliveryDate,
   getExpectedStandardDeliveryDate,
   getExpectedVendorCompletionDate,
+  detectDeviceType,
 };

@@ -8,6 +8,7 @@ const {
   replaceUserVariablesinTemplate,
   replaceOrderVariablesinTemplate,
   covertToNaira,
+  detectDeviceType,
 } = require("../helpers/utils");
 const request = require("request");
 const { getAuthUser } = require("../middleware/firebaseUserAuth");
@@ -189,6 +190,7 @@ const getReference = async (req, res) => {
     }
 
     const currency = authUser.prefferedCurrency || "NGN";
+    const deviceType = detectDeviceType(req);
 
     if (
       authUser._id.toString() !== basket.user._id.toString() &&
@@ -245,6 +247,7 @@ const getReference = async (req, res) => {
                   gatewayResponse: gateway_response,
                   deliveryMethod: method,
                   gateway: "paystack",
+                  deviceType,
                 },
                 { new: true }
               );
@@ -297,6 +300,7 @@ const getReference = async (req, res) => {
               countryCode: paymentMethod.card.country,
               gatewayResponse: charge?.outcome?.seller_message || "",
               gateway: "stripe",
+              deviceType,
             },
             { new: true }
           );
@@ -417,6 +421,7 @@ const getReference = async (req, res) => {
           stripeClientSecret,
           stripePaymentIntentId,
           deliveryMethod: method,
+          deviceType,
         },
         { new: true }
       );
@@ -457,6 +462,7 @@ const getReference = async (req, res) => {
       total,
       appliedVoucherAmount,
       deliveryMethod: method,
+      deviceType,
     });
 
     await newPayment.save();
@@ -890,6 +896,7 @@ const getPayments = async (req, res) => {
       .populate("user")
       .lean()
       .sort({ updatedAt: -1 });
+
     return res.status(200).send({
       data: payments,
       message: "Payments fetched successfully",

@@ -20,6 +20,7 @@ const PaymentSchema = new mongoose.Schema({
     default: "pending",
   },
   gateway: { type: String, default: "" },
+  deviceType: { type: String, required: false },
   amount: { type: Number, required: true },
   itemsTotal: { type: Number, required: true },
   deliveryFee: { type: Number, required: true },
