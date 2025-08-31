@@ -673,6 +673,7 @@ const detectDeviceType = (req) => {
   const deviceType = device.type || "desktop";
   return deviceType;
 };
+
 module.exports = {
   deleteLocalFile,
   numberWithCommas,
