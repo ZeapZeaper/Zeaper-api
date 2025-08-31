@@ -30,6 +30,7 @@ const {
   checkForDuplicates,
   deleteLocalFile,
   getBodyMeasurementEnumsFromGuide,
+  currencyCoversion,
 } = require("../../helpers/utils");
 const ShopModel = require("../../models/shop");
 const { v4: uuidv4 } = require("uuid");
@@ -81,6 +82,7 @@ const { all } = require("axios");
 const { type } = require("os");
 const { addRecentView } = require("../recentviews");
 const RecentViewsModel = require("../../models/recentViews");
+const { min } = require("lodash");
 
 //saving image to firebase storage
 const addImage = async (destination, filename) => {
@@ -864,12 +866,16 @@ const createProduct = async (req, res) => {
         actionBy: user._id,
       },
     ];
+    const readyMadeProductTypeEnums = ["readyMadeCloth", "readyMadeShoe"];
+    const bespokeProductTypeEnums = ["bespokeCloth", "bespokeShoe"];
     const param = {
       title,
       subTitle,
       description,
       productType,
       shopId: shopId || user.shopId,
+      isBespoke: bespokeProductTypeEnums.includes(productType),
+      isReadyMade: readyMadeProductTypeEnums.includes(productType),
       productId,
       postedBy: user._id,
       shop: shop._id,
@@ -1043,8 +1049,8 @@ const submitProduct = async (req, res) => {
     if (!updatedProduct) {
       return res.status(400).send({ error: "product not found" });
     }
-    const title = "Product Status Update";
-    const body = `A product with productId ${productId} has been set to under review`;
+    const title = "Order Item Status Update";
+    const body = `Order item with productId ${productId} has been set to under review`;
     const image = updatedProduct?.colors[0]?.images[0]?.link;
     const shop_id = updatedProduct?.shop.toString();
 
@@ -1264,7 +1270,6 @@ const getProducts = async (req, res) => {
 };
 const getAuthShopProducts = async (req, res) => {
   try {
-    console.log("getAuthShopProducts called");
     const sort = req.query.sort || -1;
     const limit = parseInt(req.query.limit);
     const pageNumber = parseInt(req.query.pageNumber);
@@ -1364,6 +1369,7 @@ const getLiveProducts = async (req, res) => {
     }
     const query = getQuery(req.query);
     query.status = "live";
+
     const aggregate = [
       {
         $facet: {
@@ -1400,6 +1406,7 @@ const getLiveProducts = async (req, res) => {
     );
 
     const allProducts = productQuery[0].allProducts;
+
     const totalCount = allProducts?.length || 0;
     const dynamicFilters = getDynamicFilters(allProducts);
     const data = {
@@ -1407,6 +1414,50 @@ const getLiveProducts = async (req, res) => {
       totalCount,
       dynamicFilters,
     };
+
+    return res.status(200).send({ data: data });
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
+};
+const getLiveProductsLeastPrice = async (req, res) => {
+  try {
+    const query = getQuery(req.query);
+    query.status = "live";
+    // sort by variations.discount if its more than zero, else sort by variations.price
+
+    const productQuery = await ProductModel.find(query).select("variations");
+    const products = [];
+    productQuery.forEach((product) => {
+      const productId = product.productId;
+      if (product?.variations && product?.variations.length > 0) {
+        const minPrice = product.variations.reduce((min, variation) => {
+          const price =
+            variation.discount > 0 ? variation.discount : variation.price;
+          return price < min ? price : min;
+        }, Infinity);
+        products.push({
+          minPrice: minPrice,
+        });
+      }
+    });
+    products.sort((a, b) => a.minPrice - b.minPrice);
+
+    const authUser = await getAuthUser(req);
+    const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
+
+    const minPrice = products[0]?.minPrice || 0;
+
+    const convertedAmount = await currencyCoversion(minPrice, currency);
+
+    if (convertedAmount.error) {
+      return res.status(400).send({ error: convertedAmount.error });
+    }
+    const data = {
+      minPrice: convertedAmount,
+      currency: currency,
+    };
+
     return res.status(200).send({ data: data });
   } catch (err) {
     return res.status(500).send({ error: err.message });
@@ -1867,11 +1918,14 @@ const searchSimilarProducts = async (req, res) => {
     const productType = product.productType;
     const main = product.categories.main;
     const gender = product.categories.gender;
+    const ageGroup = product.categories.age.ageGroup;
+
     const queryParam = {
       status: "live",
       productType,
       "categories.main": { $in: main },
       "categories.gender": { $in: gender },
+      "categories.age.ageGroup": ageGroup,
     };
 
     const should = [
@@ -1941,8 +1995,11 @@ const getQueryProductsDynamicFilters = async (req, res) => {
   try {
     const query = getQuery(req.query);
     query.status = "live";
+
     const productsData = await ProductModel.find({ ...query }).lean();
+
     const dynamicFilters = getDynamicFilters(productsData);
+
     return res.status(200).send({ data: dynamicFilters });
   } catch (err) {
     return res.status(500).send({ error: err.message });
@@ -2595,6 +2652,38 @@ const updateAutoPriceAdjustment = async (req, res) => {
     return res.status(500).send({ error: err.message });
   }
 };
+
+const getAllLiveBrandsAndProductCount = async (req, res) => {
+  try {
+    const query = getQuery(req.query);
+    query.status = "live";
+    const brands = await ProductModel.aggregate([
+      {
+        $match: { ...query },
+      },
+      {
+        $group: {
+          _id: "$categories.brand",
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $project: {
+          brand: "$_id",
+          count: 1,
+          _id: 0,
+        },
+      },
+
+      {
+        $sort: { brand: 1 },
+      },
+    ]).exec();
+    return res.status(200).send({ data: brands });
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
+};
 module.exports = {
   editProduct,
   deleteProducts,
@@ -2606,6 +2695,8 @@ module.exports = {
   getProducts,
   getAuthShopProducts,
   getLiveProducts,
+  getLiveProductsLeastPrice,
+  getAllLiveBrandsAndProductCount,
   getPromoWithLiveProducts,
   getNewestArrivals,
   getBespoke,

@@ -7,7 +7,6 @@ const path = require("path");
 const crypto = require("crypto");
 const CryptoJS = require("crypto-js");
 const ProductModel = require("../models/products");
-const { error } = require("console");
 const VoucherModel = require("../models/voucher");
 const DeliveryFeeModel = require("../models/deliveryFee");
 const ExchangeRateModel = require("../models/exchangeRate");
@@ -18,6 +17,7 @@ const ENCRYPTION_KEY = process.env.ZEAPCRYPTOKEY;
 //const ENCRYPTION_KEY = "emVhcCBmYXNoaW9uIGFwcCBpcyBvd25l==";
 const IV_LENGTH = 16;
 const { exec } = require("child_process");
+const UAParser = require("ua-parser-js");
 
 const deleteLocalFile = async (path) => {
   return new Promise((resolve) => {
@@ -208,7 +208,7 @@ const calculateTotalBasketPrice = async (basket, country, method) => {
     user: basket.user,
     isUsed: true,
   }).lean();
-  const voucherAmount = voucher ? voucher.amount : 0;
+  const voucherAmount = voucher ? Number(voucher.amount) : 0;
 
   const quantity = basketItems.reduce((acc, item) => {
     return acc + item.quantity;
@@ -235,7 +235,7 @@ const calculateTotalBasketPrice = async (basket, country, method) => {
         originalAmount: variation?.price * item.quantity,
       });
     }
-    itemsTotal -= voucherAmount;
+
     if (itemsTotal < 0) {
       itemsTotal = 0;
     }
@@ -246,7 +246,8 @@ const calculateTotalBasketPrice = async (basket, country, method) => {
       itemsTotal
     );
 
-    const total = itemsTotal + deliveryFee;
+    const total = itemsTotal + deliveryFee - voucherAmount;
+
     resolve({
       itemsTotal: itemsTotal.toFixed(2),
       total: total.toFixed(2),
@@ -254,7 +255,7 @@ const calculateTotalBasketPrice = async (basket, country, method) => {
       appliedVoucherAmount: voucherAmount,
       deliveryFee: deliveryFee.toFixed(2),
 
-      ...(voucher && { totalWithoutVoucher: itemsTotal + voucherAmount }),
+      ...(voucher && { totalWithoutVoucher: itemsTotal + deliveryFee }),
     });
   });
 };
@@ -601,7 +602,6 @@ const getExpectedVendorCompletionDate = (productType) => {
 };
 
 const getExpectedStandardDeliveryDate = (productType, country) => {
-  console.log("country", country);
   const bespokes = ["bespokeCloth", "bespokeShoe"];
   const isBespoke = bespokes.includes(productType);
   const method = "standard";
@@ -665,6 +665,15 @@ const getExpectedExpressDeliveryDate = (productType, country) => {
   //   maxDate: maxDate.toISOString().split("T")[0],
   // };
 };
+const detectDeviceType = (req) => {
+  const ua = req.headers["user-agent"] || "";
+
+  const parser = new UAParser(ua);
+  const device = parser.getDevice()
+  const deviceType = device.type || "desktop";
+  return deviceType;
+};
+
 module.exports = {
   deleteLocalFile,
   numberWithCommas,
@@ -694,5 +703,6 @@ module.exports = {
   allowedLocations,
   getExpectedExpressDeliveryDate,
   getExpectedStandardDeliveryDate,
-  getExpectedVendorCompletionDate
+  getExpectedVendorCompletionDate,
+  detectDeviceType,
 };

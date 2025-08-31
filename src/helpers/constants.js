@@ -23,7 +23,6 @@ const clothStyleEnums = [
   "Waistcoat",
   "BodySuit",
   "Suit",
-  "Jeans",
   "Crop-Top",
   "Tube-Top",
   "Peplum",
@@ -91,7 +90,6 @@ const clothStyleEnums = [
   "A-line Dress",
   "Slip Dress",
   "Jumper Dress",
-  "Dress",
   "Oversized Jumper Dress",
   "Lingerie",
   "Two Piece",
@@ -183,10 +181,9 @@ const designEnums = [
   "Studded",
   "Rhinestone",
   "Beaded",
-  
 ];
 
-const sizeStandardEnums = ["INTL","UK", "US", "EU", "AUS", "CAN"]
+const sizeStandardEnums = ["INTL", "UK", "US", "EU", "AUS", "CAN"];
 const fasteningEnums = [
   "Button",
   "Zipper",
@@ -310,17 +307,20 @@ const mainEnums = [
   "Matching Set",
   "Footwear",
   "Overall",
-  "Two Piece",
-  "Three Piece",
   "Accessories",
   "Other",
 ];
 const occasionEnums = [
   "Casual",
+  "Cultural",
   "Formal",
   "Wedding",
-  "Bridal",
+  "Bride",
   "Bridesmaid",
+  "Bridal Shower",
+  "Gala",
+  "Groom",
+  "Groomsman",
   "Maternity",
   "Cocktail",
   "Beach",
@@ -470,6 +470,7 @@ const brandEnums = [
   "Levi's",
   "Wrangler",
   "Lee",
+  "Gucci",
   "Other",
 ];
 const clothSizeEnums = [
@@ -571,6 +572,10 @@ const accessoryTypeEnums = [
   "Sunglasses",
   "Watch",
   "Hair Accessories",
+  "Makeup",
+  "Socks",
+  "Fragrance",
+  "Skin Care",
   "Other",
 ];
 const accessoryStyleEnums = [
@@ -642,7 +647,6 @@ const accessorySizeEnums = [
   "Large",
   "One Size",
 ];
-
 
 const genderEnums = ["Male", "Female"];
 const ageGroupEnums = ["Adults", "Kids"];
@@ -940,7 +944,7 @@ const allowedDeliveryCountries = [
   "United Kingdom",
   "Canada",
 ];
-const helpCenterCategoryEnums = ["customer","vendor","account"];
+const helpCenterCategoryEnums = ["customer", "vendor", "account"];
 const helpCenterSubCategoryEnums = [
   "beforeOrdering",
   "checkoutAndPayment",
@@ -954,7 +958,6 @@ const helpCenterSubCategoryEnums = [
   "notifications",
   "privacy",
   "support",
-
 ];
 
 module.exports = {
@@ -992,5 +995,5 @@ module.exports = {
   searchQueryAllowedPaths,
   allowedDeliveryCountries,
   helpCenterCategoryEnums,
-  helpCenterSubCategoryEnums
+  helpCenterSubCategoryEnums,
 };

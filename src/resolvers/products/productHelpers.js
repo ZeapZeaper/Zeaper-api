@@ -4,6 +4,9 @@ const { lowerFirstChar, currencyCoversion } = require("../../helpers/utils");
 const ProductModel = require("../../models/products");
 
 const getDynamicFilters = (products) => {
+  if (!products || products.length === 0) {
+    return [];
+  }
   const filters = [];
   const allProductTypes = products.map((product) => product.productType).sort();
 
@@ -130,12 +133,10 @@ const getDynamicFilters = (products) => {
       });
     } else {
       mainObj.options[mainIndex].count += 1;
-
     }
   });
 
   if (mainObj.options.length > 0) {
-   
     filters.push(mainObj);
   }
   const accessoryTypeObj = {
@@ -542,6 +543,8 @@ const getQuery = (queries) => {
     accessoryType,
     heelType,
     heelHeight,
+    isBespoke,
+    isReadyMade,
   } = queries;
 
   const match = {
@@ -552,7 +555,13 @@ const getQuery = (queries) => {
     match.shopId = shopId;
   }
   if (productType) {
-    match.productType = lowerFirstChar(productType.replace(/\s/g, ""));
+    // check if it has comma and split it
+    const productTypes = productType.replace(/\s*,\s*/g, ",").split(",");
+    match.productType = {
+      $in: productTypes.map((type) => lowerFirstChar(type)),
+    };
+
+    // match.productType = lowerFirstChar(productType.replace(/\s/g, ""));
   }
   if (productId) {
     match.productId = productId;
@@ -587,9 +596,17 @@ const getQuery = (queries) => {
     };
   }
   if (gender) {
-    match["categories.gender"] = {
-      $in: gender.replace(/\s*,\s*/g, ",").split(","),
-    };
+    if (gender === "Unisex") {
+      // where the product contains both male and female at the same time in the gender array
+      const genderAaray = ["Male", "Female"];
+      match["categories.gender"] = {
+        $all: genderAaray,
+      };
+    } else {
+      match["categories.gender"] = {
+        $in: gender.replace(/\s*,\s*/g, ",").split(","),
+      };
+    }
   }
   if (ageGroup) {
     match["categories.age.ageGroup"] = {
@@ -652,6 +669,12 @@ const getQuery = (queries) => {
     match["categories.heelHeight"] = {
       $in: heelHeight.replace(/\s*,\s*/g, ",").split(","),
     };
+  }
+  if (isBespoke) {
+    match.isBespoke = isBespoke === "true";
+  }
+  if (isReadyMade) {
+    match.isReadyMade = isReadyMade === "true";
   }
 
   const query = { ...match };

@@ -1,4 +1,5 @@
 const express = require("express");
+const bodyParser = require("body-parser");
 const router = express.Router();
 //const organisationUsersResolver = require("../resolvers/organisationUsers");
 
@@ -36,6 +37,7 @@ const emailTemplateResolver = require("../resolvers/emailTemplate");
 const recentViewsResolver = require("../resolvers/recentviews");
 const helpArticlesResolver = require("../resolvers/helpArticles");
 const blogResolver = require("../resolvers/blog");
+const emailListResolver = require("../resolvers/emailList");
 
 const handleMoreFieldsUploads = uploadMultiple.fields([
   { name: "documents", maxCount: 5 },
@@ -144,6 +146,12 @@ let routes = (app) => {
     authUserAdminMiddleware,
     shopResolver.getShops
   );
+  router.get(
+    "/shops/new",
+    authMiddleware,
+    authUserAdminMiddleware,
+    shopResolver.getNewShops
+  );
   router.get("/shop/auth", authMiddleware, shopResolver.getAuthUserShop);
   router.get("/shop", authMiddleware, shopResolver.getShop);
   router.get(
@@ -154,6 +162,7 @@ let routes = (app) => {
   router.get("/shop/revenues", authMiddleware, shopResolver.getShopRevenues);
 
   router.put("/shop/update", authMiddleware, shopResolver.updateShop);
+  router.put("/shop/update/status", authMiddleware, shopResolver.changeShopStatus);
   router.put("/shop/delete", authMiddleware, shopResolver.deleteShop);
   router.delete(
     "/shop/delete/absolute",
@@ -187,6 +196,8 @@ let routes = (app) => {
     productResolver.getCategoryProducts
   );
   router.get("/products/live", authMiddleware, productResolver.getLiveProducts);
+  router.get("/products/live/leastPrice", authMiddleware, productResolver.getLiveProductsLeastPrice);
+  router.get("/products/live/brand", authMiddleware, productResolver.getAllLiveBrandsAndProductCount);
   router.get(
     "/products/live/promo",
     authMiddleware,
@@ -365,7 +376,6 @@ let routes = (app) => {
       { name: "smallScreenImageUrl", maxCount: 1 },
       { name: "largeScreenImageUrl", maxCount: 1 },
     ]),
-    validateFileSizes,
     promoResolver.createPromo
   );
   router.get(
@@ -402,7 +412,6 @@ let routes = (app) => {
       { name: "smallScreenImageUrl", maxCount: 1 },
       { name: "largeScreenImageUrl", maxCount: 1 },
     ]),
-    validateFileSizes,
     promoResolver.updatePromo
   );
   router.put(
@@ -519,6 +528,7 @@ let routes = (app) => {
   router.get("/payment", authMiddleware, paymentResolver.getPayment);
 
   router.post("/payment/verify", authMiddleware, paymentResolver.verifyPayment);
+  
   router.put("/payment/shop", authMiddleware, paymentResolver.payShop);
   router.put(
     "/payment/revert/shop",
@@ -693,6 +703,7 @@ let routes = (app) => {
   router.get("/vouchers", authMiddleware, voucherResolver.getVouchers);
   router.get("/voucher", authMiddleware, voucherResolver.getVoucher);
   router.put("/voucher/apply", authMiddleware, voucherResolver.applyVoucher);
+  router.put("/voucher/remove", authMiddleware, voucherResolver.removeVoucher);
   router.post("/voucher/issue", authMiddleware, voucherResolver.issueVoucher);
 
   // Wish routes
@@ -996,6 +1007,28 @@ let routes = (app) => {
     "/blog/post/comments",
 
     blogResolver.getPostComments
+  );
+
+
+  // Email List routes
+  router.get(
+    "/email/list",
+    authMiddleware,
+    authUserAdminMiddleware,
+    emailListResolver.getEmailList
+  );
+  router.post(
+    "/email/waitlist/add",
+    emailListResolver.addToWaitingList
+  );
+  router.post(
+    "/email/newsletter",
+    emailListResolver.addToNewsletter
+  );
+  router.delete(
+    "/email/remove",
+    authMiddleware,
+    emailListResolver.removeFromEmailList
   );
 
   return app.use("/", router);

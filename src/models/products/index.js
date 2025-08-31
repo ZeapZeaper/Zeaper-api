@@ -32,6 +32,8 @@ const ProductSchema = new mongoose.Schema({
   productType: { type: String, enum: productTypeEnums, required: true },
   disabled: { type: Boolean, required: false, default: false },
   shopId: { type: String, required: true },
+  isBespoke: { type: Boolean, required: true, default: false },
+  isReadyMade: { type: Boolean, required: true, default: false },
   title: { type: String, required: true },
   subTitle: { type: String, required: false },
   status: { type: String, required: true, default: "draft" },

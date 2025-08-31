@@ -114,7 +114,7 @@ const issueVoucher = async (req, res) => {
         image
       );
       if (sendPush) {
-        console.log("Push notification sent");
+      
       } else {
         console.log("Failed to send push notification", sendPush);
       }
@@ -174,20 +174,24 @@ const getAuthUserActiveVouchers = async (req, res) => {
       expiryDate: { $gte: new Date() },
     });
     const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
-    vouchers.map(async (voucher) => {
+
+    const data = [];
+    const promises = vouchers.map(async (voucher) => {
       const amountInPreferredCurrency = await currencyCoversion(
         voucher.amount,
         currency
       );
-      console.log("amountInPreferredCurrency", amountInPreferredCurrency);
+      
       voucher.amount = amountInPreferredCurrency;
       voucher.currency = currency;
+      
+     
+      data.push(voucher);
       return voucher;
     });
-    await Promise.all(vouchers);
-    console.log;
+    await Promise.all(promises);
     return res.status(200).send({
-      data: vouchers,
+      data,
       message: "Vouchers fetched successfully",
     });
   } catch (error) {
@@ -205,18 +209,20 @@ const getAuthUserInactiveVouchers = async (req, res) => {
       $or: [{ isUsed: true }, { expiryDate: { $lt: new Date() } }],
     });
     const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
-    vouchers.map(async (voucher) => {
+    const data = []
+    const promises = vouchers.map(async (voucher) => {
       const amountInPreferredCurrency = await currencyCoversion(
         voucher.amount,
         currency
       );
       voucher.amount = amountInPreferredCurrency;
       voucher.currency = currency;
+      data.push(voucher);
       return voucher;
     });
-    await Promise.all(vouchers);
+    await Promise.all(promises);
     return res.status(200).send({
-      data: vouchers,
+      data,
       message: "Vouchers fetched successfully",
     });
   } catch (error) {
@@ -279,16 +285,16 @@ const applyVoucher = async (req, res) => {
       code,
     });
     if (!voucher) {
-      return res.status(400).send({ error: "Voucher not found" });
+      return res.status(400).send({ error: "Voucher with this code not found. Please check the code and try again." });
     }
     if (voucher.isUsed) {
-      return res.status(400).send({ error: "Voucher already used" });
+      return res.status(400).send({ error: "Voucher has already been used" });
     }
     if (voucher.expiryDate < new Date()) {
-      return res.status(400).send({ error: "Voucher expired" });
+      return res.status(400).send({ error: "Voucher has expired" });
     }
     if (voucher.user.toString() !== user._id.toString()) {
-      return res.status(400).send({ error: "Voucher not for this user" });
+      return res.status(400).send({ error: "This voucher does not belong to you" });
     }
     const basket = await BasketModel.findOne({
       user: user._id,
@@ -310,6 +316,35 @@ const applyVoucher = async (req, res) => {
     res.status(400).send({ error: error.message });
   }
 };
+const removeVoucher = async (req, res) => {
+  try {
+    const user = await getAuthUser(req);
+    if (!user) {
+      return res.status(400).send({ error: "User not found" });
+    }
+    const basket = await BasketModel.findOne({
+      user: user._id,
+    });
+    if (!basket) {
+      return res.status(400).send({ error: "Basket not found" });
+    }
+    const basketVoucher = basket.voucher;
+    basket.voucher = null;
+    await basket.save();
+    if (basketVoucher) {
+      const voucher = await VoucherModel.findById(basketVoucher);
+      if (voucher) {
+        voucher.isUsed = false;
+        await voucher.save();
+      }
+    }
+    return res.status(200).send({
+      message: "Voucher removed successfully",
+    });
+  } catch (error) {
+    res.status(400).send({ error: error.message });
+  }
+};
 
 module.exports = {
   generateVoucher,
@@ -318,5 +353,6 @@ module.exports = {
   getVouchers,
   getVoucher,
   applyVoucher,
+  removeVoucher,
   issueVoucher,
 };

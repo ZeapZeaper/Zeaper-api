@@ -6,22 +6,34 @@ const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
 const dbConfig = require("../src/config/db");
 const { ServerApiVersion } = require("mongodb");
-const { specs, swaggerUi } = require('./swagger');
-
+const { specs, swaggerUi } = require("./swagger");
+const { stripeWebhook } = require("./resolvers/payment");
 const url = dbConfig.url;
 
 const app = express();
 
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {explorer: true}));
+app.use(
+  "/api-docs",
+  swaggerUi.serve,
+  swaggerUi.setup(specs, { explorer: true })
+);
+//stripeWebhook
+app.post(
+  "/stripe/webhook",
+  bodyParser.raw({ type: "application/json" }),
+  stripeWebhook
+);
 app.use(function (err, req, res, next) {
   console.log("error", err);
-  if (err.code === 'LIMIT_FILE_SIZE') {
-    res.send({ result: 'fail', error: { code: 1001, message: 'File is too big' } })
-    return 
+  if (err.code === "LIMIT_FILE_SIZE") {
+    res.send({
+      result: "fail",
+      error: { code: 1001, message: "File is too big" },
+    });
+    return;
   }
-  next(err)
-}
-)
+  next(err);
+});
 
 // app.use(
 //   express.urlencoded({
@@ -32,6 +44,7 @@ app.use(function (err, req, res, next) {
 // );
 // app.use(express.json());
 //  app.use(bodyParser.text({ limit: "500mb", extended: true , parameterLimit: 1000000}));
+
 
 const initRoutes = require("./routes");
 app.use(

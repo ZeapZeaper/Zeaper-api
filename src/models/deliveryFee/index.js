@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 const timestamp = require("mongoose-timestamp");
-const { count } = require("../user");
+
 
 const DeliveryFeeSchema = new mongoose.Schema(
   {

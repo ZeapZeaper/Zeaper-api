@@ -799,25 +799,19 @@ const getUsers = async (req, res) => {
       .limit(limit)
       .lean();
 
-    // add point to every user without pointModel
-    // const usersWithPoints = await Promise.all(
-    //   users.map(async (user) => {
-    //     const point = await PointModel.findOne({
-    //       user: user._id,
-    //     });
-    //     if (!point) {
-    //       const newPoint = new PointModel({
-    //         user: user._id,
-    //         availablePoints: 500,
-    //         redeemedPoints: 0,
-    //         totalPoints: 500
-    //
-    //       });
-    //       await newPoint.save();
-    //       console.log("newPoint", newPoint._id);
-    //     }
-    //   })
-    // );
+  
+   // remove all shopId from users
+   // disable shopEnabled
+    const updatedUsers = await Promise.all(
+      users.map(async (user) => {
+    
+        await UserModel.findByIdAndUpdate(user._id, {
+          shopId: null,
+          shopEnabled: false,
+        });
+        return user;
+      })
+    );
 
     return res.status(200).send({ data: users });
   } catch (error) {

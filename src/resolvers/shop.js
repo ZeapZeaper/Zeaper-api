@@ -41,7 +41,7 @@ const generateUniqueShopId = async () => {
 
 const createShop = async (req, res) => {
   try {
-    const { shopName, country, region,phoneNumber, address} = req.body;
+    const { shopName, country, region, phoneNumber, address } = req.body;
     if (!shopName) {
       return res.status(400).send({ error: "shopName is required" });
     }
@@ -170,7 +170,7 @@ const getShops = async (req, res) => {
     const search = req.query.search || "";
     const match = {
       ...req.query,
-      disabled: req.query.disabled ? req.query.disabled : false,
+       disabled: req.query.disabled ? req.query.disabled : false,
     };
     if (search) {
       match.$or = [
@@ -185,6 +185,38 @@ const getShops = async (req, res) => {
       .skip(skip)
       .limit(limit)
       .lean();
+
+  
+    return res.status(200).send({ data: shops });
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
+};
+const getNewShops = async (req, res) => {
+  try {
+    const skip = parseInt(req.query.skip) || 0;
+    const limit = parseInt(req.query.limit) || 10;
+    const sort = req.query.sort || "desc";
+    const search = req.query.search || "";
+    const match = {
+      ...req.query,
+        status: "new",
+    };
+    if (search) {
+      match.$or = [
+        { shopName: { $regex: search, $options: "i" } },
+        { country: { $regex: search, $options: "i" } },
+      ];
+    }
+    const query = { ...match };
+    const shops = await ShopModel.find(query)
+      .populate("user")
+      .sort({ createdAt: sort })
+      .skip(skip)
+      .limit(limit)
+      .lean();
+
+  
     return res.status(200).send({ data: shops });
   } catch (err) {
     return res.status(500).send({ error: err.message });
@@ -192,7 +224,6 @@ const getShops = async (req, res) => {
 };
 const getAuthUserShop = async (req, res) => {
   try {
- 
     const authUser = await getAuthUser(req);
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
@@ -425,9 +456,43 @@ const getShopRevenues = async (req, res) => {
   }
 };
 
+const changeShopStatus = async (req, res) => {
+  try {
+    const { shopId, status } = req.body;
+    if (!shopId) {
+      return res.status(400).send({ error: "shopId is required" });
+    }
+    if (!status) {
+      return res.status(400).send({ error: "status is required" });
+    }
+    const shopStatusEnums = ["new", "reviewed"];
+    if (!shopStatusEnums.includes(status)) {
+      return res.status(400).send({ error: "Invalid status value provided" });
+    }
+    const shop = await ShopModel.findOne({
+      shopId,
+    });
+    if (!shop) {
+      return res.status(400).send({ error: "Shop not found" });
+    }
+    const updatedShop = await ShopModel.findOneAndUpdate(
+      {
+        shopId,
+      },
+      { status },
+      { new: true }
+    ).lean();
+
+    return res.status(200).send({ data: updatedShop });
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
+};
+
 module.exports = {
   createShop,
   getShops,
+  getNewShops,
   getShop,
   getAuthUserShop,
   updateShop,
@@ -437,4 +502,5 @@ module.exports = {
   generateUniqueShopId,
   getAuthShopRevenues,
   getShopRevenues,
+  changeShopStatus,
 };

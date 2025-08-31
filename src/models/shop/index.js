@@ -35,6 +35,11 @@ const ShopSchema = new mongoose.Schema({
   isShoeMaker: { type: Boolean, required: false, default: false },
   // isMakeUpArtist: { type: Boolean, required: false, default: false },
   disabled: { type: Boolean, required: false, default: true },
+  status: {
+    type: String,
+    enum: ["new", "reviewed"],
+    default: "new",
+  },
   sellerType: {
     type: String,
     enum: ["individual", "registered business"],

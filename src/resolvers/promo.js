@@ -353,14 +353,49 @@ const getAvailablePromos = async (req, res) => {
     return res.status(500).send({ error: err.message });
   }
 };
+
 const getLivePromos = async (req, res) => {
   try {
-    const promos = await PromoModel.find({
+    const { permittedProductTypes } = req.query;
+    const param = {
       status: "live",
-    });
+    };
+    let requestedPermittedProductTypes = [];
+    if (permittedProductTypes) {
+      if (typeof permittedProductTypes === "string") {
+        // convert string to array
+        requestedPermittedProductTypes = permittedProductTypes
+          .split(",")
+          .map((type) => type.trim());
+        param.permittedProductTypes = {
+          $in: requestedPermittedProductTypes,
+        };
+      }
+    } else {
+      param.permittedProductTypes = {
+        $in: productTypeEnums,
+      };
+    }
+
+    const promos = await PromoModel.find(param).lean();
+    // get productsCount for each promo
+
+    const promosWithCounts = await Promise.all(
+      promos.map(async (promo) => {
+        const productsCount = await ProductModel.countDocuments({
+          "promo.promoId": promo.promoId,
+          ...(requestedPermittedProductTypes
+            ? { productType: { $in: requestedPermittedProductTypes } }
+            : {}),
+        });
+       
+        return { ...promo, productsCount };
+      })
+    );
+
     return res
       .status(200)
-      .send({ data: promos, message: "Promos fetched successfully" });
+      .send({ data: promosWithCounts, message: "Promos fetched successfully" });
   } catch (err) {
     return res.status(500).send({ error: err.message });
   }
@@ -528,7 +563,6 @@ const updatePromo = async (req, res) => {
     if (promo.status !== "draft") {
       if (req?.files) {
         Object.values(req.files).map(async (file) => {
-          console.log("here 3", file);
           await deleteLocalImagesByFileName(file[0].filename);
         });
       }
@@ -539,7 +573,6 @@ const updatePromo = async (req, res) => {
     if (validation !== true) {
       if (req?.files) {
         Object.values(req.files).map(async (file) => {
-          console.log("here 3", file);
           await deleteLocalImagesByFileName(file[0].filename);
         });
       }
