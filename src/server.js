@@ -1,6 +1,7 @@
 const cors = require("cors");
 require("dotenv").config();
-const { ENV } = require("./config");
+const { ENV } = require("./config")
+const path = require("path");
 const express = require("express");
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
@@ -35,15 +36,8 @@ app.use(function (err, req, res, next) {
   next(err);
 });
 
-// app.use(
-//   express.urlencoded({
-//     extended: true,
-//     limit: "500mb",
-//     parameterLimit: 1000000,
-//   })
-// );
-// app.use(express.json());
-//  app.use(bodyParser.text({ limit: "500mb", extended: true , parameterLimit: 1000000}));
+// Serve static assets like /images/logo.png
+app.use(express.static(path.join(__dirname, "public")));
 
 
 const initRoutes = require("./routes");
@@ -92,6 +86,8 @@ app.use(cors(corsOptions));
 app.use(function (req, res, next) {
   // res.set({ "x-version": process.env.npm_package_version });
   res.append("f-version", process.env.FRONTEND_VERSION);
+  // set env to response header
+  res.append("X-Env", ENV);
 
   next();
 });
