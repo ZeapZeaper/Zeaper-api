@@ -13,6 +13,8 @@ const {
   getExpectedStandardDeliveryDate,
   getExpectedExpressDeliveryDate,
   getExpectedVendorCompletionDate,
+  replaceProductOrderVariablesinTemplate,
+  replaceUserVariablesinTemplate,
 } = require("../helpers/utils");
 const { default: mongoose } = require("mongoose");
 const {
@@ -26,6 +28,8 @@ const NotificationModel = require("../models/notification");
 const generatePdf = require("../helpers/pdf");
 const { ENV } = require("../config");
 const { first } = require("lodash");
+const { sendEmail } = require("../helpers/emailer");
+const EmailTemplateModel = require("../models/emailTemplate");
 const url =
   ENV === "prod"
     ? process.env.DOC_DOWNLOAD_URL_PROD
@@ -58,7 +62,52 @@ const generateUniqueOrderId = async () => {
 
   return orderId.toString();
 };
+const sendProductOrdershopEmail = async (productOrder) => {
+  const expectedVendorCompletionDate =
+    productOrder.expectedVendorCompletionDate;
+  const shop_id = productOrder.shop;
+  const shop = await ShopModel.findOne({ _id: shop_id })
+    .lean()
+    .populate("user");
+  const product = await ProductModel.findOne({
+    _id: productOrder.product,
+  }).lean();
+  productOrder.productTitle = product?.title || "";
+  if (!shop) {
+    return;
+  }
+  const user = shop?.user;
+  const email = user?.email || shop?.email || null;
+  if (!email) {
+    return;
+  }
+  const title = "New Order";
+  const body = `You have a new order with order ID - ${productOrder.orderId} and item number - ${productOrder.itemNo}. Please complete the order on or before ${expectedVendorCompletionDate?.max}`;
+  const productOrderEmailTemplate = await EmailTemplateModel.findOne({
+    name: "vendor-new-order",
+  }).lean();
 
+  const formattedProductOrderTemplateBody =
+    replaceProductOrderVariablesinTemplate(
+      replaceUserVariablesinTemplate(productOrderEmailTemplate?.body, user),
+      productOrder
+    );
+
+  const formattedProductOrderTemplateSubject =
+    replaceProductOrderVariablesinTemplate(
+      replaceUserVariablesinTemplate(productOrderEmailTemplate?.subject, user),
+      productOrder
+    );
+
+  const emailParam = {
+    from: "admin@zeaper.com",
+    to: [email],
+    subject: formattedProductOrderTemplateSubject || title,
+    body: formattedProductOrderTemplateBody || body,
+  };
+
+  const sentEmail = await sendEmail(emailParam);
+};
 const buildProductOrders = async (
   order,
   basketItems,
@@ -180,6 +229,7 @@ const buildProductOrders = async (
       const image = savedProductOrder?.images[0]?.link || null;
       const notifyShopParam = { shop_id: shop.toString(), title, body, image };
       const notify = await notifyShop(notifyShopParam);
+      const sendEmail = await sendProductOrdershopEmail(savedProductOrder);
     }
     productOrders.push(savedProductOrder._id);
   });
@@ -646,6 +696,9 @@ const getProductOrder = async (req, res) => {
         message: "Product Order not found",
       });
     }
+
+    // check if auth user is the owner of the product order or super admin or admin or the shop owner
+    // if not, return error
     const authUser = await getAuthUser(req);
     if (
       !authUser ||
@@ -1118,4 +1171,5 @@ module.exports = {
   getProductOrderStatusHistory,
   cancelOrder,
   downloadReciept,
+  sendProductOrdershopEmail,
 };

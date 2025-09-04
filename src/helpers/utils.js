@@ -11,7 +11,12 @@ const VoucherModel = require("../models/voucher");
 const DeliveryFeeModel = require("../models/deliveryFee");
 const ExchangeRateModel = require("../models/exchangeRate");
 const BodyMeasurementGuideModel = require("../models/bodyMeasurementGuide");
-const { shopVariables, userVariables, orderVariables } = require("./constants");
+const {
+  shopVariables,
+  userVariables,
+  orderVariables,
+  productOrderVariables,
+} = require("./constants");
 const algorithm = "aes-256-ctr";
 const ENCRYPTION_KEY = process.env.ZEAPCRYPTOKEY;
 //const ENCRYPTION_KEY = "emVhcCBmYXNoaW9uIGFwcCBpcyBvd25l==";
@@ -531,7 +536,6 @@ const replaceShopVariablesinTemplate = (template, shop) => {
 const replaceOrderVariablesinTemplate = (template, order) => {
   const variables = orderVariables;
   const replacedBracket = template.replaceAll("[", "").replaceAll("]", "");
-
   let replacedTemplate = replacedBracket;
 
   // loop through all variables. if variable is in replacedBracket, replaceAll with user data
@@ -540,6 +544,27 @@ const replaceOrderVariablesinTemplate = (template, order) => {
       replacedTemplate = replacedTemplate.replaceAll(
         variable,
         order[variable] || ""
+      );
+    }
+  });
+
+  return replacedTemplate;
+};
+const replaceProductOrderVariablesinTemplate = (template, productOrder) => {
+  const variables = productOrderVariables;
+  const replacedBracket = template.replaceAll("[", "").replaceAll("]", "");
+  let replacedTemplate = replacedBracket;
+  productOrder.expectedVendorCompletionDate =
+    productOrder.expectedVendorCompletionDate?.max || "";
+  productOrder.expectedDeliveryDate =
+    productOrder?.expectedDeliveryDate?.max || "";
+  productOrder.productTitle = productOrder?.productTitle || "";
+  // loop through all variables. if variable is in replacedBracket, replaceAll with user data
+  variables.forEach((variable) => {
+    if (replacedBracket.includes(variable)) {
+      replacedTemplate = replacedTemplate.replaceAll(
+        variable,
+        productOrder[variable] || ""
       );
     }
   });
@@ -669,7 +694,7 @@ const detectDeviceType = (req) => {
   const ua = req.headers["user-agent"] || "";
 
   const parser = new UAParser(ua);
-  const device = parser.getDevice()
+  const device = parser.getDevice();
   const deviceType = device.type || "desktop";
   return deviceType;
 };
@@ -699,6 +724,7 @@ module.exports = {
   replaceUserVariablesinTemplate,
   replaceShopVariablesinTemplate,
   replaceOrderVariablesinTemplate,
+  replaceProductOrderVariablesinTemplate,
   getServerIp,
   allowedLocations,
   getExpectedExpressDeliveryDate,
