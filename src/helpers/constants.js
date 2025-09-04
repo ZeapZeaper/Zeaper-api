@@ -917,7 +917,16 @@ const nairaToOtherCurrencyEnums = {
 const currencyEnums = ["NGN", "USD", "GBP"];
 const userVariables = ["firstName", "lastName", "email", "phoneNumber"];
 const shopVariables = ["shopName"];
-const orderVariables = ["orderId", "orderPoints"];
+const orderVariables = ["orderId", "orderPoints", "itemNo"];
+const productOrderVariables = [
+  "orderId",
+  "orderPoints",
+  "itemNo",
+  "productTitle",
+  "productQuantity",
+  "expectedVendorCompletionDate",
+  "sku",
+];
 
 const searchQueryAllowedPaths = [
   { path: "title", value: "title" },
@@ -992,6 +1001,7 @@ module.exports = {
   userVariables,
   shopVariables,
   orderVariables,
+  productOrderVariables,
   searchQueryAllowedPaths,
   allowedDeliveryCountries,
   helpCenterCategoryEnums,

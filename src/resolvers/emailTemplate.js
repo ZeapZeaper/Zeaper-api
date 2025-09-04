@@ -2,6 +2,7 @@ const {
   userVariables,
   shopVariables,
   orderVariables,
+  productOrderVariables,
 } = require("../helpers/constants");
 const EmailTemplateModel = require("../models/emailTemplate");
 
@@ -50,6 +51,7 @@ const addEmailTemplate = async (req, res) => {
       ...userVariables,
       ...shopVariables,
       ...orderVariables,
+      ...productOrderVariables
     ]);
     if (validateBody.error) {
       return res.status(400).send({ error: validateBody.error });
