@@ -233,6 +233,7 @@ const getReference = async (req, res) => {
               updatedPayment = await PaymentModel.findOneAndUpdate(
                 { reference },
                 {
+                  
                   amount,
                   status,
                   paidAt,
