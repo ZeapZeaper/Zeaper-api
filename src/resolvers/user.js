@@ -414,7 +414,7 @@ const createUser = async (req, res) => {
   } catch (error) {
     if (firebaseUser.uid) {
       const deleteFirebaseUser = await deleteUserFromFirebase(firebaseUser.uid);
-      if (deleteFirebaseUser) {
+      if (!deleteFirebaseUser) {
         console.log("Error deleting user from firebase", firebaseUser);
       }
     }
@@ -623,7 +623,7 @@ const mergeGoogleAppleLoginGuestUser = async (req, res) => {
         error: "current logged in Google/Apple User not found in firebase",
       });
     }
-    console.log("firebaseUser", firebaseUser);
+    
     const newUid = firebaseUser.uid;
     const firstName = firebaseUser.displayName
       ? firebaseUser.displayName.split(" ")[0]
