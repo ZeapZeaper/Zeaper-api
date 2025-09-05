@@ -559,6 +559,7 @@ const replaceProductOrderVariablesinTemplate = (template, productOrder) => {
   productOrder.expectedDeliveryDate =
     productOrder?.expectedDeliveryDate?.max || "";
   productOrder.productTitle = productOrder?.productTitle || "";
+  productOrder.productQuantity = productOrder?.quantity || "";
   // loop through all variables. if variable is in replacedBracket, replaceAll with user data
   variables.forEach((variable) => {
     if (replacedBracket.includes(variable)) {
