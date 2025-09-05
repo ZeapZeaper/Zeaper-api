@@ -523,12 +523,7 @@ const getOrder = async (req, res) => {
 
       .lean();
 
-    // const website_url = `${url}/${order_id}`;
-    // console.log("website_url", website_url);
-    // const pdf = await generatePdf({
-    //   type: "url",
-    //   website_url,
-    // });
+   
     const user = order.user;
     const isAdmin = authUser.superAdmin || authUser.isAdmin;
     if (user._id.toString() !== authUser._id.toString() && !isAdmin) {
