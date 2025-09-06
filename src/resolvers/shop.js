@@ -116,7 +116,7 @@ const createShop = async (req, res) => {
     }
     const updatedUser = await UserModel.findOneAndUpdate(
       {
-        userId,
+        userId: user.userId,
       },
       { shopId, shopEnabled: true, isVendor: true },
       { new: true }
@@ -170,7 +170,7 @@ const getShops = async (req, res) => {
     const search = req.query.search || "";
     const match = {
       ...req.query,
-       disabled: req.query.disabled ? req.query.disabled : false,
+      disabled: req.query.disabled ? req.query.disabled : false,
     };
     if (search) {
       match.$or = [
@@ -186,7 +186,6 @@ const getShops = async (req, res) => {
       .limit(limit)
       .lean();
 
-  
     return res.status(200).send({ data: shops });
   } catch (err) {
     return res.status(500).send({ error: err.message });
@@ -200,7 +199,7 @@ const getNewShops = async (req, res) => {
     const search = req.query.search || "";
     const match = {
       ...req.query,
-        status: "new",
+      status: "new",
     };
     if (search) {
       match.$or = [
@@ -216,7 +215,6 @@ const getNewShops = async (req, res) => {
       .limit(limit)
       .lean();
 
-  
     return res.status(200).send({ data: shops });
   } catch (err) {
     return res.status(500).send({ error: err.message });
@@ -307,7 +305,7 @@ const absoluteDeleteShop = async (req, res) => {
 const deleteShop = async (req, res) => {
   try {
     const { shopId } = req.body;
-    console.log(req.body);
+
     if (!shopId) {
       return res.status(400).send({ error: "shopId is required" });
     }
@@ -324,13 +322,7 @@ const deleteShop = async (req, res) => {
       { disabled: true },
       { new: true }
     );
-    const user = await UserModel.findOneAndUpdate(
-      {
-        shopId,
-      },
-      { shopEnabled: false },
-      { new: true }
-    ).lean();
+
     return res.status(200).send({ message: "Shop disabled successfully" });
   } catch (err) {
     return res.status(500).send({ error: err.message });
