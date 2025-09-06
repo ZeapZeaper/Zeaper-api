@@ -61,6 +61,7 @@ const ShopSchema = new mongoose.Schema({
     link: { type: String, required: false },
     name: { type: String, required: false },
   },
+  source: { type: String, required: false },
 });
 
 ShopSchema.plugin(timestamp);

@@ -38,7 +38,7 @@ const recentViewsResolver = require("../resolvers/recentviews");
 const helpArticlesResolver = require("../resolvers/helpArticles");
 const blogResolver = require("../resolvers/blog");
 const emailListResolver = require("../resolvers/emailList");
-
+const policyResolver = require("../resolvers/policy");
 const handleMoreFieldsUploads = uploadMultiple.fields([
   { name: "documents", maxCount: 5 },
   { name: "images", maxCount: 5 },
@@ -1029,6 +1029,13 @@ let routes = (app) => {
     "/email/remove",
     authMiddleware,
     emailListResolver.removeFromEmailList
+  );
+
+
+  // Policy routes
+  router.get(
+    "/policy/seller",
+    policyResolver.getSellerPolicyLink
   );
 
   return app.use("/", router);
