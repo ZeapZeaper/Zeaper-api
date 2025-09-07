@@ -623,7 +623,7 @@ const mergeGoogleAppleLoginGuestUser = async (req, res) => {
         error: "current logged in Google/Apple User not found in firebase",
       });
     }
-    
+
     const newUid = firebaseUser.uid;
     const firstName = firebaseUser.displayName
       ? firebaseUser.displayName.split(" ")[0]
@@ -799,12 +799,10 @@ const getUsers = async (req, res) => {
       .limit(limit)
       .lean();
 
-  
-   // remove all shopId from users
-   // disable shopEnabled
+    // remove all shopId from users
+    // disable shopEnabled
     const updatedUsers = await Promise.all(
       users.map(async (user) => {
-    
         await UserModel.findByIdAndUpdate(user._id, {
           shopId: null,
           shopEnabled: false,
