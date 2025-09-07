@@ -176,7 +176,7 @@ const buildProductOrders = async (
       currency: "NGN",
       status: "pending",
       // value is 75% of the amount due
-      value: amountDue * 0.75,
+      value: (amountDue * 0.75).toFixed(2),
     };
     let expectedDeliveryDate = null;
 
@@ -523,7 +523,6 @@ const getOrder = async (req, res) => {
 
       .lean();
 
-   
     const user = order.user;
     const isAdmin = authUser.superAdmin || authUser.isAdmin;
     if (user._id.toString() !== authUser._id.toString() && !isAdmin) {
@@ -717,6 +716,7 @@ const getProductOrder = async (req, res) => {
     const deliveryDetails = order.deliveryDetails;
     productOrder.order = order;
     productOrder.deliveryDetails = deliveryDetails;
+
 
     return res.status(200).send({
       data: productOrder,
