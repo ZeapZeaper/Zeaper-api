@@ -970,6 +970,8 @@ const helpCenterSubCategoryEnums = [
 ];
 const sellerPolicyLink =
   "https://firebasestorage.googleapis.com/v0/b/zeap-7de3d.appspot.com/o/T%26C%2FSeller%20Contract.pdf?alt=media&token=f50c0951-a01b-477b-b294-be56bd7b9d7f";
+const vendorContract =
+  "https://firebasestorage.googleapis.com/v0/b/zeap-7de3d.appspot.com/o/T%26C%2FSeller%20Contract.pdf?alt=media&token=f50c0951-a01b-477b-b294-be56bd7b9d7f";
 
 module.exports = {
   genderEnums,
@@ -1011,4 +1013,5 @@ module.exports = {
   fabricEnums,
   bodyMeasurementEnums,
   sellerPolicyLink,
+  vendorContract
 };

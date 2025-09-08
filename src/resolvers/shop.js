@@ -10,6 +10,7 @@ const { getAuthUser } = require("../middleware/firebaseUserAuth");
 const ProductOrderModel = require("../models/productOrder");
 const EmailTemplateModel = require("../models/emailTemplate");
 const { sendEmail } = require("../helpers/emailer");
+const { sellerPolicyLink, vendorContract } = require("../helpers/constants");
 
 function getRandomInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));
@@ -229,6 +230,17 @@ const getAuthUserShop = async (req, res) => {
     const shop = await ShopModel.findOne({
       user: authUser._id,
     }).populate("user");
+
+    if (shop) {
+      const documents = [
+        {
+          link: sellerPolicyLink || "",
+          name: "Zeaper Policy, Guidelines And Terms",
+        },
+        { link: vendorContract || "", name: "Zeaper Vendor Contract" },
+      ];
+      shop.documents = documents;
+    }
     return res.status(200).send({ data: shop });
   } catch (err) {
     return res.status(500).send({ error: err.message });
