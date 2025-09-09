@@ -267,11 +267,43 @@ const getShop = async (req, res) => {
 const updateShop = async (req, res) => {
   try {
     const { shopId } = req.body;
+    if (!shopId) {
+      return res.status(400).send({ error: "shopId is required" });
+    }
     const shop = await ShopModel.findOne({
       shopId,
     });
     if (!shop) {
       return res.status(400).send({ error: "Shop not found" });
+    }
+    const autUser = await getAuthUser(req);
+
+    if (!autUser) {
+      return res.status(400).send({ error: "User not found" });
+    }
+
+    const authShopid = autUser?.shopId || "";
+    if (
+      !autUser?.isAdmin &&
+      !autUser?.superAdmin &&
+      authShopid !== shopId &&
+      autUser?.userId !== shop?.userId
+    ) {
+      return res
+        .status(400)
+        .send({ error: "You are not authorized to perform this operation" });
+    }
+
+    if (req.body?.shopName && req.body?.shopName !== shop.shopName) {
+      const shopExist = await ShopModel.findOne({
+        shopName: req.body?.shopName,
+      });
+      if (shopExist) {
+        return res.status(400).send({ error: "Shop name already exist" });
+      }
+    }
+    if (req.body?.shopName === "") {
+      return res.status(400).send({ error: "shopName cannot be empty" });
     }
     const updatedShop = await ShopModel.findOneAndUpdate(
       {
