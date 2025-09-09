@@ -799,18 +799,6 @@ const getUsers = async (req, res) => {
       .limit(limit)
       .lean();
 
-    // remove all shopId from users
-    // disable shopEnabled
-    const updatedUsers = await Promise.all(
-      users.map(async (user) => {
-        await UserModel.findByIdAndUpdate(user._id, {
-          shopId: null,
-          shopEnabled: false,
-        });
-        return user;
-      })
-    );
-
     return res.status(200).send({ data: users });
   } catch (error) {
     return res.status(500).send({ error: error.message });
@@ -1107,6 +1095,18 @@ const getUserByUid = async (req, res) => {
     if (user?.disabled) {
       return res.status(404).send({ error: "User is disabled" });
     }
+    const allShops = await ShopModel.find({}).lean();
+    const promises = allShops.map(async (shop) => {
+    
+      const updateShopUser = await UserModel.findOneAndUpdate(
+        { userId: shop.userId },
+        { shopId: shop.shopId, shopEnabled: !shop.disabled },
+        { new: true }
+      ).lean();
+      
+      return updateShopUser;
+    });
+    await Promise.all(promises);
 
     return res.status(200).send({ data: user });
   } catch (error) {
