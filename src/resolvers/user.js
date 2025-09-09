@@ -1095,18 +1095,7 @@ const getUserByUid = async (req, res) => {
     if (user?.disabled) {
       return res.status(404).send({ error: "User is disabled" });
     }
-    const allShops = await ShopModel.find({}).lean();
-    const promises = allShops.map(async (shop) => {
     
-      const updateShopUser = await UserModel.findOneAndUpdate(
-        { userId: shop.userId },
-        { shopId: shop.shopId, shopEnabled: !shop.disabled },
-        { new: true }
-      ).lean();
-      
-      return updateShopUser;
-    });
-    await Promise.all(promises);
 
     return res.status(200).send({ data: user });
   } catch (error) {
@@ -1166,7 +1155,7 @@ const sendOTPToUser = async (req, res) => {
     }
 
     const otp = await sendOTP({ to: phoneNumber, firstName: user.firstName });
-    console.log("otp", otp);
+  
     if (otp?.status === "200") {
       return res
         .status(200)
@@ -1184,7 +1173,7 @@ const sendOTPToUser = async (req, res) => {
 const verifyUserOTP = async (req, res) => {
   const { pin_id, pin, userId } = req.body;
   try {
-    console.log("req.body", req.body);
+ 
 
     if (!pin_id) {
       return res.status(400).send({ error: "pin_id is required" });
@@ -1203,7 +1192,7 @@ const verifyUserOTP = async (req, res) => {
       return res.status(400).send({ error: "Phone number already verified" });
     }
     const otp = await verifyOTP({ pin_id, pin });
-    console.log("otp", otp);
+
     if (otp?.status === "200") {
       const updatedUser = await UserModel.findByIdAndUpdate(
         user?._id,
