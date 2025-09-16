@@ -238,15 +238,13 @@ const convertGuestUserWithEmailPasswordProvider = async (req, res) => {
     if (!password) {
       return res.status(400).send({ error: "password is required" });
     }
-    const uid = await getAuthUserUid(req);
-    if (!uid) {
-      return res.status(400).send({ error: "User Uid  not found" });
+    const authUser = await getAuthUser(req);
+    if (!authUser) {
+      return res.status(400).send({ error: "Authenticated User not found" });
     }
-    const user = await UserModel.findOne({ uid }).lean();
-    if (!user) {
-      return res.status(404).send({ error: "Guest User not found" });
-    }
-    if (!user.isGuest) {
+
+    console.log("authUser", authUser);
+    if (!authUser.isGuest) {
       return res.status(400).send({ error: "User is not a guest" });
     }
     const decriptedPassword = cryptoDecrypt(password);
@@ -258,7 +256,7 @@ const convertGuestUserWithEmailPasswordProvider = async (req, res) => {
       return res.status(400).send({ error: "Error creating user" });
     }
     const updatedUser = await UserModel.findByIdAndUpdate(
-      user._id,
+      authUser._id,
       { email, uid: firebaseUser.uid, ...body, isGuest: false },
       { new: true }
     );
@@ -294,7 +292,7 @@ const convertGuestUserWithEmailPasswordProvider = async (req, res) => {
       body: formattedUserTemplateBody || "Welcome to Zeap",
     };
     const userMail = await sendEmail(param);
-    await deleteUserFromFirebase(user.uid);
+    await deleteUserFromFirebase(authUser.uid);
 
     return res.status(200).send({ data: updatedUser });
   } catch (err) {
@@ -513,17 +511,22 @@ const mergePasswordLoginGuestUser = async (req, res) => {
     if (!guestUid) {
       return res.status(400).send({ error: "guestUid is required" });
     }
+    console.log("guestUid", guestUid);
     const authUser = await getAuthUser(req);
+    console.log("authUser", authUser);
     if (!authUser) {
       return res.status(400).send({
         error: "current logged in Password User not found in firebase",
       });
     }
     const guestUser = await UserModel.findOne({ uid: guestUid }).lean();
+  
     if (!guestUser) {
       return res.status(404).send({ error: "Guest User not found" });
     }
+
     if (!guestUser.isGuest) {
+      console.log("User is not a guest", guestUser.isGuest);
       return res.status(400).send({ error: "User is not a guest" });
     }
     const updateGuestOrders = await OrderModel.updateMany(
@@ -1095,7 +1098,7 @@ const getUserByUid = async (req, res) => {
     if (user?.disabled) {
       return res.status(404).send({ error: "User is disabled" });
     }
-    
+   
 
     return res.status(200).send({ data: user });
   } catch (error) {
@@ -1155,7 +1158,7 @@ const sendOTPToUser = async (req, res) => {
     }
 
     const otp = await sendOTP({ to: phoneNumber, firstName: user.firstName });
-  
+
     if (otp?.status === "200") {
       return res
         .status(200)
@@ -1173,8 +1176,6 @@ const sendOTPToUser = async (req, res) => {
 const verifyUserOTP = async (req, res) => {
   const { pin_id, pin, userId } = req.body;
   try {
- 
-
     if (!pin_id) {
       return res.status(400).send({ error: "pin_id is required" });
     }
