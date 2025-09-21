@@ -684,12 +684,7 @@ const getExpectedExpressDeliveryDate = (productType, country) => {
     }
   }
   return { min, max, method, country };
-  // const minDate = addWeekDays(today, min);
-  // const maxDate = addWeekDays(today, max);
-  // return {
-  //   minDate: minDate.toISOString().split("T")[0],
-  //   maxDate: maxDate.toISOString().split("T")[0],
-  // };
+ 
 };
 const detectDeviceType = (req) => {
   const ua = req.headers["user-agent"] || "";
