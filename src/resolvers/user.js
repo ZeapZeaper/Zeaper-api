@@ -511,7 +511,7 @@ const mergePasswordLoginGuestUser = async (req, res) => {
     if (!guestUid) {
       return res.status(400).send({ error: "guestUid is required" });
     }
-    console.log("guestUid", guestUid);
+ 
     const authUser = await getAuthUser(req);
     console.log("authUser", authUser);
     if (!authUser) {

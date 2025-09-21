@@ -969,9 +969,9 @@ const helpCenterSubCategoryEnums = [
   "support",
 ];
 const sellerPolicyLink =
-  "https://firebasestorage.googleapis.com/v0/b/zeap-7de3d.appspot.com/o/T%26C%2FSeller%20Contract.pdf?alt=media&token=f50c0951-a01b-477b-b294-be56bd7b9d7f";
+  "https://firebasestorage.googleapis.com/v0/b/zeap-7de3d.appspot.com/o/T%26C%2FZeap_vendor_contract.pdf?alt=media&token=8e6235ee-39e8-4c55-a2da-65054f1a880a";
 const vendorContract =
-  "https://firebasestorage.googleapis.com/v0/b/zeap-7de3d.appspot.com/o/T%26C%2FSeller%20Contract.pdf?alt=media&token=f50c0951-a01b-477b-b294-be56bd7b9d7f";
+  "https://firebasestorage.googleapis.com/v0/b/zeap-7de3d.appspot.com/o/T%26C%2FZeap_vendor_contract.pdf?alt=media&token=8e6235ee-39e8-4c55-a2da-65054f1a880a";
 
 module.exports = {
   genderEnums,
