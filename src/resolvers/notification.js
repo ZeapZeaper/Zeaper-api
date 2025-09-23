@@ -74,7 +74,7 @@ const registerPushToken = async (req, res) => {
       userToken.pushToken.push(pushToken);
       userToken.pushTokenDate = pushTokenDate;
       await userToken.save();
-     
+
       return res.status(200).send({ data: userTokenToken });
     }
     const notification = new NotificationModel({
@@ -109,21 +109,34 @@ const testPushNotification = async (req, res) => {
           "User push token not found. Ensure you first register the user pushToken",
       });
     }
-    const sendPush = await sendOneDevicePushNotification(
-      pushToken,
-      title,
-      body,
-      image
-    );
 
-    if (sendPush) {
+    if (pushToken.length === 0) {
+      return res.status(400).send({
+        error:
+          "User push token not found. Ensure you first register the user pushToken",
+      });
+    }
+    const messageids = [];
+    const promises = pushToken.map(async (token) => {
+      const sendPush = await sendOneDevicePushNotification(
+        token,
+        title,
+        body,
+        image
+      );
+      if (sendPush) {
+        messageids.push(sendPush);
+      }
+    });
+    await Promise.all(promises);
+    if (messageids.length > 0) {
       return res
         .status(200)
-        .send({ message: "Push notification sent", meesageId: sendPush });
+        .send({ message: "Push notification sent", messageIds: messageids });
     }
-    console.log("Failed to send push notification", sendPush);
     return res.status(400).send({ error: "Failed to send push notification" });
   } catch (err) {
+    console.log("err", err);
     return res.status(500).send({ error: err.message });
   }
 };
@@ -136,10 +149,9 @@ const sendPushOneDevice = async (pushToken, title, body, image) => {
       image
     );
     if (sendPush) {
-  
       return { message: "Push notification sent", meesageId: sendPush };
     }
- 
+
     return { error: "Failed to send push notification" };
   } catch (err) {
     return { error: err.message };
@@ -321,7 +333,7 @@ const clearAllAuthUserNotifications = async (req, res) => {
   } catch (err) {
     return res.status(500).send({ error: err.message });
   }
-}
+};
 const addNotification = async (param) => {
   try {
     const { title, body, image, isAdminPanel, user_id } = param;
