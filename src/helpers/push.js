@@ -8,14 +8,16 @@ const sendOneDevicePushNotification = async (token, title, body, image) => {
       body,
       image:
         image ||
-        "https://zeap.netlify.app/static/media/app_logo.620ff058fcbcd2428e3c.png",
+        "https://admin.zeaper.com/static/media/Iconmark_green.129d5bdb389ec6130623.png",
     },
     token,
   };
 
+
   return messaging
     .send(message)
     .then((response) => {
+      console.log("Successfully sent message:", response);
       // Response is a message ID string.
 
       return response;
@@ -63,7 +65,7 @@ const sendMultipleDevicePushNotification = async (
       body,
       image:
         image ||
-        "https://zeap.netlify.app/static/media/app_logo.620ff058fcbcd2428e3c.png",
+        "https://admin.zeaper.com/static/media/Iconmark_green.129d5bdb389ec6130623.png",
     },
     tokens,
   };
