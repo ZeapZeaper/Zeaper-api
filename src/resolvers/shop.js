@@ -10,7 +10,7 @@ const { getAuthUser } = require("../middleware/firebaseUserAuth");
 const ProductOrderModel = require("../models/productOrder");
 const EmailTemplateModel = require("../models/emailTemplate");
 const { sendEmail } = require("../helpers/emailer");
-const { sellerPolicyLink, vendorContract } = require("../helpers/constants");
+const { ZeaperPolicy, vendorContract } = require("../helpers/constants");
 
 function getRandomInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));
@@ -234,7 +234,7 @@ const getAuthUserShop = async (req, res) => {
     if (shop) {
       const documents = [
         {
-          link: sellerPolicyLink || "",
+          link: ZeaperPolicy || "",
           name: "Zeaper Policy, Guidelines And Terms",
         },
         { link: vendorContract || "", name: "Zeaper Vendor Contract" },

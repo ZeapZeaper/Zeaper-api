@@ -968,8 +968,8 @@ const helpCenterSubCategoryEnums = [
   "privacy",
   "support",
 ];
-const sellerPolicyLink =
-  "https://firebasestorage.googleapis.com/v0/b/zeap-7de3d.appspot.com/o/T%26C%2FZeap_vendor_contract.pdf?alt=media&token=8e6235ee-39e8-4c55-a2da-65054f1a880a";
+const ZeaperPolicy =
+  "https://firebasestorage.googleapis.com/v0/b/zeap-7de3d.appspot.com/o/T%26C%2FZeaper_Policy.pdf?alt=media&token=afbdf922-cca2-4bc6-8b2c-248d378eb3a7";
 const vendorContract =
   "https://firebasestorage.googleapis.com/v0/b/zeap-7de3d.appspot.com/o/T%26C%2FZeap_vendor_contract.pdf?alt=media&token=8e6235ee-39e8-4c55-a2da-65054f1a880a";
 
@@ -1012,6 +1012,6 @@ module.exports = {
   helpCenterSubCategoryEnums,
   fabricEnums,
   bodyMeasurementEnums,
-  sellerPolicyLink,
+  ZeaperPolicy,
   vendorContract
 };

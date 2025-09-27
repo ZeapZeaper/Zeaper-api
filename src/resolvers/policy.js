@@ -1,4 +1,4 @@
-const { sellerPolicyLink, vendorContract } = require("../helpers/constants");
+const {  vendorContract, ZeaperPolicy } = require("../helpers/constants");
 const { getAuthUser } = require("../middleware/firebaseUserAuth");
 
 const getSellerPolicyLink = async (req, res) => {
@@ -17,7 +17,7 @@ const getSellerPolicyLink = async (req, res) => {
           : "Zeaper Vendor Contract",
       },
       {
-        link: sellerPolicyLink || "",
+        link: ZeaperPolicy || "",
         name: "Zeaper Policy, Guidelines And Terms",
       },
     ];
