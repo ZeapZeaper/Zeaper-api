@@ -36,6 +36,7 @@ const VoucherModel = require("../models/voucher");
 const PaymentModel = require("../models/payment");
 const ProductOrderModel = require("../models/productOrder");
 const DeliveryAddressModel = require("../models/deliveryAddresses");
+const NotificationModel = require("../models/notification");
 
 //saving image to firebase storage
 const addImage = async (req, filename) => {
@@ -511,7 +512,7 @@ const mergePasswordLoginGuestUser = async (req, res) => {
     if (!guestUid) {
       return res.status(400).send({ error: "guestUid is required" });
     }
- 
+
     const authUser = await getAuthUser(req);
     console.log("authUser", authUser);
     if (!authUser) {
@@ -520,7 +521,7 @@ const mergePasswordLoginGuestUser = async (req, res) => {
       });
     }
     const guestUser = await UserModel.findOne({ uid: guestUid }).lean();
-  
+
     if (!guestUser) {
       return res.status(404).send({ error: "Guest User not found" });
     }
@@ -550,7 +551,10 @@ const mergePasswordLoginGuestUser = async (req, res) => {
       { user: guestUser._id },
       { user: authUser._id }
     );
-
+    const updatedNotification = await NotificationModel.findOneAndUpdate(
+      { user: guestUser._id },
+      { user: authUser._id }
+    );
     const updateGuestWishes = await WishModel.updateMany(
       { user: guestUser._id },
       { user: authUser._id }
@@ -700,6 +704,10 @@ const mergeGoogleAppleLoginGuestUser = async (req, res) => {
       const updateGuestVouchers = await VoucherModel.updateMany(
         { user: guestUser._id },
         { user: alreadyExisting._id }
+      );
+      const updatedNotification = await NotificationModel.findOneAndUpdate(
+        { user: guestUser._id },
+        { user: authUser._id }
       );
       const updateGuestWishes = await WishModel.updateMany(
         { user: guestUser._id },
@@ -1088,9 +1096,11 @@ const getUserByUid = async (req, res) => {
     if (!uid) {
       return res.status(400).send({ error: "uid is required" });
     }
+
     const user = await UserModel.findOne({
       uid,
     }).lean();
+
     if (!user) {
       return res.status(404).send({ error: "User not found" });
     }

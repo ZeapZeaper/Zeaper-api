@@ -13,17 +13,15 @@ const sendOneDevicePushNotification = async (token, title, body, image) => {
     token,
   };
 
-
   return messaging
     .send(message)
     .then((response) => {
-      console.log("Successfully sent message:", response);
       // Response is a message ID string.
 
       return response;
     })
     .catch((error) => {
-      console.log("Error sending message:", error);
+      console.log("Error sending message:",token, error);
       if (
         error.code === "messaging/invalid-argument" ||
         error.code === "messaging/registration-token-not-registered"
@@ -34,7 +32,6 @@ const sendOneDevicePushNotification = async (token, title, body, image) => {
 };
 
 const removeToken = async (token) => {
-
   const userNotifications = await NotificationModel.findOne({
     pushToken: token,
   })
@@ -58,7 +55,6 @@ const sendMultipleDevicePushNotification = async (
   body,
   image
 ) => {
- 
   const message = {
     notification: {
       title,
@@ -73,7 +69,6 @@ const sendMultipleDevicePushNotification = async (
   return messaging
     .sendEachForMulticast(message)
     .then((response) => {
-    
       if (response.failureCount > 0) {
         const failedTokens = [];
         response.responses.forEach((resp, idx) => {

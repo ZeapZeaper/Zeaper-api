@@ -63,8 +63,10 @@ const registerPushToken = async (req, res) => {
     }
     // check if existing token. if yes, updste, if no, create
     const user = authUser._id;
+   
 
     const userToken = await NotificationModel.findOne({ user });
+  
     if (userToken) {
       const existed = userToken.pushToken.find((token) => token === pushToken);
 
@@ -75,7 +77,7 @@ const registerPushToken = async (req, res) => {
       userToken.pushTokenDate = pushTokenDate;
       await userToken.save();
 
-      return res.status(200).send({ data: userTokenToken });
+      return res.status(200).send({ data: userToken });
     }
     const notification = new NotificationModel({
       user,
@@ -116,6 +118,7 @@ const testPushNotification = async (req, res) => {
           "User push token not found. Ensure you first register the user pushToken",
       });
     }
+    console.log("pushToken", pushToken);
     const messageids = [];
     const promises = pushToken.map(async (token) => {
       const sendPush = await sendOneDevicePushNotification(
