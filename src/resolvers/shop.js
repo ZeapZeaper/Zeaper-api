@@ -11,6 +11,9 @@ const ProductOrderModel = require("../models/productOrder");
 const EmailTemplateModel = require("../models/emailTemplate");
 const { sendEmail } = require("../helpers/emailer");
 const { ZeaperPolicy, vendorContract } = require("../helpers/constants");
+const { sendPushMultipleDevice, addNotification } = require("./notification");
+const NotificationModel = require("../models/notification");
+const { sendOneDevicePushNotification } = require("../helpers/push");
 
 function getRandomInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));
@@ -120,7 +123,12 @@ const createShop = async (req, res) => {
       {
         userId: user.userId,
       },
-      { shopId, shopEnabled: true, isVendor: true, source: source?.toLowerCase() || "" },
+      {
+        shopId,
+        shopEnabled: true,
+        isVendor: true,
+        source: source?.toLowerCase() || "",
+      },
       { new: true }
     ).lean();
     if (!updatedUser) {
@@ -155,6 +163,35 @@ const createShop = async (req, res) => {
       };
 
       const shopMail = await sendEmail(param);
+      // send push notification to user
+      const title = "Shop Registration Successful";
+      const body = `Your shop, ${shop.shopName}, has been successfully created and is now under verification.`;
+      const image =
+        "https://admin.zeaper.com/static/media/Iconmark_green.129d5bdb389ec6130623.png";
+      const userNotification = await NotificationModel.findOne({
+        user: updatedUser._id,
+      });
+      const pushToken = userNotification.pushToken || [];
+
+      if (pushToken.length > 0) {
+        const promises = pushToken.map(async (token) => {
+          const sendPush = await sendOneDevicePushNotification(
+            token,
+            title,
+            body,
+            image
+          );
+        });
+        await Promise.all(promises);
+        const notificationParam = {
+          title,
+          body,
+          image,
+          isAdminPanel: false,
+          user_id: user,
+        };
+        const addUserNotification = await addNotification(notificationParam);
+      }
     }
     return res
       .status(200)

@@ -118,7 +118,7 @@ const testPushNotification = async (req, res) => {
           "User push token not found. Ensure you first register the user pushToken",
       });
     }
-    console.log("pushToken", pushToken);
+ 
     const messageids = [];
     const promises = pushToken.map(async (token) => {
       const sendPush = await sendOneDevicePushNotification(
