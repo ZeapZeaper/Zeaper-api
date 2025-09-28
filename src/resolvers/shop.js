@@ -42,7 +42,8 @@ const generateUniqueShopId = async () => {
 
 const createShop = async (req, res) => {
   try {
-    const { shopName, country, region, phoneNumber, address } = req.body;
+    const { shopName, country, region, phoneNumber, address, source } =
+      req.body;
     if (!shopName) {
       return res.status(400).send({ error: "shopName is required" });
     }
@@ -119,7 +120,7 @@ const createShop = async (req, res) => {
       {
         userId: user.userId,
       },
-      { shopId, shopEnabled: true, isVendor: true },
+      { shopId, shopEnabled: true, isVendor: true, source: source?.toLowerCase() || "" },
       { new: true }
     ).lean();
     if (!updatedUser) {
