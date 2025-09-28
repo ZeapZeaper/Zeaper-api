@@ -74,6 +74,7 @@ const UserSchema = new mongoose.Schema({
     enum: currencyEnums,
     default: "NGN",
   },
+  source: { type: String, required: false },
 });
 
 UserSchema.plugin(timestamp);
