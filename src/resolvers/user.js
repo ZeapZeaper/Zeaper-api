@@ -239,39 +239,47 @@ const convertGuestUserWithEmailPasswordProvider = async (req, res) => {
     if (!password) {
       return res.status(400).send({ error: "password is required" });
     }
-    const authUser = await getAuthUser(req);
-    if (!authUser) {
-      return res.status(400).send({ error: "Authenticated User not found" });
-    }
-
-    console.log("authUser", authUser);
-    if (!authUser.isGuest) {
-      return res.status(400).send({ error: "User is not a guest" });
-    }
     const decriptedPassword = cryptoDecrypt(password);
     const firebaseUser = await addUserToFirebase({
       email,
       password: decriptedPassword,
     });
+   
     if (!firebaseUser.uid) {
-      return res.status(400).send({ error: "Error creating user" });
+      return res.status(400).send({ error: "Error creating user." });
     }
-    const updatedUser = await UserModel.findByIdAndUpdate(
-      authUser._id,
-      { email, uid: firebaseUser.uid, ...body, isGuest: false },
-      { new: true }
-    );
-    if (!updatedUser) {
-      return res.status(500).send({ error: "Error updating user" });
+
+    const authUser = await getAuthUser(req);
+
+    if (authUser && !authUser.isGuest) {
+      return res.status(400).send({ error: "User is not a guest" });
+    }
+    let updatedUser = authUser;
+    if (updatedUser) {
+      updatedUser = await UserModel.findByIdAndUpdate(
+        authUser._id,
+        { email, uid: firebaseUser.uid, ...body, isGuest: false },
+        { new: true }
+      );
+    } else {
+       const userId = await generateUniqueUserId();
+      const newUser = new UserModel({
+        email,
+        uid: firebaseUser.uid,
+        ...body,
+        isGuest: false,
+        emailVerified: firebaseUser.emailVerified,
+        userId,
+      });
+      updatedUser = await newUser.save();
     }
     // create point for user
-    const point = new PointModel({
+     const point = new PointModel({
       user: updatedUser._id,
       availablePoints: 500,
       redeemedPoints: 0,
       totalPoints: 500,
     });
-
     const newPoint = await point.save();
     const welcomeUserEmailTemplate = await EmailTemplateModel.findOne({
       name: "welcome-user",
@@ -293,7 +301,9 @@ const convertGuestUserWithEmailPasswordProvider = async (req, res) => {
       body: formattedUserTemplateBody || "Welcome to Zeap",
     };
     const userMail = await sendEmail(param);
-    await deleteUserFromFirebase(authUser.uid);
+    if (authUser && authUser.uid) {
+      await deleteUserFromFirebase(authUser.uid);
+    }
 
     return res.status(200).send({ data: updatedUser });
   } catch (err) {
@@ -1108,7 +1118,6 @@ const getUserByUid = async (req, res) => {
     if (user?.disabled) {
       return res.status(404).send({ error: "User is disabled" });
     }
-   
 
     return res.status(200).send({ data: user });
   } catch (error) {

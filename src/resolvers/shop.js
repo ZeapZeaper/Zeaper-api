@@ -163,6 +163,7 @@ const createShop = async (req, res) => {
       };
 
       const shopMail = await sendEmail(param);
+     
       // send push notification to user
       const title = "Shop Registration Successful";
       const body = `Your shop, ${shop.shopName}, has been successfully created and is now under verification.`;
@@ -171,9 +172,10 @@ const createShop = async (req, res) => {
       const userNotification = await NotificationModel.findOne({
         user: updatedUser._id,
       });
-      const pushToken = userNotification.pushToken || [];
 
-      if (pushToken.length > 0) {
+      const pushToken = userNotification?.pushToken || [];
+
+      if (userNotification && pushToken.length > 0) {
         const promises = pushToken.map(async (token) => {
           const sendPush = await sendOneDevicePushNotification(
             token,
