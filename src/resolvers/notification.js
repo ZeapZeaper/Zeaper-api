@@ -1,4 +1,5 @@
 const { messaging } = require("../config/firebase");
+const { sendEmail } = require("../helpers/emailer");
 const {
   sendOneDevicePushNotification,
   sendMultipleDevicePushNotification,
@@ -90,6 +91,7 @@ const registerPushToken = async (req, res) => {
     return res.status(500).send({ error: err.message });
   }
 };
+
 
 const testPushNotification = async (req, res) => {
   try {
@@ -414,6 +416,33 @@ const notifyShop = async (param) => {
     return { error: err.message };
   }
 };
+const testEmailNotification = async (req, res) => {
+  try {
+    const { email, subject, body } = req.body;
+    if (!email) {
+      return res.status(400).send({ error: "required email" });
+    }
+    if (!subject) {
+      return res.status(400).send({ error: "required subject" });
+    }
+    if (!body) {
+      return res.status(400).send({ error: "required body" });
+    }
+
+    // send email
+    const param = {
+      from: "admin@zeaper.com",
+      to: [email],
+      subject: subject || "Test Email",
+      body: body || "<h1>This is a test email</h1>",
+    };
+    const userMail = await sendEmail(param);
+
+    return res.status(200).send({ data: userMail });
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
+};
 
 module.exports = {
   registerPushToken,
@@ -428,4 +457,5 @@ module.exports = {
   sendPushMultipleDevice,
   sendPushAllAdmins,
   notifyShop,
+  testEmailNotification,
 };

@@ -850,6 +850,11 @@ let routes = (app) => {
     authMiddleware,
     notificationResolver.testPushNotification
   );
+  router.post(
+    "/notification/email/test",
+    authMiddleware,
+    notificationResolver.testEmailNotification
+  );
   router.get(
     "/notification/inbox",
     authMiddleware,
