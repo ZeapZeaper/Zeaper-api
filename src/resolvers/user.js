@@ -717,7 +717,7 @@ const mergeGoogleAppleLoginGuestUser = async (req, res) => {
       );
       const updatedNotification = await NotificationModel.findOneAndUpdate(
         { user: guestUser._id },
-        { user: authUser._id }
+        { user: alreadyExisting._id }
       );
       const updateGuestWishes = await WishModel.updateMany(
         { user: guestUser._id },
