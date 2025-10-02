@@ -37,6 +37,7 @@ const PaymentModel = require("../models/payment");
 const ProductOrderModel = require("../models/productOrder");
 const DeliveryAddressModel = require("../models/deliveryAddresses");
 const NotificationModel = require("../models/notification");
+const ProductModel = require("../models/products");
 
 //saving image to firebase storage
 const addImage = async (req, filename) => {
@@ -53,6 +54,7 @@ const addImage = async (req, filename) => {
         public: true,
         destination: `/user/${filename}`,
         metadata: {
+           cacheControl: "public, max-age=31536000, immutable", // 1 year caching
           firebaseStorageDownloadTokens: uuidv4(),
         },
       }
@@ -1100,6 +1102,29 @@ const absoluteDeleteUser = async (req, res) => {
     return res.status(500).send({ error: error.message });
   }
 };
+function convertToPublicUrl(downloadUrl) {
+  try {
+    const url = new URL(downloadUrl);
+
+    // Get bucket name from URL path
+    // Example path: /download/storage/v1/b/zeap-7de3d.appspot.com/o/%2Fproduct%2Ffilename.jpg
+    const pathParts = url.pathname.split("/");
+    const bucketIndex = pathParts.indexOf("b") + 1;
+    const bucketName = pathParts[bucketIndex];
+
+    // Get object path from URL
+    const objectIndex = pathParts.indexOf("o") + 1;
+    const objectPathEncoded = pathParts[objectIndex]; // still URL-encoded
+
+    // Return public URL format
+    return `https://storage.googleapis.com/${bucketName}/${objectPathEncoded}`;
+  } catch (err) {
+    console.error("Failed to convert Firebase URL:", err);
+    return downloadUrl; // fallback to original
+  }
+}
+
+
 const getUserByUid = async (req, res) => {
   try {
     const { uid } = req.query;
@@ -1118,8 +1143,8 @@ const getUserByUid = async (req, res) => {
     if (user?.disabled) {
       return res.status(404).send({ error: "User is disabled" });
     }
-    
 
+   
     return res.status(200).send({ data: user });
   } catch (error) {
     return res.status(500).send({ error: error.message });

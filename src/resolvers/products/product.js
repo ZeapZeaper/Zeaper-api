@@ -102,14 +102,16 @@ const addImage = async (destination, filename) => {
       // path.resolve(source),
       {
         public: true,
-        destination: `/product/${filename}`,
+        destination: `product/${filename}`,
         metadata: {
           firebaseStorageDownloadTokens: uuidv4(),
+          cacheControl: "public, max-age=31536000", // 1 year
         },
       }
     );
+  // get the public url that avoids egress charges
     url = {
-      link: storage[0].metadata.mediaLink,
+      link: `https://storage.googleapis.com/${storageRef.name}/product/${filename}`,
       name: filename,
     };
     const deleteSourceFile = await deleteLocalFile(source);
