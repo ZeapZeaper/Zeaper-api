@@ -244,7 +244,7 @@ const convertGuestUserWithEmailPasswordProvider = async (req, res) => {
       email,
       password: decriptedPassword,
     });
-   
+
     if (!firebaseUser.uid) {
       return res.status(400).send({ error: "Error creating user." });
     }
@@ -262,7 +262,7 @@ const convertGuestUserWithEmailPasswordProvider = async (req, res) => {
         { new: true }
       );
     } else {
-       const userId = await generateUniqueUserId();
+      const userId = await generateUniqueUserId();
       const newUser = new UserModel({
         email,
         uid: firebaseUser.uid,
@@ -274,7 +274,7 @@ const convertGuestUserWithEmailPasswordProvider = async (req, res) => {
       updatedUser = await newUser.save();
     }
     // create point for user
-     const point = new PointModel({
+    const point = new PointModel({
       user: updatedUser._id,
       availablePoints: 500,
       redeemedPoints: 0,
@@ -1118,6 +1118,7 @@ const getUserByUid = async (req, res) => {
     if (user?.disabled) {
       return res.status(404).send({ error: "User is disabled" });
     }
+    
 
     return res.status(200).send({ data: user });
   } catch (error) {
