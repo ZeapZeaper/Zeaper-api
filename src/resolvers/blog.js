@@ -26,6 +26,7 @@ const addImage = async (req, filename) => {
         public: true,
         destination: `/blog/${filename}`,
         metadata: {
+           cacheControl: "public, max-age=31536000, immutable", // 1 year caching
           firebaseStorageDownloadTokens: uuidv4(),
         },
       }

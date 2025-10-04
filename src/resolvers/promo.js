@@ -54,6 +54,7 @@ const addImage = async (destination, filename) => {
         public: true,
         destination: `/promo/${filename}`,
         metadata: {
+           cacheControl: "public, max-age=31536000, immutable", // 1 year caching
           firebaseStorageDownloadTokens: uuidv4(),
         },
       }
