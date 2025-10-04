@@ -11,7 +11,11 @@ const ProductOrderModel = require("../models/productOrder");
 const EmailTemplateModel = require("../models/emailTemplate");
 const { sendEmail } = require("../helpers/emailer");
 const { ZeaperPolicy, vendorContract } = require("../helpers/constants");
-const { sendPushMultipleDevice, addNotification } = require("./notification");
+const {
+  sendPushMultipleDevice,
+  addNotification,
+  notifyShop,
+} = require("./notification");
 const NotificationModel = require("../models/notification");
 const { sendOneDevicePushNotification } = require("../helpers/push");
 
@@ -163,7 +167,7 @@ const createShop = async (req, res) => {
       };
 
       const shopMail = await sendEmail(param);
-     
+
       // send push notification to user
       const title = "Shop Registration Successful";
       const body = `Your shop, ${shop.shopName}, has been successfully created and is now under verification.`;
@@ -406,6 +410,16 @@ const deleteShop = async (req, res) => {
       { disabled: true },
       { new: true }
     );
+    const shop_id = shop._id;
+    if (shop_id) {
+      const title = "Shop Disabled";
+      const body = `Your shop, ${shop.shopName}, has been disabled. Please contact support for more information.`;
+      const image =
+        "https://admin.zeaper.com/static/media/Iconmark_green.129d5bdb389ec6130623.png";
+      const notifyShopParam = { shop_id, title, body, image };
+
+      const notify = await notifyShop(notifyShopParam);
+    }
 
     return res.status(200).send({ message: "Shop disabled successfully" });
   } catch (err) {
@@ -439,6 +453,16 @@ const restoreShop = async (req, res) => {
       { shopEnabled: true },
       { new: true }
     ).lean();
+    const shop_id = shop._id;
+    if (shop_id) {
+      const title = "Shop Restored";
+      const body = `Your shop, ${shop.shopName}, has been restored. You can now resume your activities on Zeap.`;
+      const image =
+        "https://admin.zeaper.com/static/media/Iconmark_green.129d5bdb389ec6130623.png";
+      const notifyShopParam = { shop_id, title, body, image };
+
+      const notify = await notifyShop(notifyShopParam);
+    }
     return res.status(200).send({ message: "Shop restored successfully" });
   } catch (err) {
     return res.status(500).send({ error: err.message });

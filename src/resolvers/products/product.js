@@ -109,7 +109,7 @@ const addImage = async (destination, filename) => {
         },
       }
     );
-  // get the public url that avoids egress charges
+    // get the public url that avoids egress charges
     url = {
       link: `https://storage.googleapis.com/${storageRef.name}/product/${filename}`,
       name: filename,
@@ -985,6 +985,23 @@ const setProductStatus = async (req, res) => {
       },
       { new: true }
     ).exec();
+    // notify shop if status is live or rejected
+
+    let title = "Order Item Status Update";
+    let body =
+      status === "live"
+        ? `Order item with productId ${productId} is now live`
+        : `Order item with productId ${productId} has been rejected.. Go to your product manager to view reason(s) for rejection`;
+    if (status === "live" || status === "rejected") {
+      const image = updatedProduct?.colors[0]?.images[0]?.link;
+      const shop_id = updatedProduct?.shop.toString();
+      if (shop_id) {
+        const notifyShopParam = { shop_id, title, body, image };
+
+        const notify = await notifyShop(notifyShopParam);
+      
+      }
+    }
 
     return res.status(200).send({
       data: updatedProduct,

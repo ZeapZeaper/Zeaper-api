@@ -709,18 +709,23 @@ const validateVariations = (variations, sizes, colors) => {
   if (!variations || variations.length === 0) {
     return false;
   }
+  console.log("reached here");
   return variations.every((variation) => {
     const { size, colorValue, price, quantity } = variation;
     if (!sizes.includes(size)) {
+      console.error(`Invalid size: ${size}`);
       return false;
     }
     if (!colors.map((color) => color.value).includes(colorValue)) {
+      console.error(`Invalid color: ${colorValue}`);
       return false;
     }
     if (typeof price !== "number" || price < 0) {
+      console.error(`Invalid price: ${price}`);
       return false;
     }
     if (typeof quantity !== "number" || quantity < 0) {
+      console.error(`Invalid quantity: ${quantity}`);
       return false;
     }
     return true;
