@@ -64,10 +64,9 @@ const registerPushToken = async (req, res) => {
     }
     // check if existing token. if yes, updste, if no, create
     const user = authUser._id;
-   
 
     const userToken = await NotificationModel.findOne({ user });
-  
+
     if (userToken) {
       const existed = userToken.pushToken.find((token) => token === pushToken);
 
@@ -91,7 +90,6 @@ const registerPushToken = async (req, res) => {
     return res.status(500).send({ error: err.message });
   }
 };
-
 
 const testPushNotification = async (req, res) => {
   try {
@@ -120,7 +118,7 @@ const testPushNotification = async (req, res) => {
           "User push token not found. Ensure you first register the user pushToken",
       });
     }
- 
+
     const messageids = [];
     const promises = pushToken.map(async (token) => {
       const sendPush = await sendOneDevicePushNotification(
@@ -397,8 +395,10 @@ const notifyShop = async (param) => {
       user,
     });
     const pushToken = userNotification.pushToken;
+
+    let push = null;
     if (pushToken.length > 0) {
-      const push = await sendPushMultipleDevice(pushToken, title, body, image);
+      push = await sendPushMultipleDevice(pushToken, title, body, image);
     }
     const notificationParam = {
       title,
@@ -406,6 +406,76 @@ const notifyShop = async (param) => {
       image,
       isAdminPanel: false,
       user_id: user,
+    };
+    const addUserNotification = await addNotification(notificationParam);
+    return {
+      data: { push, notificationBox: addUserNotification },
+      message: "User notified",
+    };
+  } catch (err) {
+    return { error: err.message };
+  }
+};
+const notifyAllShops = async (param) => {
+  try {
+    const { title, body, image } = param;
+    const shops = await ShopModel.find({}).lean().select("user");
+    const userIds = shops.map((shop) => shop.user);
+    const userNotifications = await NotificationModel.find({
+      user: { $in: userIds },
+    }).lean();
+    const pushTokens = [];
+    userNotifications.forEach((notification) => {
+      pushTokens.push(...notification.pushToken);
+    });
+    let push = null;
+    if (pushTokens.length > 0) {
+      push = await sendPushMultipleDevice(pushTokens, title, body, image);
+    }
+    // add notification to each user
+    const promises = userIds.map(async (user_id) => {
+      const notificationParam = {
+        title,
+        body,
+        image,
+        isAdminPanel: false,
+        user_id,
+      };
+      await addNotification(notificationParam);
+    });
+    await Promise.all(promises);
+    return {
+      data: { push },
+      message: "All shops notified",
+    };
+  } catch (err) {
+    return { error: err.message };
+  }
+};
+const notifyIndividualUser = async (param) => {
+  try {
+    const { user_id, title, body, image } = param;
+    if (!user_id) {
+      return { error: "required user_id" };
+    }
+    const userNotification = await NotificationModel.findOne({
+      user: user_id,
+    });
+    if (!userNotification) {
+      return { error: "User notification not found" };
+    }
+    const pushToken = userNotification.pushToken;
+
+    let push = null;
+    if (pushToken.length > 0) {
+      push = await sendPushMultipleDevice(pushToken, title, body, image);
+    }
+    const notificationParam = {
+      title,
+      body,
+      image,
+      isAdminPanel: false,
+      user_id,
     };
     const addUserNotification = await addNotification(notificationParam);
     return {
@@ -457,5 +527,7 @@ module.exports = {
   sendPushMultipleDevice,
   sendPushAllAdmins,
   notifyShop,
+  notifyIndividualUser,
+  notifyAllShops,
   testEmailNotification,
 };

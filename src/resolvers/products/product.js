@@ -102,14 +102,16 @@ const addImage = async (destination, filename) => {
       // path.resolve(source),
       {
         public: true,
-        destination: `/product/${filename}`,
+        destination: `product/${filename}`,
         metadata: {
           firebaseStorageDownloadTokens: uuidv4(),
+          cacheControl: "public, max-age=31536000", // 1 year
         },
       }
     );
+    // get the public url that avoids egress charges
     url = {
-      link: storage[0].metadata.mediaLink,
+      link: `https://storage.googleapis.com/${storageRef.name}/product/${filename}`,
       name: filename,
     };
     const deleteSourceFile = await deleteLocalFile(source);
@@ -983,6 +985,23 @@ const setProductStatus = async (req, res) => {
       },
       { new: true }
     ).exec();
+    // notify shop if status is live or rejected
+
+    let title = "Order Item Status Update";
+    let body =
+      status === "live"
+        ? `Order item with productId ${productId} is now live`
+        : `Order item with productId ${productId} has been rejected.. Go to your product manager to view reason(s) for rejection`;
+    if (status === "live" || status === "rejected") {
+      const image = updatedProduct?.colors[0]?.images[0]?.link;
+      const shop_id = updatedProduct?.shop.toString();
+      if (shop_id) {
+        const notifyShopParam = { shop_id, title, body, image };
+
+        const notify = await notifyShop(notifyShopParam);
+      
+      }
+    }
 
     return res.status(200).send({
       data: updatedProduct,
