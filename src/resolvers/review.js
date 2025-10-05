@@ -1,4 +1,3 @@
-
 const { getAuthUser } = require("../middleware/firebaseUserAuth");
 const OrderModel = require("../models/order");
 const ProductOrderModel = require("../models/productOrder");
@@ -6,7 +5,6 @@ const ProductModel = require("../models/products");
 const ReviewModel = require("../models/review");
 const ShopModel = require("../models/shop");
 const { notifyShop } = require("./notification");
-
 
 const canUserReview = async (user, product_id) => {
   const result = {
@@ -179,7 +177,19 @@ const createReview = async (req, res) => {
       const title = "New Review";
       const body = `A new review has been added to your product - ${product.title}`;
       const image = product?.colors[0]?.images[0]?.link;
-      const notifyShopParam = { shop_id, title, body, image };
+      const notificationData = {
+        notificationType: "review",
+        roleType: "vendor",
+        productId: product.productId,
+        reviewId: reviewInstance._id,
+      };
+      const notifyShopParam = {
+        shop_id,
+        title,
+        body,
+        image,
+        data: notificationData,
+      };
       const notify = await notifyShop(notifyShopParam);
     }
     res
@@ -232,7 +242,6 @@ const getReviews = async (req, res) => {
 
 const getAuthUserReviews = async (req, res) => {
   try {
-   
     const user = await getAuthUser(req);
     const reviews = await ReviewModel.find({ user: user._id })
       .populate("product", "productId title")

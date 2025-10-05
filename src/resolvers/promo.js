@@ -54,7 +54,7 @@ const addImage = async (destination, filename) => {
         public: true,
         destination: `/promo/${filename}`,
         metadata: {
-           cacheControl: "public, max-age=31536000, immutable", // 1 year caching
+          cacheControl: "public, max-age=31536000, immutable", // 1 year caching
           firebaseStorageDownloadTokens: uuidv4(),
         },
       }
@@ -389,7 +389,7 @@ const getLivePromos = async (req, res) => {
             ? { productType: { $in: requestedPermittedProductTypes } }
             : {}),
         });
-       
+
         return { ...promo, productsCount };
       })
     );
@@ -716,7 +716,8 @@ const deletePromo = async (req, res) => {
 
 const joinPromo = async (req, res) => {
   try {
-    const { promoId, productId, discountPercentage } = req.body;
+    const { promoId, productId, discountPercentage, vendorControlledDiscount } =
+      req.body;
     if (!promoId) {
       return res.status(400).send({ error: "promoId is required" });
     }
@@ -826,7 +827,11 @@ const joinPromo = async (req, res) => {
       variations = product.variations.map((variation) => {
         const discount =
           variation.price - (variation.price * discountPercentage) / 100;
-        return { ...variation, discount };
+        return {
+          ...variation,
+          discount,
+          vendorControlledDiscount: vendorControlledDiscount || true,
+        };
       });
     }
 

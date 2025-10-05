@@ -54,7 +54,7 @@ const addImage = async (req, filename) => {
         public: true,
         destination: `/user/${filename}`,
         metadata: {
-           cacheControl: "public, max-age=31536000, immutable", // 1 year caching
+          cacheControl: "public, max-age=31536000, immutable", // 1 year caching
           firebaseStorageDownloadTokens: uuidv4(),
         },
       }
@@ -182,7 +182,14 @@ const creatGuestUser = async (req, res) => {
     if (!savedUser) {
       return res.status(400).send({ error: "User not created" });
     }
-
+    // create Notification record for user
+    const notification = new NotificationModel({
+      user: savedUser._id,
+      pushToken: [],
+      pushTokenDate: new Date(),
+      notifications: [],
+    });
+    await notification.save();
     return res.status(200).send({ data: savedUser });
   } catch (err) {
     return res.status(500).send({ error: err.message });
@@ -306,6 +313,19 @@ const convertGuestUserWithEmailPasswordProvider = async (req, res) => {
     if (authUser && authUser.uid) {
       await deleteUserFromFirebase(authUser.uid);
     }
+    // check if Notification record exists for user, if not create one
+    let notificationRecord = await NotificationModel.findOne({
+      user: updatedUser._id,
+    });
+    if (!notificationRecord) {
+      notificationRecord = new NotificationModel({
+        user: updatedUser._id,
+        pushToken: [],
+        pushTokenDate: new Date(),
+        notifications: [],
+      });
+      await notificationRecord.save();
+    }
 
     return res.status(200).send({ data: updatedUser });
   } catch (err) {
@@ -417,7 +437,14 @@ const createUser = async (req, res) => {
       body: formattedUserTemplateBody || "Welcome to Zeap",
     };
     const userMail = await sendEmail(param);
-
+    // create Notification record for user
+    const notification = new NotificationModel({
+      user: savedUser._id,
+      pushToken: [],
+      pushTokenDate: new Date(),
+      notifications: [],
+    });
+    await notification.save();
     return res.status(200).send({
       data,
       message: "User created successfully",
@@ -511,6 +538,14 @@ const createUserWithGoogleOrApple = async (req, res) => {
       body: formattedUserTemplateBody || "Welcome to Zeap",
     };
     const userMail = await sendEmail(param);
+    // create Notification record for user
+    const notification = new NotificationModel({
+      user: savedUser._id,
+      pushToken: [],
+      pushTokenDate: new Date(),
+      notifications: [],
+    });
+    await notification.save();
     return res
       .status(200)
       .send({ data: newUser, message: "User created successfully" });
@@ -539,7 +574,7 @@ const mergePasswordLoginGuestUser = async (req, res) => {
     }
 
     if (!guestUser.isGuest) {
-      console.log("User is not a guest", guestUser.isGuest);
+    
       return res.status(400).send({ error: "User is not a guest" });
     }
     const updateGuestOrders = await OrderModel.updateMany(
@@ -565,8 +600,18 @@ const mergePasswordLoginGuestUser = async (req, res) => {
     );
     const updatedNotification = await NotificationModel.findOneAndUpdate(
       { user: guestUser._id },
-      { user: authUser._id }
+      { user: authUser._id },
+      { new: true }
     );
+    if (!updatedNotification) {
+      const newNotification = new NotificationModel({
+        user: authUser._id,
+        pushToken: [],
+        pushTokenDate: new Date(),
+        notifications: [],
+      });
+      await newNotification.save();
+    }
     const updateGuestWishes = await WishModel.updateMany(
       { user: guestUser._id },
       { user: authUser._id }
@@ -719,8 +764,18 @@ const mergeGoogleAppleLoginGuestUser = async (req, res) => {
       );
       const updatedNotification = await NotificationModel.findOneAndUpdate(
         { user: guestUser._id },
-        { user: alreadyExisting._id }
+        { user: alreadyExisting._id },
+        { new: true }
       );
+      if (!updatedNotification) {
+        const newNotification = new NotificationModel({
+          user: alreadyExisting._id,
+          pushToken: [],
+          pushTokenDate: new Date(),
+          notifications: [],
+        });
+        await newNotification.save();
+      }
       const updateGuestWishes = await WishModel.updateMany(
         { user: guestUser._id },
         { user: alreadyExisting._id }
@@ -1124,7 +1179,6 @@ function convertToPublicUrl(downloadUrl) {
   }
 }
 
-
 const getUserByUid = async (req, res) => {
   try {
     const { uid } = req.query;
@@ -1144,7 +1198,6 @@ const getUserByUid = async (req, res) => {
       return res.status(404).send({ error: "User is disabled" });
     }
 
-   
     return res.status(200).send({ data: user });
   } catch (error) {
     return res.status(500).send({ error: error.message });

@@ -15,14 +15,14 @@ const {
   getExpectedVendorCompletionDate,
   replaceProductOrderVariablesinTemplate,
   replaceUserVariablesinTemplate,
+  calcShopRevenueValue,
 } = require("../helpers/utils");
 const { default: mongoose } = require("mongoose");
 const {
   addNotification,
   sendPushAllAdmins,
   notifyShop,
-  sendPushOneDevice,
-  sendPushMultipleDevice,
+  notifyIndividualUser,
 } = require("./notification");
 const NotificationModel = require("../models/notification");
 const generatePdf = require("../helpers/pdf");
@@ -151,6 +151,7 @@ const buildProductOrders = async (
     };
     const promo = product.promo;
     const variation = product.variations.find((v) => v.sku === sku);
+    const originalAmountDue = variation?.price * quantity;
     const amountDue = (variation?.discount || variation.price) * quantity;
     const usdValue = await currencyCoversion(amountDue, "USD");
     const gbpValue = await currencyCoversion(amountDue, "GBP");
@@ -172,16 +173,23 @@ const buildProductOrders = async (
         value: gbpValue,
       });
     }
+    const productType = product.productType;
+    const vendorControlledDiscount = product?.vendorControlledDiscount || true;
     const shopRevenue = {
       currency: "NGN",
       status: "pending",
       // value is 75% of the amount due
-      value: (amountDue * 0.75).toFixed(2),
+      value: calcShopRevenueValue({
+        productType,
+        originalAmountDue,
+        amountDue,
+        vendorControlledDiscount,
+      }),
     };
     let expectedDeliveryDate = null;
 
     const createdAt = new Date();
-    const productType = product.productType;
+
     const country = deliveryDetails?.country || "Nigeria";
     const expectedDeliveryDays =
       deliveryMethod === "express"
@@ -227,7 +235,20 @@ const buildProductOrders = async (
       const title = "New Order";
       const body = `You have a new order with order ID - ${orderId} and item number - ${itemNo}`;
       const image = savedProductOrder?.images[0]?.link || null;
-      const notifyShopParam = { shop_id: shop.toString(), title, body, image };
+      const notificationData = {
+        orderId,
+        itemNo,
+        productOrder_id: savedProductOrder._id.toString(),
+        notificationType: "order",
+        roleType: "vendor",
+      };
+      const notifyShopParam = {
+        shop_id: shop.toString(),
+        title,
+        body,
+        image,
+        data: notificationData,
+      };
       const notify = await notifyShop(notifyShopParam);
       const sendEmail = await sendProductOrdershopEmail(savedProductOrder);
     }
@@ -350,25 +371,25 @@ const createOrder = async (param) => {
   const title = "Order Placed";
   const body = `Your order with order ID ${orderId} has been placed successfully`;
   const image = null;
-  const pushAllAdmins = await sendPushAllAdmins(title, body, image);
-  const userNotification = await NotificationModel.findOne({
-    user,
-  });
-  const pushToken = userNotification?.pushToken || [];
-  if (pushToken?.length > 0) {
-    const push = await sendPushMultipleDevice(pushToken, title, body, image);
-  }
-  const notificationParam = {
+  const pushAllAdmins = await sendPushAllAdmins({
     title,
     body,
     image,
-    isAdminPanel: false,
+    data: { orderId, notificationType: "order", roleType: "admin" },
+  });
+  const userNotification = await notifyIndividualUser({
     user_id: user,
-  };
-  const addUserNotification = await addNotification(notificationParam);
+    title,
+    body,
+    image,
+    data: { orderId, notificationType: "order", roleType: "buyer" },
+  });
 
   const addAdminNotification = await addNotification({
-    ...notificationParam,
+    title,
+    body,
+    image,
+    data: { orderId, notificationType: "order", roleType: "buyer" },
     isAdminPanel: true,
     user_id: null,
   });
@@ -717,7 +738,6 @@ const getProductOrder = async (req, res) => {
     productOrder.order = order;
     productOrder.deliveryDetails = deliveryDetails;
 
-
     return res.status(200).send({
       data: productOrder,
       message: "Product Order fetched successfully",
@@ -863,9 +883,9 @@ const updateProductOrderStatus = async (req, res) => {
 
     if (selectedStatus.value === "order confirmed") {
       confirmedAt = new Date();
-      const createdAt = productOrder.createdAt;
-      const productType = productOrder.product.productType;
-      const bespokes = ["bespokeCloth", "bespokeShoe"];
+      // const createdAt = productOrder.createdAt;
+      // const productType = productOrder.product.productType;
+      // const bespokes = ["bespokeCloth", "bespokeShoe"];
     }
     if (selectedStatus.value === "order placed") {
       confirmedAt = null;
@@ -936,13 +956,20 @@ const updateProductOrderStatus = async (req, res) => {
     let body = `Item no ${productOrder?.itemNo} in your order with order ID - ${productOrder.orderId} has been updated to ${selectedStatus.name}`;
     const image = productOrder.images[0].link;
 
-    const userNotification = await NotificationModel.findOne({
-      user,
+    const userNotification = await notifyIndividualUser({
+      user_id: user,
+      title,
+      body,
+      image,
+      data: {
+        orderId: productOrder.orderId,
+        itemNo: productOrder.itemNo,
+        productOrder_id: productOrder._id.toString(),
+        notificationType: "order",
+        roleType: "buyer",
+      },
     });
-    const pushToken = userNotification?.pushToken || [];
-    if (pushToken?.length > 0) {
-      const push = await sendPushMultipleDevice(pushToken, title, body, image);
-    }
+
     const notificationParam = {
       title,
       body,
@@ -950,7 +977,7 @@ const updateProductOrderStatus = async (req, res) => {
       isAdminPanel: false,
       user_id: user,
     };
-    const addUserNotification = await addNotification(notificationParam);
+
     // for shop
     const shop_id = productOrder.shop.toString();
     if (shop_id) {
@@ -958,13 +985,36 @@ const updateProductOrderStatus = async (req, res) => {
         const expectedVendorCompletionDate =
           UpdatedProductOrder.expectedVendorCompletionDate;
         body = `You have successfully confirmed an order with order ID - ${productOrder.orderId} and item number - ${productOrder.itemNo}. This order is expected to be completed between ${expectedVendorCompletionDate.min} and ${expectedVendorCompletionDate.max}`;
+      } else {
+        body = `Order with order ID - ${productOrder.orderId} and item number - ${productOrder.itemNo} has been updated to ${selectedStatus.name}`;
       }
 
-      const notifyShopParam = { shop_id, title, body, image };
+      const notifyShopParam = {
+        shop_id,
+        title,
+        body,
+        image,
+        data: {
+          orderId: productOrder.orderId,
+          itemNo: productOrder.itemNo,
+          productOrder_id: productOrder._id.toString(),
+          notificationType: "order",
+          roleType: "vendor",
+        },
+      };
       const notify = await notifyShop(notifyShopParam);
     }
     notificationParam.isAdminPanel = true;
     notificationParam.user_id = null;
+    notificationParam.data = {
+      orderId: productOrder.orderId,
+      itemNo: productOrder.itemNo,
+      productOrder_id: productOrder._id.toString(),
+      notificationType: "order",
+      roleType: "admin",
+    };
+    // change body for admin notification
+    //
     notificationParam.body = `Item no ${productOrder?.itemNo}  in order with order ID - ${productOrder.orderId} has been updated to ${selectedStatus.name}`;
     body = `Item no ${productOrder?.itemNo}  in order with order ID - ${productOrder.orderId} has been updated to ${selectedStatus.name}`;
 
@@ -1049,21 +1099,22 @@ const cancelOrder = async (req, res) => {
     let body = `An item in your order with order ID - ${productOrder.orderId} with item number - ${productOrder.itemNo} has been cancelled`;
     const image = productOrder.images[0].link;
 
-    const userNotification = await NotificationModel.findOne({
-      user,
-    });
-    const pushToken = userNotification.pushToken;
-    if (pushToken) {
-      const push = await sendPushMultipleDevice(pushToken, title, body, image);
-    }
     const notificationParam = {
       title,
       body,
       image,
+      data: {
+        orderId: productOrder.orderId,
+        itemNo: productOrder.itemNo,
+        productOrder_id: productOrder._id.toString(),
+        notificationType: "order",
+        roleType: "buyer",
+      },
       isAdminPanel: false,
       user_id: user,
     };
-    const addUserNotification = await addNotification(notificationParam);
+    const userNotification = await notifyIndividualUser(notificationParam);
+
     notificationParam.isAdminPanel = true;
     notificationParam.user_id = null;
     body = `An item in order with order ID - ${productOrder.orderId} with item number - ${productOrder.itemNo} has been cancelled`;
@@ -1071,7 +1122,20 @@ const cancelOrder = async (req, res) => {
     const pushAllAdmins = await sendPushAllAdmins(title, body, image);
     const shop_id = productOrder.shop.toString();
     if (shop_id) {
-      const notifyShopParam = { shop_id, title, body, image };
+      body = `Order with order ID - ${productOrder.orderId} and item number - ${productOrder.itemNo} has been cancelled`;
+      const notifyShopParam = {
+        shop_id,
+        title,
+        body,
+        image,
+        data: {
+          orderId: productOrder.orderId,
+          itemNo: productOrder.itemNo,
+          productOrder_id: productOrder._id.toString(),
+          notificationType: "order",
+          roleType: "vendor",
+        },
+      };
       const notify = await notifyShop(notifyShopParam);
     }
     return res.status(200).send({

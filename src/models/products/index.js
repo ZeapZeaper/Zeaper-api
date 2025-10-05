@@ -140,6 +140,7 @@ const ProductSchema = new mongoose.Schema({
       sku: { type: String, required: true },
       price: { type: Number, required: true },
       discount: { type: Number, required: false },
+      vendorControlledDiscount: { type: Boolean, required: false, default: true },
       colorValue: { type: String, required: true },
       size: { type: String, required: true },
       quantity: { type: Number, required: true },

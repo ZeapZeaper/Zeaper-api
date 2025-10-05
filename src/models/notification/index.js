@@ -15,6 +15,7 @@ const NotificationSchema = new mongoose.Schema({
     {
       title: { type: String, required: true },
       body: { type: String, required: true },
+      data: { type: Object, required: false },
       image: { type: String, required: false },
       createdAt: { type: Date, required: true, default: Date.now },
     },

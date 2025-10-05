@@ -686,6 +686,20 @@ const getExpectedExpressDeliveryDate = (productType, country) => {
   return { min, max, method, country };
  
 };
+const calcShopRevenueValue = ({productType, originalAmountDue, amountDue, vendorControlledDiscount = true}) => {
+  const amount = vendorControlledDiscount ? amountDue : originalAmountDue;
+  const bespokes = ["bespokeCloth", "bespokeShoe"];
+  // 75% for bespoke
+  // 80% for ready-to-wear
+  const isBespoke = bespokes.includes(productType);
+  let revenueValue;
+  if (isBespoke) {
+    revenueValue = amount * 0.75;
+  } else {
+    revenueValue = amount * 0.8;
+  }
+  return revenueValue.toFixed(2);
+};
 const detectDeviceType = (req) => {
   const ua = req.headers["user-agent"] || "";
 
@@ -727,4 +741,5 @@ module.exports = {
   getExpectedStandardDeliveryDate,
   getExpectedVendorCompletionDate,
   detectDeviceType,
+  calcShopRevenueValue,
 };
