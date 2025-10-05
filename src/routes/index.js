@@ -851,6 +851,11 @@ let routes = (app) => {
     notificationResolver.testPushNotification
   );
   router.post(
+    "/notification/individual/test",
+    authMiddleware,
+    notificationResolver.testNotifyIndividualUser
+  );
+  router.post(
     "/notification/email/test",
     authMiddleware,
     notificationResolver.testEmailNotification

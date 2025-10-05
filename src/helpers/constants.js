@@ -970,6 +970,19 @@ const helpCenterSubCategoryEnums = [
 ];
 const ZeaperPolicy = "https://admin.zeaper.com/docs/Zeaper_Policy.pdf";
 const vendorContract = "https://admin.zeaper.com/docs/Zeap_vendor_contract.pdf";
+const notificationTypeEnums = [
+  "general",
+  "order",
+  "promo",
+  "account",
+  "system",
+  "voucher",
+  "point", 
+  "review",
+  "product",
+  "shop",
+];
+const roleTypeEnums = ["buyer", "vendor", "admin"];
 
 module.exports = {
   genderEnums,
@@ -1012,4 +1025,6 @@ module.exports = {
   bodyMeasurementEnums,
   ZeaperPolicy,
   vendorContract,
+  notificationTypeEnums,
+  roleTypeEnums
 };
