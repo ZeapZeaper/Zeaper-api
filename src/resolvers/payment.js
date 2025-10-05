@@ -1041,7 +1041,8 @@ const payShop = async (req, res) => {
       const itemNo = productOrder.itemNo;
       const body = `Payment received for item no ${itemNo} in the order - ${productOrder.orderId}`;
       const image = productOrder.images[0].link;
-      const notifyShopParam = { shop_id, title, body, image };
+      const notificationData = { notificationType: "shop", roleType: "vendor", reference };
+      const notifyShopParam = { shop_id, title, body, image, data: notificationData };
       const notify = await notifyShop(notifyShopParam);
     }
     return res.status(200).send({

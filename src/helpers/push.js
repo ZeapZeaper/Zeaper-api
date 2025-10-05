@@ -1,7 +1,13 @@
 const { messaging } = require("../config/firebase");
 const NotificationModel = require("../models/notification");
 
-const sendOneDevicePushNotification = async (token, title, body, image) => {
+const sendOneDevicePushNotification = async ({
+  token,
+  title,
+  body,
+  image,
+  data,
+}) => {
   const message = {
     notification: {
       title,
@@ -9,6 +15,11 @@ const sendOneDevicePushNotification = async (token, title, body, image) => {
       image:
         image ||
         "https://admin.zeaper.com/static/media/Iconmark_green.129d5bdb389ec6130623.png",
+    },
+    data:{
+      notificationType: data?.notificationType || 'general',
+      roleType: data?.roleType || 'buyer',
+      ...data
     },
     token,
   };
@@ -21,7 +32,7 @@ const sendOneDevicePushNotification = async (token, title, body, image) => {
       return response;
     })
     .catch((error) => {
-      console.log("Error sending message:",token, error);
+      console.log("Error sending message:", token, error);
       if (
         error.code === "messaging/invalid-argument" ||
         error.code === "messaging/registration-token-not-registered"
@@ -49,12 +60,13 @@ const removeToken = async (token) => {
   return { success: true };
 };
 
-const sendMultipleDevicePushNotification = async (
+const sendMultipleDevicePushNotification = async ({
   tokens,
   title,
   body,
-  image
-) => {
+  data,
+  image,
+}) => {
   const message = {
     notification: {
       title,
@@ -62,6 +74,11 @@ const sendMultipleDevicePushNotification = async (
       image:
         image ||
         "https://admin.zeaper.com/static/media/Iconmark_green.129d5bdb389ec6130623.png",
+    },
+    data:{
+      notificationType: data?.notificationType || 'general',
+      roleType: data?.roleType || 'buyer',
+      ...data
     },
     tokens,
   };

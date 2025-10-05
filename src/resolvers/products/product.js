@@ -995,11 +995,17 @@ const setProductStatus = async (req, res) => {
     if (status === "live" || status === "rejected") {
       const image = updatedProduct?.colors[0]?.images[0]?.link;
       const shop_id = updatedProduct?.shop.toString();
+      const notificationData = {
+          notificationType: "product",
+          roleType: "vendor",
+          productId,
+          status,
+        }
+      const pushAllAdmins = await sendPushAllAdmins({ title, body, image, data: notificationData });
+     
       if (shop_id) {
-        const notifyShopParam = { shop_id, title, body, image };
-
+        const notifyShopParam = { shop_id, title, body, image, data: notificationData };
         const notify = await notifyShop(notifyShopParam);
-      
       }
     }
 
@@ -1072,13 +1078,24 @@ const submitProduct = async (req, res) => {
     const body = `Order item with productId ${productId} has been set to under review`;
     const image = updatedProduct?.colors[0]?.images[0]?.link;
     const shop_id = updatedProduct?.shop.toString();
-
+const notificationData = {
+          notificationType: "product",
+          roleType: "vendor",
+          productId,
+          status: "under review",
+        }
     if (shop_id) {
-      const notifyShopParam = { shop_id, title, body, image };
+      const notifyShopParam = {
+        shop_id,
+        title,
+        body,
+        image,
+        data: notificationData,
+      };
 
       const notify = await notifyShop(notifyShopParam);
     }
-    const pushAllAdmins = await sendPushAllAdmins(title, body, image);
+    const pushAllAdmins = await sendPushAllAdmins({ title, body, image, data: notificationData });
     const notificationParam = {
       title,
       body,

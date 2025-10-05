@@ -1,4 +1,4 @@
-const { sendOneDevicePushNotification } = require("../helpers/push");
+
 const {
   codeGenerator,
   currencyCoversion,
@@ -10,6 +10,7 @@ const BasketModel = require("../models/basket");
 const NotificationModel = require("../models/notification");
 const UserModel = require("../models/user");
 const VoucherModel = require("../models/voucher");
+const { notifyIndividualUser } = require("./notification");
 
 const generateVoucherCode = async () => {
   let valid = false;
@@ -95,65 +96,30 @@ const issueVoucher = async (req, res) => {
       const currencyRates = await ExchangeRateModel.find();
       rate = currencyRates.find((rate) => rate.currency === currency).rate;
     }
-    const notification = await NotificationModel.findOne({ user });
-    if (notification) {
-      const code = voucher.code;
-      const title = "Voucher Issued";
-      const body = `A voucher of ${currency} ${calcRate(
-        rate,
-        currency,
-        amount
-      )} has been issued to you. Use code ${code} to redeem before it expires in ${getDaysDifference(
-        new Date(voucher.expiryDate)
-      )} days`;
-      const image = "";
-      const sendPush = await sendOneDevicePushNotification(
-        notification.pushToken,
-        title,
-        body,
-        image
-      );
-      if (sendPush) {
-      
-      } else {
-        console.log("Failed to send push notification", sendPush);
-      }
-      const notifications = notification.notifications;
-     
-      notifications.push({
-        title,
-        body,
-        image:
-          image ||
-          "https://zeap.netlify.app/static/media/app_logo.620ff058fcbcd2428e3c.png",
-      });
-      notification.notifications = notifications;
-   
-      await notification.save();
-    } else {
-      const newNotification = new NotificationModel({
-        user,
-        pushToken: "",
-        pushTokenDate: new Date(),
-        notifications: [
-          {
-            title: "Voucher Issued",
-            body: `A voucher of ${currency} ${calcRate(
-              rate,
-              currency,
-              amount
-            )} has been issued to you. Use code ${
-              voucher.code
-            } to redeem before it expires in ${getDaysDifference(
-              new Date(voucher.expiryDate)
-            )} days`,
-            image:
-              image ||
-              "https://zeap.netlify.app/static/media/app_logo.620ff058fcbcd2428e3c.png",
-          },
-        ],
-      });
-    }
+
+    const code = voucher.code;
+    const title = "Voucher Issued";
+    const body = `A voucher of ${currency} ${calcRate(
+      rate,
+      currency,
+      amount
+    )} has been issued to you. Use code ${code} to redeem before it expires in ${getDaysDifference(
+      new Date(voucher.expiryDate)
+    )} days`;
+    const image = "";
+    const notificationData = {
+      notificationType: "voucher",
+      roleType: "buyer",
+      code,
+    };
+    const notifyuser = await notifyIndividualUser({
+      user_id: requestedUser._id,
+      title,
+      body,
+      image,
+      data: notificationData,
+    });
+
     return res.status(200).send({
       data: voucher,
       message: "Voucher issued successfully",
@@ -181,11 +147,10 @@ const getAuthUserActiveVouchers = async (req, res) => {
         voucher.amount,
         currency
       );
-      
+
       voucher.amount = amountInPreferredCurrency;
       voucher.currency = currency;
-      
-     
+
       data.push(voucher);
       return voucher;
     });
@@ -209,7 +174,7 @@ const getAuthUserInactiveVouchers = async (req, res) => {
       $or: [{ isUsed: true }, { expiryDate: { $lt: new Date() } }],
     });
     const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
-    const data = []
+    const data = [];
     const promises = vouchers.map(async (voucher) => {
       const amountInPreferredCurrency = await currencyCoversion(
         voucher.amount,
@@ -285,7 +250,10 @@ const applyVoucher = async (req, res) => {
       code,
     });
     if (!voucher) {
-      return res.status(400).send({ error: "Voucher with this code not found. Please check the code and try again." });
+      return res.status(400).send({
+        error:
+          "Voucher with this code not found. Please check the code and try again.",
+      });
     }
     if (voucher.isUsed) {
       return res.status(400).send({ error: "Voucher has already been used" });
@@ -294,7 +262,9 @@ const applyVoucher = async (req, res) => {
       return res.status(400).send({ error: "Voucher has expired" });
     }
     if (voucher.user.toString() !== user._id.toString()) {
-      return res.status(400).send({ error: "This voucher does not belong to you" });
+      return res
+        .status(400)
+        .send({ error: "This voucher does not belong to you" });
     }
     const basket = await BasketModel.findOne({
       user: user._id,

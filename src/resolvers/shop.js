@@ -12,12 +12,12 @@ const EmailTemplateModel = require("../models/emailTemplate");
 const { sendEmail } = require("../helpers/emailer");
 const { ZeaperPolicy, vendorContract } = require("../helpers/constants");
 const {
-  sendPushMultipleDevice,
-  addNotification,
   notifyShop,
+  notifyIndividualUser,
+  notifyAllAdmins,
 } = require("./notification");
 const NotificationModel = require("../models/notification");
-const { sendOneDevicePushNotification } = require("../helpers/push");
+
 
 function getRandomInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));
@@ -167,38 +167,34 @@ const createShop = async (req, res) => {
       };
 
       const shopMail = await sendEmail(param);
-
-      // send push notification to user
-      const title = "Shop Registration Successful";
-      const body = `Your shop, ${shop.shopName}, has been successfully created and is now under verification.`;
-      const image =
-        "https://admin.zeaper.com/static/media/Iconmark_green.129d5bdb389ec6130623.png";
-      const userNotification = await NotificationModel.findOne({
-        user: updatedUser._id,
-      });
-
-      const pushToken = userNotification?.pushToken || [];
-
-      if (userNotification && pushToken.length > 0) {
-        const promises = pushToken.map(async (token) => {
-          const sendPush = await sendOneDevicePushNotification(
-            token,
-            title,
-            body,
-            image
-          );
-        });
-        await Promise.all(promises);
-        const notificationParam = {
-          title,
-          body,
-          image,
-          isAdminPanel: false,
-          user_id: user,
-        };
-        const addUserNotification = await addNotification(notificationParam);
-      }
     }
+    // send push notification to user
+    const title = "Shop Registration Successful";
+    const body = `Your shop, ${shop.shopName}, has been successfully created and is now under verification.`;
+    const image =
+      "https://admin.zeaper.com/static/media/Iconmark_green.129d5bdb389ec6130623.png";
+    const userNotification = await NotificationModel.findOne({
+      user: updatedUser._id,
+    });
+    const notificationData = {
+      notificationType: "shop",
+      roleType: "vendor",
+      shopId: shop.shopId,
+    };
+    const notifyUser = await notifyIndividualUser({
+      user_id: updatedUser._id,
+      title,
+      body,
+      image,
+      data: notificationData,
+    });
+    // notify all admins
+    const notifyAdmins = notifyAllAdmins({
+      title,
+      body,
+      image,
+      data: notificationData,
+    });
     return res
       .status(200)
       .send({ data: shop, message: "Shop created successfully" });
@@ -416,7 +412,18 @@ const deleteShop = async (req, res) => {
       const body = `Your shop, ${shop.shopName}, has been disabled. Please contact support for more information.`;
       const image =
         "https://admin.zeaper.com/static/media/Iconmark_green.129d5bdb389ec6130623.png";
-      const notifyShopParam = { shop_id, title, body, image };
+      const notificationData = {
+        notificationType: "shop",
+        roleType: "vendor",
+        shopId: shop.shopId,
+      };
+      const notifyShopParam = {
+        shop_id,
+        title,
+        body,
+        image,
+        data: notificationData,
+      };
 
       const notify = await notifyShop(notifyShopParam);
     }
@@ -459,7 +466,18 @@ const restoreShop = async (req, res) => {
       const body = `Your shop, ${shop.shopName}, has been restored. You can now resume your activities on Zeap.`;
       const image =
         "https://admin.zeaper.com/static/media/Iconmark_green.129d5bdb389ec6130623.png";
-      const notifyShopParam = { shop_id, title, body, image };
+      const notificationData = {
+        notificationType: "shop",
+        roleType: "vendor",
+        shopId: shop.shopId,
+      };
+      const notifyShopParam = {
+        shop_id,
+        title,
+        body,
+        image,
+        data: notificationData,
+      };
 
       const notify = await notifyShop(notifyShopParam);
     }
