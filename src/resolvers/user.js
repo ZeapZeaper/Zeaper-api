@@ -310,6 +310,15 @@ const convertGuestUserWithEmailPasswordProvider = async (req, res) => {
       body: formattedUserTemplateBody || "Welcome to Zeap",
     };
     const userMail = await sendEmail(param);
+    const welcomeEmailSent = userMail ? true : false;
+    const initialPointGiven = newPoint ? true : false;
+    if (welcomeEmailSent || initialPointGiven) {
+      updatedUser = await UserModel.findByIdAndUpdate(
+        updatedUser._id,
+        { welcomeEmailSent, initialPointGiven },
+        { new: true }
+      );
+    }
     if (authUser && authUser.uid) {
       await deleteUserFromFirebase(authUser.uid);
     }
@@ -415,8 +424,6 @@ const createUser = async (req, res) => {
 
     const newPoint = await point.save();
 
-    const data = {};
-
     const welcomeUserEmailTemplate = await EmailTemplateModel.findOne({
       name: "welcome-user",
     }).lean();
@@ -436,17 +443,29 @@ const createUser = async (req, res) => {
       subject: formattedUserTemplateSubject || "Welcome",
       body: formattedUserTemplateBody || "Welcome to Zeap",
     };
+
     const userMail = await sendEmail(param);
+    const welcomeEmailSent = userMail ? true : false;
+    const initialPointGiven = newPoint ? true : false;
+    const newUser_id = newUser._id;
+    if (welcomeEmailSent || initialPointGiven) {
+      newUser = await UserModel.findByIdAndUpdate(
+        newUser_id,
+        { welcomeEmailSent, initialPointGiven },
+        { new: true }
+      );
+    }
     // create Notification record for user
     const notification = new NotificationModel({
-      user: savedUser._id,
+      user: newUser_id,
       pushToken: [],
       pushTokenDate: new Date(),
       notifications: [],
     });
     await notification.save();
+
     return res.status(200).send({
-      data,
+      data: newUser,
       message: "User created successfully",
     });
   } catch (error) {
@@ -538,9 +557,19 @@ const createUserWithGoogleOrApple = async (req, res) => {
       body: formattedUserTemplateBody || "Welcome to Zeap",
     };
     const userMail = await sendEmail(param);
+    const welcomeEmailSent = userMail ? true : false;
+    const initialPointGiven = newPoint ? true : false;
+    const newUser_id = newUser._id;
+    if (welcomeEmailSent || initialPointGiven) {
+      newUser = await UserModel.findByIdAndUpdate(
+        newUser_id,
+        { welcomeEmailSent, initialPointGiven },
+        { new: true }
+      );
+    }
     // create Notification record for user
     const notification = new NotificationModel({
-      user: savedUser._id,
+      user: newUser_id,
       pushToken: [],
       pushTokenDate: new Date(),
       notifications: [],
@@ -561,7 +590,7 @@ const mergePasswordLoginGuestUser = async (req, res) => {
     }
 
     const authUser = await getAuthUser(req);
-    console.log("authUser", authUser);
+
     if (!authUser) {
       return res.status(400).send({
         error: "current logged in Password User not found in firebase",
@@ -574,7 +603,6 @@ const mergePasswordLoginGuestUser = async (req, res) => {
     }
 
     if (!guestUser.isGuest) {
-    
       return res.status(400).send({ error: "User is not a guest" });
     }
     const updateGuestOrders = await OrderModel.updateMany(
@@ -712,9 +740,9 @@ const mergeGoogleAppleLoginGuestUser = async (req, res) => {
     const alreadyExisting = await UserModel.findOne({
       uid: newUid,
     }).lean();
-
+    let updatedUser;
     if (alreadyExisting) {
-      const updatedUser = await UserModel.findByIdAndUpdate(
+      updatedUser = await UserModel.findByIdAndUpdate(
         alreadyExisting._id,
         { isGuest: false, firstName, lastName, email },
         { new: true }
@@ -790,16 +818,12 @@ const mergeGoogleAppleLoginGuestUser = async (req, res) => {
           { user: guestUser._id },
           { user: alreadyExisting._id }
         );
-
-      await deleteUserFromFirebase(guestUser.uid);
-      await UserModel.findByIdAndDelete(guestUser._id);
-      return res.status(200).send({
-        data: alreadyExisting,
-        message:
-          "Guest user merged successfully to logged in google/apple user",
-      });
+      if (guestUser.uid && guestUser.uid !== alreadyExisting.uid) {
+        await deleteUserFromFirebase(guestUser.uid);
+        await UserModel.findByIdAndDelete(guestUser._id);
+      }
     } else {
-      const updatedUser = await UserModel.findOneAndUpdate(
+      updatedUser = await UserModel.findOneAndUpdate(
         { uid: guestUid },
         {
           email,
@@ -813,7 +837,11 @@ const mergeGoogleAppleLoginGuestUser = async (req, res) => {
       if (!updatedUser) {
         return res.status(500).send({ error: "Error updating user" });
       }
-      // create point for user
+    }
+    let welcomeEmailSent = updatedUser?.welcomeEmailSent || false;
+    let initialPointGiven = updatedUser?.initialPointGiven || false;
+    // create point for user
+    if (!initialPointGiven) {
       const point = new PointModel({
         user: updatedUser._id,
         availablePoints: 500,
@@ -822,6 +850,13 @@ const mergeGoogleAppleLoginGuestUser = async (req, res) => {
       });
 
       const newPoint = await point.save();
+      if (newPoint) {
+        initialPointGiven = true;
+      }
+    }
+    // send welcome email only if email exists and not sent before
+
+    if (updatedUser.email && !welcomeEmailSent) {
       const welcomeUserEmailTemplate = await EmailTemplateModel.findOne({
         name: "welcome-user",
       }).lean();
@@ -842,12 +877,28 @@ const mergeGoogleAppleLoginGuestUser = async (req, res) => {
         body: formattedUserTemplateBody || "Welcome to Zeap",
       };
       const userMail = await sendEmail(param);
-      return res.status(200).send({
-        data: updatedUser,
-        message:
-          "Guest user merged successfully to logged in google/apple user",
-      });
+      if (userMail) {
+        welcomeEmailSent = true;
+      }
     }
+    if (
+      welcomeEmailSent !== updatedUser?.welcomeEmailSent ||
+      initialPointGiven !== updatedUser?.initialPointGiven
+    ) {
+      updatedUser = await UserModel.findByIdAndUpdate(
+        updatedUser._id,
+        { welcomeEmailSent, initialPointGiven },
+        { new: true }
+      );
+    }
+    if (guestUser.uid && guestUser.uid !== updatedUser.uid) {
+      await deleteUserFromFirebase(guestUser.uid);
+      await UserModel.findByIdAndDelete(guestUser._id);
+    }
+    return res.status(200).send({
+      data: updatedUser,
+      message: "Guest user merged successfully to logged in google/apple user",
+    });
   } catch (error) {
     return res.status(500).send({ error: error.message });
   }
