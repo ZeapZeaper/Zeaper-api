@@ -18,7 +18,6 @@ const {
 } = require("./notification");
 const NotificationModel = require("../models/notification");
 
-
 function getRandomInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));
 }
@@ -167,6 +166,15 @@ const createShop = async (req, res) => {
       };
 
       const shopMail = await sendEmail(param);
+      if (shopMail?.data) {
+        await ShopModel.findOneAndUpdate(
+          {
+            _id: shop._id,
+          },
+          { welcomeEmailSent: true },
+          { new: true }
+        ).lean();
+      }
     }
     // send push notification to user
     const title = "Shop Registration Successful";

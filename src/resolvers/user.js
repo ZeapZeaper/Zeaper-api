@@ -310,7 +310,7 @@ const convertGuestUserWithEmailPasswordProvider = async (req, res) => {
       body: formattedUserTemplateBody || "Welcome to Zeap",
     };
     const userMail = await sendEmail(param);
-    const welcomeEmailSent = userMail ? true : false;
+    const welcomeEmailSent = userMail?.data ? true : false;
     const initialPointGiven = newPoint ? true : false;
     if (welcomeEmailSent || initialPointGiven) {
       updatedUser = await UserModel.findByIdAndUpdate(
@@ -445,7 +445,7 @@ const createUser = async (req, res) => {
     };
 
     const userMail = await sendEmail(param);
-    const welcomeEmailSent = userMail ? true : false;
+    const welcomeEmailSent = userMail?.data ? true : false;
     const initialPointGiven = newPoint ? true : false;
     const newUser_id = newUser._id;
     if (welcomeEmailSent || initialPointGiven) {
@@ -557,7 +557,7 @@ const createUserWithGoogleOrApple = async (req, res) => {
       body: formattedUserTemplateBody || "Welcome to Zeap",
     };
     const userMail = await sendEmail(param);
-    const welcomeEmailSent = userMail ? true : false;
+    const welcomeEmailSent = userMail?.data ? true : false;
     const initialPointGiven = newPoint ? true : false;
     const newUser_id = newUser._id;
     if (welcomeEmailSent || initialPointGiven) {
@@ -715,7 +715,7 @@ const mergeGoogleAppleLoginGuestUser = async (req, res) => {
         error: "current logged in Google/Apple User not found in firebase",
       });
     }
-
+    console.log("firebaseUser", firebaseUser);
     const newUid = firebaseUser.uid;
     const firstName = firebaseUser.displayName
       ? firebaseUser.displayName.split(" ")[0]
@@ -742,6 +742,7 @@ const mergeGoogleAppleLoginGuestUser = async (req, res) => {
     }).lean();
     let updatedUser;
     if (alreadyExisting) {
+      console.log("alreadyExisting", alreadyExisting);
       updatedUser = await UserModel.findByIdAndUpdate(
         alreadyExisting._id,
         { isGuest: false, firstName, lastName, email },
@@ -823,7 +824,7 @@ const mergeGoogleAppleLoginGuestUser = async (req, res) => {
         await UserModel.findByIdAndDelete(guestUser._id);
       }
     } else {
-      updatedUser = await UserModel.findOneAndUpdate(
+      const updatedGuestUser = await UserModel.findOneAndUpdate(
         { uid: guestUid },
         {
           email,
@@ -834,9 +835,11 @@ const mergeGoogleAppleLoginGuestUser = async (req, res) => {
         },
         { new: true }
       );
-      if (!updatedUser) {
+
+      if (!updatedGuestUser) {
         return res.status(500).send({ error: "Error updating user" });
       }
+      updatedUser = updatedGuestUser;
     }
     let welcomeEmailSent = updatedUser?.welcomeEmailSent || false;
     let initialPointGiven = updatedUser?.initialPointGiven || false;
@@ -891,10 +894,7 @@ const mergeGoogleAppleLoginGuestUser = async (req, res) => {
         { new: true }
       );
     }
-    if (guestUser.uid && guestUser.uid !== updatedUser.uid) {
-      await deleteUserFromFirebase(guestUser.uid);
-      await UserModel.findByIdAndDelete(guestUser._id);
-    }
+
     return res.status(200).send({
       data: updatedUser,
       message: "Guest user merged successfully to logged in google/apple user",
@@ -1240,7 +1240,6 @@ const getUserByUid = async (req, res) => {
     const user = await UserModel.findOne({
       uid,
     }).lean();
-
     if (!user) {
       return res.status(404).send({ error: "User not found" });
     }
@@ -1249,6 +1248,25 @@ const getUserByUid = async (req, res) => {
       return res.status(404).send({ error: "User is disabled" });
     }
 
+    // const excludedUids = [
+    //   "irpcyKwIKzYrUfwbG53siYWFwg93",
+    //   "YSobakEdRvSK2Ucr0axNhzykCxd2",
+    //   "oBPFvBMrhbcrRDbdFu5Gm15F4o83",
+    //   "fedbNgNH7kTA2XHXti1r4yk2BUG2",
+    //   "Ly0fAlDTCQfCQZHv1oxPW3vhAwE3",
+    //   "SSG9gZI9EnPr37YADpAZfNkPIcn2",
+    // ];
+    // const deleteableUsers = await UserModel.find({
+    //   uid: { $nin: excludedUids },
+
+    // }).lean();
+    // console.log("deleteableUsers", deleteableUsers);
+    // for (const deleteableUser of deleteableUsers) {
+    //   // delete user from firebase
+    //   //delete user from database
+    //   await deleteUserFromFirebase(deleteableUser.uid);
+    //   await UserModel.findByIdAndDelete(deleteableUser._id);
+    // }
     return res.status(200).send({ data: user });
   } catch (error) {
     return res.status(500).send({ error: error.message });
