@@ -75,6 +75,8 @@ const UserSchema = new mongoose.Schema({
     default: "NGN",
   },
   source: { type: String, required: false },
+  welcomeEmailSent: { type: Boolean, required: false, default: false },
+  initialPointGiven: { type: Boolean, required: false, default: false },
 });
 
 UserSchema.plugin(timestamp);

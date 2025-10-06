@@ -62,6 +62,7 @@ const ShopSchema = new mongoose.Schema({
     name: { type: String, required: false },
   },
   source: { type: String, required: false },
+  welcomeEmailSent: { type: Boolean, required: false, default: false },
 });
 
 ShopSchema.plugin(timestamp);
