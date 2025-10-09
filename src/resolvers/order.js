@@ -629,6 +629,14 @@ const getOrderByOrderId = async (req, res) => {
         .send({ error: "You are not authorized to view this order" });
     }
 
+    const progressValue = calcOrderProgress(order.productOrders);
+    const progress = {
+      value: progressValue,
+      max: 100,
+      min: 0,
+    };
+    order.progress = progress;
+
     return res
       .status(200)
       .send({ data: order, message: "Order fetched successfully" });
