@@ -456,7 +456,7 @@ const brandEnums = [
   "Unshoes",
   "Vivobarefoot",
   "Preety Little Thing",
-  "Zeap",
+  "Zeaper",
   "Zara",
   "Boohoo",
   "H&M",

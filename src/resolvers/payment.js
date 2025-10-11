@@ -707,7 +707,7 @@ const verifyPayment = async (req, res) => {
       from: "admin@zeaper.com",
       to: [email],
       subject: formattedOrderTemplateSubject || "Welcome",
-      body: formattedOrderTemplateBody || "Welcome to Zeap",
+      body: formattedOrderTemplateBody || "Welcome to Zeaper",
       attach: true,
       order_id: order._id,
     };
@@ -872,7 +872,7 @@ const stripeWebhook = async (req, res) => {
             from: "admin@zeaper.com",
             to: [email],
             subject: formattedOrderTemplateSubject || "Welcome",
-            body: formattedOrderTemplateBody || "Welcome to Zeap",
+            body: formattedOrderTemplateBody || "Welcome to Zeaper",
             attach: true,
             order_id: order._id,
           };

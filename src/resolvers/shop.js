@@ -162,7 +162,7 @@ const createShop = async (req, res) => {
         from: "admin@zeaper.com",
         to: [updatedUser?.email],
         subject: formattedShopTemplateSubject?.subject || "Welcome",
-        body: formattedShopTemplateBody || "Welcome to Zeap",
+        body: formattedShopTemplateBody || "Welcome to Zeaper",
       };
 
       const shopMail = await sendEmail(param);
@@ -471,7 +471,7 @@ const restoreShop = async (req, res) => {
     const shop_id = shop._id;
     if (shop_id) {
       const title = "Shop Restored";
-      const body = `Your shop, ${shop.shopName}, has been restored. You can now resume your activities on Zeap.`;
+      const body = `Your shop, ${shop.shopName}, has been restored. You can now resume your activities on Zeaper.`;
       const image =
         "https://admin.zeaper.com/static/media/Iconmark_green.129d5bdb389ec6130623.png";
       const notificationData = {

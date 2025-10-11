@@ -346,7 +346,9 @@ const getAvailablePromos = async (req, res) => {
   try {
     const promos = await PromoModel.find({
       status: { $in: ["live", "scheduled"] },
-    });
+    }).lean();
+    // sort promos by createdAt descending
+    promos.sort((a, b) => b.createdAt - a.createdAt);
     return res
       .status(200)
       .send({ data: promos, message: "Promos fetched successfully" });
@@ -761,11 +763,7 @@ const joinPromo = async (req, res) => {
     if (!product) {
       return res.status(400).send({ error: "Product not found" });
     }
-    if (product?.status !== "live") {
-      return res.status(400).send({
-        error: "Product is not live. Only live products can join promo",
-      });
-    }
+    
 
     if (!permittedProductTypes.includes(product.productType)) {
       return res
