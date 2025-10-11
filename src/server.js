@@ -1,3 +1,4 @@
+const rateLimit = require("express-rate-limit");
 const cors = require("cors");
 require("dotenv").config();
 const { ENV } = require("./config")
@@ -39,7 +40,17 @@ app.use(function (err, req, res, next) {
 // Serve static assets like /images/logo.png
 app.use(express.static(path.join(__dirname, "public")));
 
+// Apply rate limiting to all requests
+const limiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: {
+    result: "fail",
+    error: { code: 1000, message: "Too many requests, please try again." },
+  },
+});
 
+app.use(limiter);
 const initRoutes = require("./routes");
 app.use(
   bodyParser.json({

@@ -307,7 +307,7 @@ const convertGuestUserWithEmailPasswordProvider = async (req, res) => {
       from: "admin@zeaper.com",
       to: [email],
       subject: formattedUserTemplateSubject || "Welcome",
-      body: formattedUserTemplateBody || "Welcome to Zeap",
+      body: formattedUserTemplateBody || "Welcome to Zeaper",
     };
     const userMail = await sendEmail(param);
     const welcomeEmailSent = userMail?.data ? true : false;
@@ -441,7 +441,7 @@ const createUser = async (req, res) => {
       from: "admin@zeaper.com",
       to: [email],
       subject: formattedUserTemplateSubject || "Welcome",
-      body: formattedUserTemplateBody || "Welcome to Zeap",
+      body: formattedUserTemplateBody || "Welcome to Zeaper",
     };
 
     const userMail = await sendEmail(param);
@@ -554,7 +554,7 @@ const createUserWithGoogleOrApple = async (req, res) => {
       from: "admin@zeaper.com",
       to: [email],
       subject: formattedUserTemplateSubject || "Welcome",
-      body: formattedUserTemplateBody || "Welcome to Zeap",
+      body: formattedUserTemplateBody || "Welcome to Zeaper",
     };
     const userMail = await sendEmail(param);
     const welcomeEmailSent = userMail?.data ? true : false;
@@ -877,7 +877,7 @@ const mergeGoogleAppleLoginGuestUser = async (req, res) => {
         from: "admin@zeaper.com",
         to: [email],
         subject: formattedUserTemplateSubject || "Welcome",
-        body: formattedUserTemplateBody || "Welcome to Zeap",
+        body: formattedUserTemplateBody || "Welcome to Zeaper",
       };
       const userMail = await sendEmail(param);
       if (userMail) {
