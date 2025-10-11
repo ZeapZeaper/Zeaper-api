@@ -470,8 +470,8 @@ const restoreShop = async (req, res) => {
     ).lean();
     const shop_id = shop._id;
     if (shop_id) {
-      const title = "Shop Restored";
-      const body = `Your shop, ${shop.shopName}, has been restored. You can now resume your activities on Zeaper.`;
+      const title = "Shop Approved";
+      const body = `Your shop, ${shop.shopName}, has been approved. You can now resume your activities on Zeaper.`;
       const image =
         "https://admin.zeaper.com/static/media/Iconmark_green.129d5bdb389ec6130623.png";
       const notificationData = {
@@ -488,6 +488,35 @@ const restoreShop = async (req, res) => {
       };
 
       const notify = await notifyShop(notifyShopParam);
+      const email = shop?.email || user?.email;
+      if (email) {
+        const shopApprovedEmailTemplate = await EmailTemplateModel.findOne({
+          name: "shop-approved",
+        }).lean();
+        const formattedShopTemplateBody = replaceShopVariablesinTemplate(
+          replaceUserVariablesinTemplate(
+            shopApprovedEmailTemplate?.body,
+            user || {}
+          ),
+          shop
+        );
+        const formattedShopTemplateSubject = replaceShopVariablesinTemplate(
+          replaceUserVariablesinTemplate(
+            shopApprovedEmailTemplate?.subject,
+            user || {}
+          ),
+          shop
+        );
+        const param = {
+          from: "admin@zeaper.com",
+          to: [email],
+          subject: formattedShopTemplateSubject || title,
+          body: formattedShopTemplateBody || body,
+        };
+
+        const sentEmail = await sendEmail(param);
+        console.log("sentEmail", sentEmail);
+      }
     }
     return res.status(200).send({ message: "Shop restored successfully" });
   } catch (err) {
