@@ -6,9 +6,9 @@ const options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'Zeap API',
+      title: 'Zeaper API',
       version: process.env.FRONTEND_VERSION,
-      description: 'Api documentation for Zeap',
+      description: 'Api documentation for Zeaper',
     },
   },
 
