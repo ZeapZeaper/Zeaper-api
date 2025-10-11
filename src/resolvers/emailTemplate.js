@@ -7,6 +7,7 @@ const {
 const EmailTemplateModel = require("../models/emailTemplate");
 
 const validateBodyVariables = (body, variables) => {
+  
   // get strings inside all squared brackets
   const regex = /\[(.*?)\]/g;
   let m;

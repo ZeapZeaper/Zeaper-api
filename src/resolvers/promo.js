@@ -535,7 +535,7 @@ const updatePromo = async (req, res) => {
     if (!promoId) {
       if (req?.files) {
         Object.values(req.files).map(async (file) => {
-          console.log("here 3", file);
+         
           await deleteLocalImagesByFileName(file[0].filename);
         });
       }
@@ -563,15 +563,15 @@ const updatePromo = async (req, res) => {
     startDate.setHours(0, 0, 0, 0);
     endDate.setHours(23, 59, 59, 999);
 
-    if (promo.status !== "draft") {
-      if (req?.files) {
-        Object.values(req.files).map(async (file) => {
-          await deleteLocalImagesByFileName(file[0].filename);
-        });
-      }
+    // if (promo.status !== "draft") {
+    //   if (req?.files) {
+    //     Object.values(req.files).map(async (file) => {
+    //       await deleteLocalImagesByFileName(file[0].filename);
+    //     });
+    //   }
 
-      return res.status(400).send({ error: "Promo is not in draft status" });
-    }
+    //   return res.status(400).send({ error: "Promo is not in draft status" });
+    // }
     const validation = validatePromo(req.body);
     if (validation !== true) {
       if (req?.files) {
