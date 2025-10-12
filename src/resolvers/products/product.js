@@ -610,10 +610,10 @@ const editProduct = async (req, res) => {
         .status(400)
         .send({ error: "You are not authorized to edit this product" });
     }
-    if (product?.status !== "draft" && product?.status !== "rejected") {
+    if (product?.status === "live") {
       return res.status(400).send({
         error:
-          "You can only edit a product that is in draft or rejected status",
+          "You are not authorized to edit a live product. Please contact support if you need to make changes to a live product",
       });
     }
     if (status) {
@@ -996,15 +996,26 @@ const setProductStatus = async (req, res) => {
       const image = updatedProduct?.colors[0]?.images[0]?.link;
       const shop_id = updatedProduct?.shop.toString();
       const notificationData = {
-          notificationType: "product",
-          roleType: "vendor",
-          productId,
-          status,
-        }
-      const pushAllAdmins = await sendPushAllAdmins({ title, body, image, data: notificationData });
-     
+        notificationType: "product",
+        roleType: "vendor",
+        productId,
+        status,
+      };
+      const pushAllAdmins = await sendPushAllAdmins({
+        title,
+        body,
+        image,
+        data: notificationData,
+      });
+
       if (shop_id) {
-        const notifyShopParam = { shop_id, title, body, image, data: notificationData };
+        const notifyShopParam = {
+          shop_id,
+          title,
+          body,
+          image,
+          data: notificationData,
+        };
         const notify = await notifyShop(notifyShopParam);
       }
     }
@@ -1078,12 +1089,12 @@ const submitProduct = async (req, res) => {
     const body = `Order item with productId ${productId} has been set to under review`;
     const image = updatedProduct?.colors[0]?.images[0]?.link;
     const shop_id = updatedProduct?.shop.toString();
-const notificationData = {
-          notificationType: "product",
-          roleType: "vendor",
-          productId,
-          status: "under review",
-        }
+    const notificationData = {
+      notificationType: "product",
+      roleType: "vendor",
+      productId,
+      status: "under review",
+    };
     if (shop_id) {
       const notifyShopParam = {
         shop_id,
@@ -1095,7 +1106,12 @@ const notificationData = {
 
       const notify = await notifyShop(notifyShopParam);
     }
-    const pushAllAdmins = await sendPushAllAdmins({ title, body, image, data: notificationData });
+    const pushAllAdmins = await sendPushAllAdmins({
+      title,
+      body,
+      image,
+      data: notificationData,
+    });
     const notificationParam = {
       title,
       body,
@@ -1158,7 +1174,7 @@ const getProduct = async (req, res) => {
 };
 const getProductById = async (req, res) => {
   try {
-    const { _id } = req.query;
+    const { _id, noCurrencyConversion } = req.query;
     if (!_id) {
       return res.status(400).send({ error: "_id is required" });
     }
@@ -1173,7 +1189,10 @@ const getProductById = async (req, res) => {
     }
 
     const authUser = await getAuthUser(req);
-    const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
+    let currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
+    if (noCurrencyConversion) {
+      currency = "NGN";
+    }
     const addCurrency = await addPreferredAmountAndCurrency(
       [productData],
       currency
@@ -1239,6 +1258,7 @@ const getCategoryProducts = async (req, res) => {
 };
 const getProducts = async (req, res) => {
   try {
+    const noCurrencyConversion = req.query.noCurrencyConversion;
     const sort = req.query.sort || -1;
     const limit = parseInt(req.query.limit);
     const pageNumber = parseInt(req.query.pageNumber);
@@ -1289,13 +1309,21 @@ const getProducts = async (req, res) => {
       },
     ];
     const productQuery = await ProductModel.aggregate(aggregate).exec();
-    const products = productQuery[0].products;
+
     const allProducts = productQuery[0].allProducts;
     const totalCount = allProducts?.length || 0;
     const dynamicFilters = getDynamicFilters(allProducts);
-
-    const data = {
+    const products = productQuery[0].products;
+    let currency = req.query.currency || user?.prefferedCurrency || "NGN";
+    if (noCurrencyConversion) {
+      currency = "NGN";
+    }
+    const productsWithCurrency = await addPreferredAmountAndCurrency(
       products,
+      currency
+    );
+    const data = {
+      products: productsWithCurrency,
       totalCount,
       dynamicFilters,
     };
