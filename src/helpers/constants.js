@@ -181,6 +181,7 @@ const designEnums = [
   "Studded",
   "Rhinestone",
   "Beaded",
+  "Other",
 ];
 
 const sizeStandardEnums = ["INTL", "UK", "US", "EU", "AUS", "CAN"];
