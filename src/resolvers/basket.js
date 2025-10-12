@@ -218,27 +218,72 @@ const getBaskets = async (req, res) => {
       .populate("basketItems.product")
       .lean();
     for (let i = 0; i < baskets.length; i++) {
-      const basketCalc = await calculateTotalBasketPrice(baskets[i]);
-
-      baskets[i].appliedVoucherAmount = basketCalc.appliedVoucherAmount;
-      baskets[i].deliveryFee = basketCalc.deliveryFee;
-      baskets[i].itemsTotal = basketCalc.itemsTotal;
-
-      baskets[i].total = basketCalc.total;
+      const basket = baskets[i];
+      const user = basket.user;
+      const currency = user?.prefferedCurrency || "NGN";
+      let rate = null;
+      if (currency !== "NGN") {
+        const currencyRates = await ExchangeRateModel.find();
+        rate = currencyRates.find((rate) => rate.currency === currency).rate;
+      }
+      const basketCalc = await calculateTotalBasketPrice(basket);
+      const subTotal = calcRate(rate, currency, basketCalc.itemsTotal);
+      basket.subTotal = subTotal;
+      basket.appliedVoucherAmount = calcRate(
+        rate,
+        currency,
+        basketCalc.appliedVoucherAmount
+      );
+      basket.totalWithoutVoucher = calcRate(
+        rate,
+        currency,
+        basketCalc.totalWithoutVoucher || basketCalc.total
+      );
+      basket.total = calcRate(rate, currency, basketCalc.total);
+      basket.currency = currency;
       const items = basketCalc.items;
-
-      for (let j = 0; j < baskets[i].basketItems.length; j++) {
-        const item = items.find(
-          (item) => item.item.sku === baskets[i].basketItems[j].sku
+      for (let j = 0; j < basket.basketItems.length; j++) {
+        const item = items[j];
+        if (!item) {
+          continue; // Skip if item is not found
+        }
+        basket.basketItems[j].currency = currency;
+        basket.basketItems[j].actualAmount = calcRate(
+          rate,
+          currency,
+          item.actualAmount
+        );
+        basket.basketItems[j].discountedAmount = calcRate(
+          rate,
+          currency,
+          item.discount
+        );
+        basket.basketItems[j].originalAmount = calcRate(
+          rate,
+          currency,
+          item.originalAmount
         );
 
-        baskets[i].basketItems[j].price = item.totalPrice;
-      }
-      if (basketCalc?.totalWithoutVoucher) {
-        baskets[i].totalWithoutVoucher = basketCalc.totalWithoutVoucher;
+        const title = basket.basketItems[j].product.title;
+        const productId = basket.basketItems[j].product.productId;
+        const sku = basket.basketItems[j].sku;
+        const colors = basket.basketItems[j].product.colors;
+        const variations = basket.basketItems[j].product.variations;
+        const variation = variations.find((v) => v.sku === sku);
+        const chosenColor = colors.find(
+          (c) => c.value === variation.colorValue
+        );
+        const image = chosenColor?.images.find((image) => image.link !== "");
+        const color = chosenColor?.value;
+        const size = variation.size;
+        basket.basketItems[j].color = color;
+        basket.basketItems[j].size = size;
+        basket.basketItems[j].image = image?.link || {};
+        basket.basketItems[j].title = title;
+        basket.basketItems[j].productId = productId;
+        delete basket.basketItems[j].product;
       }
     }
-
 
     return res
       .status(200)
@@ -272,7 +317,7 @@ const getBasket = async (req, res) => {
     }
 
     const basketCalc = await calculateTotalBasketPrice(basket);
-      
+
     const subTotal = calcRate(rate, currency, basketCalc.itemsTotal);
 
     const appliedVoucherAmount = calcRate(
