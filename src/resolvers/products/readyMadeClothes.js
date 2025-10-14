@@ -122,7 +122,7 @@ const editReadyMadeClothes = async (req) => {
         return { error: "main category is required when updating category" };
       }
 
-      if (main.some((s) => mainEnums.indexOf(s) === -1)) {
+      if (main && main.some((s) => mainEnums.indexOf(s) === -1)) {
         return { error: "invalid main category" };
       }
       if (style && style.some((s) => clothStyleEnums.indexOf(s) === -1)) {
