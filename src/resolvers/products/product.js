@@ -25,6 +25,12 @@ const {
   currencyEnums,
   searchQueryAllowedPaths,
   sizeStandardEnums,
+  onlyFemaleClothStyleEnums,
+  clothSizeEnumsByRegion,
+  onlyMaleAccessoryStyleEnums,
+  onlyFemaleAccessoryStyleEnums,
+  shoeSizeEnumsByRegion,
+  nonClothMainEnums,
 } = require("../../helpers/constants");
 const {
   checkForDuplicates,
@@ -83,6 +89,7 @@ const { type } = require("os");
 const { addRecentView } = require("../recentviews");
 const RecentViewsModel = require("../../models/recentViews");
 const { min } = require("lodash");
+const { female } = require("../../helpers/readyMadeSizeGuide");
 
 //saving image to firebase storage
 const addImage = async (destination, filename) => {
@@ -656,6 +663,74 @@ const editProduct = async (req, res) => {
     return res
       .status(200)
       .send({ data: updatedProduct, message: "product updated successfully" });
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
+};
+const absoluteDeleteProducts = async (req, res) => {
+  try {
+    const param = req.body;
+    const { productIds } = param;
+    if (!productIds || !productIds.length) {
+      return res.status(400).send({ error: "productid is required" });
+    }
+    //check all products exist
+    const products = await ProductModel.find({
+      productId: { $in: productIds },
+    }).exec();
+    if (products.length !== productIds.length) {
+      return res.status(400).send({ error: "one or more products not found" });
+    }
+    // check if all products are in draft or deleted status
+    const notDeletable = products.find(
+      (product) => product.status !== "draft" && product.status !== "deleted"
+    );
+    if (notDeletable) {
+      return res.status(400).send({
+        error: `Product with productId ${notDeletable.productId} is not in draft or deleted status`,
+      });
+    }
+    // check if product has ever beein in orders
+    const product_id = products.map((product) => product._id);
+    const productInOrder = await ProductOrderModel.findOne({
+      product: { $in: product_id },
+    }).exec();
+    if (productInOrder) {
+      return res.status(400).send({
+        error: "One or more products have been ordered and cannot be deleted. Please disable the product instead or contact support.",
+      });
+    }
+    const user = await getAuthUser(req);
+    const shopIds = products.map((product) => product.shopId);
+    const shopId = shopIds[0];
+    if (
+      shopIds.some((id) => id !== shopId && !user?.isAdmin && !user?.superAdmin)
+    ) {
+      return res
+        .status(400)
+        .send({ error: "You can only delete products from the same shop" });
+    }
+    if (user.shopId !== shopId && !user?.isAdmin && !user?.superAdmin) {
+      return res.status(400).send({
+        error: "You are not authorized to delete products from this shop",
+      });
+    }
+    // get all product images
+    const productImages = products
+      .map((product) =>
+        product.colors.map((color) => color.images.map((image) => image))
+      )
+      .flat(2);
+    await handleImageDelete(productImages);
+    const deletedProducts = await ProductModel.deleteMany({
+      productId: { $in: productIds },
+    }).exec();
+    return res
+      .status(200)
+      .send({
+        data: deletedProducts,
+        message: "products deleted successfully",
+      });
   } catch (err) {
     return res.status(500).send({ error: err.message });
   }
@@ -2320,7 +2395,7 @@ const getProductOptions = async (req, res) => {
   try {
     const bodyMeasurementEnums = await getBodyMeasurementEnumsFromGuide();
 
-    const nonClothMainEnums = ["FootWear", "Accessories"];
+    
     const readyMadeClothesParams = {
       mainEnums: mainEnums.filter((m) => !nonClothMainEnums.includes(m)).sort(),
       genderEnums: genderEnums.sort(),
@@ -2328,6 +2403,10 @@ const getProductOptions = async (req, res) => {
       ageRangeEnums: ageRangeEnums.sort(),
       statusEnums: statusEnums.sort(),
       clothStyleEnums: clothStyleEnums.sort(),
+      femaleClothStyleEnums: clothStyleEnums.sort(),
+      maleClothStyleEnums: clothStyleEnums
+        .filter((s) => !onlyFemaleClothStyleEnums.includes(s))
+        .sort(),
       sleeveLengthEnums: sleeveLengthEnums.sort(),
       designEnums: designEnums.sort(),
       fasteningEnums: fasteningEnums.sort(),
@@ -2335,6 +2414,7 @@ const getProductOptions = async (req, res) => {
       fitEnums: fitEnums.sort(),
       brandEnums: brandEnums.sort(),
       clothSizeEnums: clothSizeEnums.sort(),
+      clothSizeEnumsByRegion: clothSizeEnumsByRegion,
       colorEnums: colorEnums.sort((a, b) => a.name.localeCompare(b.name)),
       sizeStandardEnums: sizeStandardEnums.sort(),
     };
@@ -2344,7 +2424,11 @@ const getProductOptions = async (req, res) => {
       ageGroupEnums: ageGroupEnums.sort(),
       ageRangeEnums: ageRangeEnums.sort(),
       statusEnums: statusEnums.sort(),
-      clothStyleEnums: clothStyleEnums.sort(),
+      femaleClothStyleEnums: clothStyleEnums.sort(),
+      // exclue onlyFemaleClothStyleEnums
+      maleClothStyleEnums: clothStyleEnums
+        .filter((s) => !onlyFemaleClothStyleEnums.includes(s))
+        .sort(),
       sleeveLengthEnums: sleeveLengthEnums.sort(),
       designEnums: designEnums.sort(),
       fasteningEnums: fasteningEnums.sort(),
@@ -2362,6 +2446,7 @@ const getProductOptions = async (req, res) => {
       shoeStyleEnums: shoeStyleEnums.sort(),
       shoeTypeEnums: shoeTypeEnums.sort(),
       shoeSizeEnums: shoeSizeEnums.sort(),
+      shoeSizeEnumsByRegion: shoeSizeEnumsByRegion,
       designEnums: designEnums.sort(),
       fasteningEnums: fasteningEnums.sort(),
       occasionEnums: occasionEnums.sort(),
@@ -2394,6 +2479,12 @@ const getProductOptions = async (req, res) => {
       statusEnums: statusEnums.sort(),
       accessoryTypeEnums: accessoryTypeEnums.sort(),
       accessoryStyleEnums: accessoryStyleEnums.sort(),
+      femaleAccessoryStyleEnums: accessoryStyleEnums.filter(
+        (s) => !onlyMaleAccessoryStyleEnums.includes(s)
+      ),
+      maleAccessoryStyleEnums: accessoryStyleEnums.filter(
+        (s) => !onlyFemaleAccessoryStyleEnums.includes(s)
+      ),
       accessorySizeEnums: accessorySizeEnums.sort(),
       designEnums: designEnums.sort(),
       fasteningEnums: fasteningEnums.sort(),
@@ -2750,6 +2841,7 @@ const getAllLiveBrandsAndProductCount = async (req, res) => {
 };
 module.exports = {
   editProduct,
+  absoluteDeleteProducts,
   deleteProducts,
   restoreProducts,
   createProduct,
