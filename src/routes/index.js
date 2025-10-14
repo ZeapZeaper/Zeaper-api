@@ -321,6 +321,7 @@ let routes = (app) => {
     productResolver.submitProduct
   );
   router.put("/product/delete", authMiddleware, productResolver.deleteProducts);
+  router.put("/product/delete/absolute", authMiddleware, productResolver.absoluteDeleteProducts);
   router.put(
     "/product/restore",
     authMiddleware,
