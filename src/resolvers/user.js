@@ -383,7 +383,11 @@ const createUser = async (req, res) => {
     req.body.password = decriptedPassword;
     firebaseUser = await addUserToFirebase(req.body);
     if (!firebaseUser.uid) {
-      return res.status(400).send({ error: "Error creating user" });
+      // check what the error is
+      if (firebaseUser.code === "auth/email-already-exists") {
+        return res.status(400).send({ error: "Email already exists" });
+      }
+      return res.status(400).send({ error: "Error creating user." });
     }
 
     let imageUrl = {};

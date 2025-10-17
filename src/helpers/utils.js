@@ -692,12 +692,13 @@ const calcShopRevenueValue = ({productType, originalAmountDue, amountDue, vendor
   // 75% for bespoke
   // 80% for ready-to-wear
   const isBespoke = bespokes.includes(productType);
-  let revenueValue;
-  if (isBespoke) {
-    revenueValue = amount * 0.75;
-  } else {
-    revenueValue = amount * 0.8;
-  }
+  let revenueValue = amount
+  // I temporarily disabled this logic as per request due to launching incentives for early vendors
+  // if (isBespoke) {
+  //   revenueValue = amount * 0.75;
+  // } else {
+  //   revenueValue = amount * 0.8;
+  // }
   return revenueValue.toFixed(2);
 };
 const detectDeviceType = (req) => {

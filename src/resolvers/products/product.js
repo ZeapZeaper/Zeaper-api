@@ -697,7 +697,8 @@ const absoluteDeleteProducts = async (req, res) => {
     }).exec();
     if (productInOrder) {
       return res.status(400).send({
-        error: "One or more products have been ordered and cannot be deleted. Please disable the product instead or contact support.",
+        error:
+          "One or more products have been ordered and cannot be deleted. Please disable the product instead or contact support.",
       });
     }
     const user = await getAuthUser(req);
@@ -725,12 +726,10 @@ const absoluteDeleteProducts = async (req, res) => {
     const deletedProducts = await ProductModel.deleteMany({
       productId: { $in: productIds },
     }).exec();
-    return res
-      .status(200)
-      .send({
-        data: deletedProducts,
-        message: "products deleted successfully",
-      });
+    return res.status(200).send({
+      data: deletedProducts,
+      message: "products deleted successfully",
+    });
   } catch (err) {
     return res.status(500).send({ error: err.message });
   }
@@ -1291,8 +1290,9 @@ const getShopProducts = async (req, res) => {
       .populate("postedBy")
       .exec();
 
-    const authUser = await getAuthUser(req);
-    const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
+    // const authUser = await getAuthUser(req);
+    // const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
+    const currency = "NGN";
     const products = await addPreferredAmountAndCurrency(
       productsData,
       currency
@@ -1460,7 +1460,8 @@ const getAuthShopProducts = async (req, res) => {
       },
     ];
     const productQuery = await ProductModel.aggregate(aggregate).exec();
-    const currency = req.query.currency || user?.prefferedCurrency || "NGN";
+    // const currency = req.query.currency || user?.prefferedCurrency || "NGN";
+    const currency = "NGN";
     const productsData = productQuery[0].products;
     const products = await addPreferredAmountAndCurrency(
       productsData,
@@ -2395,7 +2396,6 @@ const getProductOptions = async (req, res) => {
   try {
     const bodyMeasurementEnums = await getBodyMeasurementEnumsFromGuide();
 
-    
     const readyMadeClothesParams = {
       mainEnums: mainEnums.filter((m) => !nonClothMainEnums.includes(m)).sort(),
       genderEnums: genderEnums.sort(),
