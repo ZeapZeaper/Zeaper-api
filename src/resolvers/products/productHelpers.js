@@ -709,7 +709,7 @@ const validateVariations = (variations, sizes, colors) => {
   if (!variations || variations.length === 0) {
     return false;
   }
-  console.log("reached here");
+  
   return variations.every((variation) => {
     const { size, colorValue, price, quantity } = variation;
     if (!sizes.includes(size)) {

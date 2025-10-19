@@ -875,6 +875,12 @@ const leavePromo = async (req, res) => {
     if (!productId) {
       return res.status(400).send({ error: "productId is required" });
     }
+    const product = await ProductModel.findOne({
+      productId,
+    }).lean();
+    if (!product) {
+      return res.status(400).send({ error: "Product not found" });
+    }
     const user = await getAuthUser(req);
     //check if user can perform this action
     if (!user?.isAdmin && !user?.superAdmin) {
@@ -894,12 +900,7 @@ const leavePromo = async (req, res) => {
     if (!promo) {
       return res.status(400).send({ error: "Promo not found" });
     }
-    const product = await ProductModel.findOne({
-      productId,
-    }).lean();
-    if (!product) {
-      return res.status(400).send({ error: "Product not found" });
-    }
+    
     if (product?.promo?.promoId !== promo.promoId) {
       return res.status(400).send({ error: "Product not in the promo" });
     }
