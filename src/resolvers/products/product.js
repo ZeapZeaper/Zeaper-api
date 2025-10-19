@@ -674,33 +674,17 @@ const absoluteDeleteProducts = async (req, res) => {
     if (!productIds || !productIds.length) {
       return res.status(400).send({ error: "productid is required" });
     }
+    let deleteProductIds = [...new Set(productIds)];
+
+    const disableProductIds = [];
     //check all products exist
     const products = await ProductModel.find({
-      productId: { $in: productIds },
+      productId: { $in: deleteProductIds },
     }).exec();
-    if (products.length !== productIds.length) {
+    if (products.length !== deleteProductIds.length) {
       return res.status(400).send({ error: "one or more products not found" });
     }
-    // check if all products are in draft or deleted status
-    const notDeletable = products.find(
-      (product) => product.status !== "draft" && product.status !== "deleted"
-    );
-    if (notDeletable) {
-      return res.status(400).send({
-        error: `Product with productId ${notDeletable.productId} is not in draft or deleted status`,
-      });
-    }
-    // check if product has ever beein in orders
-    const product_id = products.map((product) => product._id);
-    const productInOrder = await ProductOrderModel.findOne({
-      product: { $in: product_id },
-    }).exec();
-    if (productInOrder) {
-      return res.status(400).send({
-        error:
-          "One or more products have been ordered and cannot be deleted. Please disable the product instead or contact support.",
-      });
-    }
+
     const user = await getAuthUser(req);
     const shopIds = products.map((product) => product.shopId);
     const shopId = shopIds[0];
@@ -716,18 +700,61 @@ const absoluteDeleteProducts = async (req, res) => {
         error: "You are not authorized to delete products from this shop",
       });
     }
+    // check if product has ever beein in orders
+    // if yes, remove from delete list and add to disable list
+    for (let i = 0; i < products.length; i++) {
+      const product = products[i];
+      const productOrder = await ProductOrderModel.findOne({
+        product: product._id,
+      }).exec();
+      if (productOrder) {
+        deleteProductIds = deleteProductIds.filter(
+          (productId) => productId !== product.productId
+        );
+        disableProductIds.push(product.productId);
+      }
+    }
     // get all product images
     const productImages = products
+      .filter((product) => deleteProductIds.includes(product.productId))
       .map((product) =>
         product.colors.map((color) => color.images.map((image) => image))
       )
       .flat(2);
+
     await handleImageDelete(productImages);
     const deletedProducts = await ProductModel.deleteMany({
-      productId: { $in: productIds },
+      productId: { $in: deleteProductIds },
     }).exec();
+    // disable products that have been in orders
+    const newTimeline = {
+      date: new Date(),
+      description: "product disabled",
+      actionBy: user._id,
+    };
+    const disablePromises = [];
+
+    disableProductIds.forEach((productId) => {
+      disablePromises.push(
+        ProductModel.findOneAndUpdate(
+          {
+            productId,
+          },
+          {
+            status: "deleted",
+            disabled: true,
+            $push: { timeLine: newTimeline },
+          },
+          { new: true }
+        )
+      );
+    });
+    await Promise.all(disablePromises);
     return res.status(200).send({
-      data: deletedProducts,
+      data: {
+        deletedProductsCount: deletedProducts.deletedCount,
+        disabledProductsCount: disableProductIds.length,
+      },
       message: "products deleted successfully",
     });
   } catch (err) {
@@ -986,6 +1013,7 @@ const setProductStatus = async (req, res) => {
       });
     }
     const product = await ProductModel.findOne({ productId }).exec();
+
     if (!product) {
       return res.status(400).send({ error: "product not found" });
     }
@@ -1026,15 +1054,17 @@ const setProductStatus = async (req, res) => {
         return res.status(400).send({ error: verify.error });
       }
     }
+
     if (status === "under review" && productType === "readyMadeShoe") {
       const verify = await validateReadyMadeShoes(product);
       if (verify.error) {
-        return res.status(400).send({ error: verify.error });
+        return res.status(400).send({ error: "there is error" });
       }
     }
     if (status === "under review" && productType === "accessory") {
       const verify = await validateAccessories(product);
-      if (verify) {
+
+      if (verify.error) {
         return res.status(400).send({ error: verify.error });
       }
     }
@@ -1054,7 +1084,7 @@ const setProductStatus = async (req, res) => {
       { productId },
       {
         status,
-        rejectionReasons: updatedRejectedReasons,
+        rejectionReasons: status === "rejected" ? updatedRejectedReasons : [],
         $push: { timeLine: newTimeLine },
       },
       { new: true }
@@ -2424,6 +2454,7 @@ const getProductOptions = async (req, res) => {
       ageGroupEnums: ageGroupEnums.sort(),
       ageRangeEnums: ageRangeEnums.sort(),
       statusEnums: statusEnums.sort(),
+      clothStyleEnums: clothStyleEnums.sort(),
       femaleClothStyleEnums: clothStyleEnums.sort(),
       // exclue onlyFemaleClothStyleEnums
       maleClothStyleEnums: clothStyleEnums

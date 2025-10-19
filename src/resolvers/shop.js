@@ -612,6 +612,7 @@ const getShopRevenues = async (req, res) => {
 };
 
 const changeShopStatus = async (req, res) => {
+ 
   try {
     const { shopId, status } = req.body;
     if (!shopId) {

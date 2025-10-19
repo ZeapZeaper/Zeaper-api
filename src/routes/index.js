@@ -269,8 +269,9 @@ let routes = (app) => {
   router.put("/product/update", authMiddleware, productResolver.editProduct);
   router.put(
     "/product/update/status",
-    authUserAdminMiddleware,
-    productResolver.setProductStatus
+     authUserAdminMiddleware,
+     productResolver.setProductStatus
+  
   );
   router.put(
     "/product/update/addProductVariation",
