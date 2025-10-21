@@ -2669,6 +2669,18 @@ const editProductVariation = async (req, res) => {
         });
       }
     }
+    if (originalVariation?.bespoke?.colorType) {
+      variation.colorType = originalVariation.bespoke.colorType;
+    }
+    if (originalVariation?.bespoke?.availableColors) {
+      variation.availableColors = originalVariation.bespoke.availableColors;
+    }
+    // check if product has promo?.discountPercentage
+    if (product.promo?.discountPercentage) {
+      const discount = variation.price - (variation.price * product.promo.discountPercentage) / 100;
+        
+      variation.discount = discount;
+    }
 
     let updatedProduct;
     if (productType === "readyMadeCloth") {

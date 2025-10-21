@@ -286,7 +286,7 @@ const validateBespokeShoes = async (product) => {
   return true;
 };
 const addVariationToBespokeShoe = async (product, variation) => {
-  const { price, colorType, availableColors } = variation;
+  const { price, colorType, availableColors, discount } = variation;
   const { variations } = product;
   // check if there is bespoke variation already
   const isBespoke = variations.some((v) => v.bespoke?.isBespoke);
@@ -339,6 +339,7 @@ const addVariationToBespokeShoe = async (product, variation) => {
     const editedVariation = {
       sku: sku,
       price,
+      discount: discount || null,
       size: "Custom",
       quantity: 1,
       colorValue: "Bespoke",
