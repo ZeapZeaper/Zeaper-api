@@ -24,6 +24,7 @@ const UserModel = require("../models/user");
 const Stripe = require("stripe");
 const { allowedDeliveryCountries } = require("../helpers/constants");
 const { update } = require("lodash");
+const ShopModel = require("../models/shop");
 
 const secretKey =
   ENV === "dev"
@@ -1015,6 +1016,14 @@ const payShop = async (req, res) => {
     if (!productOrder) {
       return res.status(404).send({ error: "Product Order not found" });
     }
+     const shop_id = productOrder.shop.toString();
+     const authShop = await ShopModel.findOne({ _id: shop_id }).lean();
+     if (!authShop) {
+       return res.status(404).send({ error: "Shop not found" });
+     }
+     if (!authShop){
+        return res.status(404).send({ error: "Shop not found" });
+     }
     const status = productOrder.status.value;
     if (status !== "order delivered") {
       return res.status(400).send({ error: "Order not delivered" });
@@ -1035,13 +1044,14 @@ const payShop = async (req, res) => {
     if (!updatedProductOrder) {
       return res.status(400).send({ error: "unable to update shop revenue" });
     }
-    const shop_id = productOrder.shop.toString();
+   
     if (shop_id) {
       const title = "Payment Received for Order";
       const itemNo = productOrder.itemNo;
       const body = `Payment received for item no ${itemNo} in the order - ${productOrder.orderId}`;
       const image = productOrder.images[0].link;
-      const notificationData = { notificationType: "shop", roleType: "vendor", reference };
+      const shopId = authShop?.shopId || "";
+      const notificationData = { notificationType: "shopPayment", roleType: "vendor", shopId };
       const notifyShopParam = { shop_id, title, body, image, data: notificationData };
       const notify = await notifyShop(notifyShopParam);
     }
