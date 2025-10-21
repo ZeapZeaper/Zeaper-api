@@ -41,8 +41,21 @@ const editReadyMadeShoes = async (req) => {
     ) {
       return { error: "sizes is required and must be unique" };
     }
-    if (sizes?.some((s) => shoeSizeEnums.indexOf(s) === -1)) {
-      return { error: `invalid size category. size must be one of ${shoeSizeEnums.join(", ")}` };
+    const formatShoeSizeEnums = shoeSizeEnums.map((s) =>
+      s.toString().toLowerCase().trim()
+    );
+
+    if (
+      sizes?.some(
+        (s) =>
+          formatShoeSizeEnums.indexOf(s.toString().toLowerCase().trim()) === -1
+      )
+    ) {
+      return {
+        error: `invalid size category. size must be one of ${shoeSizeEnums.join(
+          ", "
+        )}`,
+      };
     }
     if (sizes && !sizeStandard) {
       return { error: "sizeStandard is required when sizes is provided" };
@@ -265,8 +278,21 @@ const validateReadyMadeShoes = async (product) => {
   ) {
     return { error: "sizes is required and must be unique" };
   }
-  if (sizes.some((s) => shoeSizeEnums.indexOf(s) === -1)) {
-    return { error: "invalid size category" };
+  const formatShoeSizeEnums = shoeSizeEnums.map((s) =>
+    s.toString().toLowerCase().trim()
+  );
+
+  if (
+    sizes?.some(
+      (s) =>
+        formatShoeSizeEnums.indexOf(s.toString().toLowerCase().trim()) === -1
+    )
+  ) {
+    return {
+      error: `invalid size category. size must be one of ${shoeSizeEnums.join(
+        ", "
+      )}`,
+    };
   }
   // check for duplicates in color.value in colors array
   const colorValues = colors.map((color) => color.value);
