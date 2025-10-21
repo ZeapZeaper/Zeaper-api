@@ -902,6 +902,8 @@ const accessorySizeEnums = [
   "Micro Mini",
   "Large",
   "One Size",
+  "Adjustable",
+  "Other",
 ];
 
 const genderEnums = ["Male", "Female"];
