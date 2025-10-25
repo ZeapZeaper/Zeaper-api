@@ -484,7 +484,6 @@ const fitEnums = [
   "Flowy",
   "Draped",
   "Tailored",
-  "Maternity",
   "Other",
 ];
 const brandEnums = [
