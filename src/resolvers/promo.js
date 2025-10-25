@@ -16,26 +16,46 @@ const { addPreferredAmountAndCurrency } = require("./products/productHelpers");
 const { type } = require("os");
 
 // saving video to firebase storage
+/**
+ * Upload a video file to Firebase Storage with optimized caching
+ * and a public, egress-safe URL
+ */
 const addVideo = async (filename) => {
-  let url = {};
-  if (filename) {
-    const source = path.join(root + "/uploads/" + filename);
-    const storage = await storageRef.upload(source, {
-      public: true,
-      destination: `/promo/${filename}`,
+  if (!filename) return {};
+
+  const source = path.join(root, "uploads", filename);
+  const destination = `promo/${filename}`;
+  const token = uuidv4();
+
+  try {
+    // Upload to Firebase storage
+    const [uploadedFile] = await storageRef.upload(source, {
+      destination,
       metadata: {
-        firebaseStorageDownloadTokens: uuidv4(),
+        cacheControl: "public, max-age=31536000, immutable", // 1 year cache
+        firebaseStorageDownloadTokens: token,
+       
       },
     });
-    url = {
-      link: storage[0].metadata.mediaLink,
+
+    // ✅ Use egress-safe URL (avoid download/storage/v1)
+    const publicUrl = `https://storage.googleapis.com/${storageRef.name}/${destination}`;
+
+    // Clean up local file
+    await deleteLocalFile(source);
+
+    return {
+      link: publicUrl,
       name: filename,
       type: "video",
+      size: uploadedFile.metadata.size,
+      contentType: uploadedFile.metadata.contentType,
+      cacheControl: uploadedFile.metadata.cacheControl,
     };
-    const deleteSourceFile = await deleteLocalFile(source);
-    return url;
+  } catch (err) {
+    console.error("❌ Error uploading video:", err);
+    return {};
   }
-  return url;
 };
 //saving image to firebase storage
 const addImage = async (destination, filename) => {
@@ -60,7 +80,8 @@ const addImage = async (destination, filename) => {
       }
     );
     url = {
-      link: storage[0].metadata.mediaLink,
+      // get the public url that avoids egress charges
+      link: `https://storage.googleapis.com/${storageRef.name}/promo/${filename}`,
       name: filename,
       type: "image",
     };
