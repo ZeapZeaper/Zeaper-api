@@ -27,7 +27,10 @@ const addImage = async (req, filename) => {
         },
       }
     );
-    url = { link: storage[0].metadata.mediaLink, name: filename };
+    url = { 
+      // get the public url that avoids egress charges
+      link: `https://storage.googleapis.com/${storageRef.name}/bodyMeasurementGuide/${filename}`,
+       name: filename };
     const deleteSourceFile = await deleteLocalFile(source);
     const deleteResizedFile = await deleteLocalFile(
       path.resolve(req.file.destination, "resized", filename)
