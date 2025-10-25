@@ -174,7 +174,7 @@ const buildProductOrders = async (
       });
     }
     const productType = product.productType;
-    const vendorControlledDiscount = product?.vendorControlledDiscount || true;
+    const adminControlledDiscount = product?.promo?.adminControlledDiscount || false;
     const shopRevenue = {
       currency: "NGN",
       status: "pending",
@@ -183,7 +183,7 @@ const buildProductOrders = async (
         productType,
         originalAmountDue,
         amountDue,
-        vendorControlledDiscount,
+        adminControlledDiscount,
       }),
     };
     let expectedDeliveryDate = null;

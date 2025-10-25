@@ -535,7 +535,6 @@ const updatePromo = async (req, res) => {
     if (!promoId) {
       if (req?.files) {
         Object.values(req.files).map(async (file) => {
-         
           await deleteLocalImagesByFileName(file[0].filename);
         });
       }
@@ -718,7 +717,7 @@ const deletePromo = async (req, res) => {
 
 const joinPromo = async (req, res) => {
   try {
-    const { promoId, productId, discountPercentage, vendorControlledDiscount } =
+    const { promoId, productId, discountPercentage, adminControlledDiscount } =
       req.body;
     if (!promoId) {
       return res.status(400).send({ error: "promoId is required" });
@@ -763,7 +762,6 @@ const joinPromo = async (req, res) => {
     if (!product) {
       return res.status(400).send({ error: "Product not found" });
     }
-    
 
     if (!permittedProductTypes.includes(product.productType)) {
       return res
@@ -799,6 +797,11 @@ const joinPromo = async (req, res) => {
 
     //check if user can perform this action
     if (!user?.isAdmin && !user?.superAdmin) {
+      if(adminControlledDiscount){
+        return res
+          .status(400)
+          .send({ error: "You are not authorized to set vendor controlled discount" });
+      }
       const shop = await ShopModel.findOne({ shopId: product.shopId });
       if (!shop) {
         return res.status(400).send({ error: "Shop not found" });
@@ -828,7 +831,6 @@ const joinPromo = async (req, res) => {
         return {
           ...variation,
           discount,
-          vendorControlledDiscount: vendorControlledDiscount || true,
         };
       });
     }
@@ -850,6 +852,7 @@ const joinPromo = async (req, res) => {
         promo: {
           promoId: promo.promoId,
           discountPercentage,
+          adminControlledDiscount: adminControlledDiscount || false,
         },
         variations,
         $push: { timeLine: newTimeLine },
@@ -900,7 +903,7 @@ const leavePromo = async (req, res) => {
     if (!promo) {
       return res.status(400).send({ error: "Promo not found" });
     }
-    
+
     if (product?.promo?.promoId !== promo.promoId) {
       return res.status(400).send({ error: "Product not in the promo" });
     }
@@ -1041,6 +1044,7 @@ const activatePromo = async (req, res) => {
           promo: {
             promoId: promo.promoId,
             discountPercentage: productDiscountedPercentage,
+            adminControlledDiscount: product.promo.adminControlledDiscount,
           },
           $push: { timeLine: newTimeLine },
         },

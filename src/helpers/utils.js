@@ -686,8 +686,8 @@ const getExpectedExpressDeliveryDate = (productType, country) => {
   return { min, max, method, country };
  
 };
-const calcShopRevenueValue = ({productType, originalAmountDue, amountDue, vendorControlledDiscount = false}) => {
-  const amount = vendorControlledDiscount ? originalAmountDue : amountDue;
+const calcShopRevenueValue = ({productType, originalAmountDue, amountDue, adminControlledDiscount = false}) => {
+  const amount = adminControlledDiscount ? originalAmountDue : amountDue;
   const bespokes = ["bespokeCloth", "bespokeShoe"];
   // 75% for bespoke
   // 80% for ready-to-wear
