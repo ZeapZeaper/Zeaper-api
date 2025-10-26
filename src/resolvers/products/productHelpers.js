@@ -17,6 +17,7 @@ const getDynamicFilters = (products) => {
   };
   allProductTypes.forEach((productType) => {
     let value;
+
     if (productType === "readyMadeCloth") {
       value = "Ready Made Cloth";
     }
@@ -39,7 +40,7 @@ const getDynamicFilters = (products) => {
     if (productTypeIndex === -1) {
       productTypeObj.options.push({
         value: value,
-
+        slug: productType,
         count: 1,
       });
     } else {
@@ -130,6 +131,7 @@ const getDynamicFilters = (products) => {
       mainObj.options.push({
         value: main,
         count: 1,
+        slug: main,
       });
     } else {
       mainObj.options[mainIndex].count += 1;
@@ -154,6 +156,7 @@ const getDynamicFilters = (products) => {
     if (accessoryTypeIndex === -1) {
       accessoryTypeObj.options.push({
         value: accessoryType,
+        slug: accessoryType,
         count: 1,
       });
     } else {
@@ -180,6 +183,7 @@ const getDynamicFilters = (products) => {
     if (genderIndex === -1) {
       genderObj.options.push({
         value: gender,
+        slug: gender,
         count: 1,
       });
     } else {
@@ -205,6 +209,7 @@ const getDynamicFilters = (products) => {
       ageGroupObj.options.push({
         value: ageGroup,
         count: 1,
+        slug: ageGroup,
       });
     } else {
       ageGroupObj.options[ageGroupIndex].count += 1;
@@ -229,6 +234,7 @@ const getDynamicFilters = (products) => {
       ageRangeObj.options.push({
         value: ageRange,
         count: 1,
+        slug: ageRange,
       });
     } else {
       ageRangeObj.options[ageRangeIndex].count += 1;
@@ -254,6 +260,7 @@ const getDynamicFilters = (products) => {
       colorObj.options.push({
         value: color,
         count: 1,
+        slug: color,
       });
     } else {
       colorObj.options[colorIndex].count += 1;
@@ -278,6 +285,7 @@ const getDynamicFilters = (products) => {
       styleObj.options.push({
         value: style,
         count: 1,
+        slug: style,
       });
     } else {
       styleObj.options[styleIndex].count += 1;
@@ -303,6 +311,7 @@ const getDynamicFilters = (products) => {
       designObj.options.push({
         value: design,
         count: 1,
+        slug: design,
       });
     } else {
       designObj.options[designIndex].count += 1;
@@ -328,6 +337,7 @@ const getDynamicFilters = (products) => {
       sizeObj.options.push({
         value: size,
         count: 1,
+        slug: size,
       });
     } else {
       sizeObj.options[sizeIndex].count += 1;
@@ -352,6 +362,7 @@ const getDynamicFilters = (products) => {
       brandObj.options.push({
         value: brand,
         count: 1,
+        slug: brand,
       });
     } else {
       brandObj.options[brandIndex].count += 1;
@@ -374,6 +385,7 @@ const getDynamicFilters = (products) => {
       fitObj.options.push({
         value: fit,
         count: 1,
+        slug: fit,
       });
     } else {
       fitObj.options[fitIndex].count += 1;
@@ -398,6 +410,7 @@ const getDynamicFilters = (products) => {
       fasteningObj.options.push({
         value: fastening,
         count: 1,
+        slug: fastening,
       });
     } else {
       fasteningObj.options[fasteningIndex].count += 1;
@@ -422,6 +435,7 @@ const getDynamicFilters = (products) => {
       occasionObj.options.push({
         value: occasion,
         count: 1,
+        slug: occasion,
       });
     } else {
       occasionObj.options[occasionIndex].count += 1;
@@ -449,6 +463,7 @@ const getDynamicFilters = (products) => {
       sleeveLengthObj.options.push({
         value: sleeveLength,
         count: 1,
+        slug: sleeveLength,
       });
     } else {
       sleeveLengthObj.options[sleeveLengthIndex].count += 1;
@@ -473,6 +488,7 @@ const getDynamicFilters = (products) => {
       heelHeightObj.options.push({
         value: heelHeight,
         count: 1,
+        slug: heelHeight,
       });
     } else {
       heelHeightObj.options[heelHeightIndex].count += 1;
@@ -497,6 +513,7 @@ const getDynamicFilters = (products) => {
       heelTypeObj.options.push({
         value: heelType,
         count: 1,
+        slug: heelType,
       });
     } else {
       heelTypeObj.options[heelTypeIndex].count += 1;
@@ -709,7 +726,7 @@ const validateVariations = (variations, sizes, colors) => {
   if (!variations || variations.length === 0) {
     return false;
   }
-  
+
   return variations.every((variation) => {
     const { size, colorValue, price, quantity } = variation;
     if (!sizes.includes(size)) {
