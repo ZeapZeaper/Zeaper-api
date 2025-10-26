@@ -31,7 +31,7 @@ const addImage = async (req, filename) => {
         },
       }
     );
-    url = { link: storage[0].metadata.mediaLink, name: filename };
+    url = { link: `https://storage.googleapis.com/${storageRef.name}/blog/${filename}`, name: filename };
     const deleteSourceFile = await deleteLocalFile(source);
     const deleteResizedFile = await deleteLocalFile(
       path.resolve(req.file.destination, "resized", filename)

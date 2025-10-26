@@ -90,6 +90,7 @@ const { addRecentView } = require("../recentviews");
 const RecentViewsModel = require("../../models/recentViews");
 const { min } = require("lodash");
 const { female } = require("../../helpers/readyMadeSizeGuide");
+const { title } = require("process");
 
 //saving image to firebase storage
 const addImage = async (destination, filename) => {
@@ -1548,6 +1549,13 @@ const getLiveProducts = async (req, res) => {
             { $sort: { createdAt: sort } },
             { $skip: limit * (pageNumber - 1) },
             { $limit: limit },
+            {
+              $project: {
+                title: 1,
+                variations: 1,
+                colors: 1,
+              },
+            },
           ],
 
           allProducts: [
@@ -2677,8 +2685,10 @@ const editProductVariation = async (req, res) => {
     }
     // check if product has promo?.discountPercentage
     if (product.promo?.discountPercentage) {
-      const discount = variation.price - (variation.price * product.promo.discountPercentage) / 100;
-        
+      const discount =
+        variation.price -
+        (variation.price * product.promo.discountPercentage) / 100;
+
       variation.discount = discount;
     }
 
