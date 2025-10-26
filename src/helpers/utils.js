@@ -709,7 +709,19 @@ const detectDeviceType = (req) => {
   const deviceType = device.type || "desktop";
   return deviceType;
 };
+function convertToCdnUrl(url) {
+  try {
+    const match = url.match(/\/b\/([^/]+)\/o\/([^?]+)/);
+    if (!match) return null;
 
+    const bucketName = match[1];
+    const encodedPath = match[2]; // e.g. "%2FbodyMeasurementGuide%2FIMG_0063.jpg"
+    return `https://storage.googleapis.com/${bucketName}/${encodedPath}`;
+  } catch (err) {
+    console.error("❌ Failed to convert:", url, err);
+    return null;
+  }
+}
 module.exports = {
   deleteLocalFile,
   numberWithCommas,
@@ -743,4 +755,5 @@ module.exports = {
   getExpectedVendorCompletionDate,
   detectDeviceType,
   calcShopRevenueValue,
+  convertToCdnUrl,
 };
