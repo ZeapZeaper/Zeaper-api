@@ -1558,18 +1558,18 @@ const getLiveProducts = async (req, res) => {
             },
           ],
 
-          allProducts: [
-            { $match: { ...query } },
-            {
-              $project: {
-                productType: 1,
-                categories: 1,
-                sizes: 1,
-                colors: 1,
-                variations: 1,
-              },
-            },
-          ],
+          // allProducts: [
+          //   { $match: { ...query } },
+          //   {
+          //     $project: {
+          //       productType: 1,
+          //       categories: 1,
+          //       sizes: 1,
+          //       colors: 1,
+          //       variations: 1,
+          //     },
+          //   },
+          // ],
         },
       },
     ];
@@ -1583,14 +1583,14 @@ const getLiveProducts = async (req, res) => {
       currency
     );
 
-    const allProducts = productQuery[0].allProducts;
+    // const allProducts = productQuery[0].allProducts;
 
-    const totalCount = allProducts?.length || 0;
-    const dynamicFilters = getDynamicFilters(allProducts);
+    // const totalCount = allProducts?.length || 0;
+    // const dynamicFilters = getDynamicFilters(allProducts);
     const data = {
       products,
-      totalCount,
-      dynamicFilters,
+      // totalCount,
+      // dynamicFilters,
     };
 
     return res.status(200).send({ data: data });
@@ -2179,6 +2179,21 @@ const getQueryProductsDynamicFilters = async (req, res) => {
     const dynamicFilters = getDynamicFilters(productsData);
 
     return res.status(200).send({ data: dynamicFilters });
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
+};
+const getProductListDynamicFilters = async (req, res) => {
+  try {
+    const query = getQuery(req.query);
+    query.status = req.query.status || "live";
+
+    const productsData = await ProductModel.find({ ...query }).lean();
+    const totalCount = productsData?.length || 0;
+
+    const dynamicFilters = getDynamicFilters(productsData);
+
+    return res.status(200).send({ data: { dynamicFilters, totalCount } });
   } catch (err) {
     return res.status(500).send({ error: err.message });
   }
@@ -2916,6 +2931,7 @@ module.exports = {
   setProductStatus,
   getProductOptions,
   getQueryProductsDynamicFilters,
+  getProductListDynamicFilters,
   getProductById,
   addProductColorAndImages,
   deleteProductColor,
