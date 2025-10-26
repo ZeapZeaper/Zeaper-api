@@ -255,6 +255,11 @@ let routes = (app) => {
     productResolver.getQueryProductsDynamicFilters
   );
   router.get(
+    "/products/list/dynamicFilters",
+    authMiddleware,
+    productResolver.getProductListDynamicFilters
+  );
+  router.get(
     "/products/shop/draft",
     authMiddleware,
     productResolver.getShopDraftProducts
