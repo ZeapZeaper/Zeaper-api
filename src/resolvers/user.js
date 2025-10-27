@@ -61,7 +61,7 @@ const addImage = async (req, filename) => {
     );
     url = {
       link: `https://storage.googleapis.com/${storageRef.name}/user/${filename}`,
-      name: filename
+      name: filename,
     };
     const deleteSourceFile = await deleteLocalFile(source);
     const deleteResizedFile = await deleteLocalFile(
