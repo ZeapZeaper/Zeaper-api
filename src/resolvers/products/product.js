@@ -135,12 +135,13 @@ const addImage = async (destination, filename) => {
 const deleteImageFromFirebase = async (name) => {
   if (name) {
     storageRef
-      .file("/product/" + name)
+      .file("product/" + name)
       .delete()
       .then(() => {
         return true;
       })
       .catch((err) => {
+        console.error("Error deleting image from Firebase:", err);
         return false;
       });
   }
@@ -1398,6 +1399,15 @@ const getProducts = async (req, res) => {
             { $sort: { createdAt: sort } },
             { $skip: limit * (pageNumber - 1) },
             { $limit: limit },
+            {
+              $project: {
+                title: 1,
+                variations: 1,
+                colors: 1,
+                productId: 1,
+                promo: 1,
+              },
+            },
           ],
           allProducts: [
             { $match: { ...query } },
@@ -1433,6 +1443,7 @@ const getProducts = async (req, res) => {
       totalCount,
       dynamicFilters,
     };
+
     return res.status(200).send({ data: data });
   } catch (err) {
     return res.status(500).send({ error: err.message });
@@ -1554,6 +1565,8 @@ const getLiveProducts = async (req, res) => {
                 title: 1,
                 variations: 1,
                 colors: 1,
+                productId: 1,
+                promo: 1,
               },
             },
           ],
