@@ -331,8 +331,18 @@ const getUsersShopCountAnalytics = async (req, res) => {
     const data = {};
     // get count of all users
     const users = await UserModel.find({});
-    data.user = {
-      label: "Users",
+    const guestUsers = users.filter((user) => user.isGuest);
+    const signedUpUsers = users.filter((user) => !user.isGuest);
+    data.signedUpUsers = {
+      label: "Signed Up Users",
+      count: signedUpUsers.length,
+    };
+    data.guestUsers = {
+      label: "Guest Users",
+      count: guestUsers.length,
+    };
+    data.allUsers = {
+      label: "All Users",
       count: users.length,
     };
     const shopCount = await ShopModel.countDocuments();
