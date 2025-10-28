@@ -1,6 +1,9 @@
 const { type } = require("../../config/firebaseServiceAcc");
 const { colorEnums } = require("../../helpers/constants");
-const { lowerFirstChar, currencyCoversion } = require("../../helpers/utils");
+const {
+  lowerFirstChar,
+  currencyConversionFromCache,
+} = require("../../helpers/utils");
 const ProductModel = require("../../models/products");
 
 const getDynamicFilters = (products) => {
@@ -535,6 +538,10 @@ const getDynamicFilters = (products) => {
   return filters;
 };
 
+// Helper to split comma-separated query strings
+const splitQueryParam = (param) =>
+  param ? param.replace(/\s*,\s*/g, ",").split(",") : null;
+
 const getQuery = (queries) => {
   const {
     shopId,
@@ -568,136 +575,68 @@ const getQuery = (queries) => {
     disabled: queries.disabled ? true : false,
   };
 
-  if (shopId) {
-    match.shopId = shopId;
-  }
+  if (shopId) match.shopId = shopId;
+  if (productId) match.productId = productId;
+
   if (productType) {
-    // check if it has comma and split it
-    const productTypes = productType.replace(/\s*,\s*/g, ",").split(",");
-    match.productType = {
-      $in: productTypes.map((type) => lowerFirstChar(type)),
-    };
-
-    // match.productType = lowerFirstChar(productType.replace(/\s/g, ""));
-  }
-  if (productId) {
-    match.productId = productId;
+    match.productType = { $in: splitQueryParam(productType).map(lowerFirstChar) };
   }
 
-  if (sizes) {
-    match.sizes = { $in: sizes.replace(/\s*,\s*/g, ",").split(",") };
-  }
-  // use $regex to search for title and description
-  if (title) {
-    match.title = { $regex: title, $options: "i" };
-  }
-  if (description) {
-    match.description = { $regex: description, $options: "i" };
-  }
-  if (color) {
-    match.colors = {
-      $elemMatch: {
-        value: { $in: color.replace(/\s*,\s*/g, ",").split(",") },
-      },
-    };
-  }
-  //brand is child of categories object field
-  if (brand) {
-    match["categories.brand"] = {
-      $in: brand.replace(/\s*,\s*/g, ",").split(","),
-    };
-  }
-  if (design) {
-    match["categories.design"] = {
-      $in: design.replace(/\s*,\s*/g, ",").split(","),
-    };
-  }
+  if (sizes) match.sizes = { $in: splitQueryParam(sizes) };
+  if (title) match.title = { $regex: title, $options: "i" };
+  if (description) match.description = { $regex: description, $options: "i" };
+  if (color) match.colors = { $elemMatch: { value: { $in: splitQueryParam(color) } } };
+
+  // Category filters
+  const categoryFilters = {
+    brand,
+    design,
+    style,
+    main,
+    sleeveLength,
+    fastening,
+    fit,
+    occasion,
+    accessoryType,
+    heelType,
+    heelHeight,
+  };
+
+  Object.entries(categoryFilters).forEach(([key, value]) => {
+    if (value) {
+      match[`categories.${key}`] = { $in: splitQueryParam(value) };
+    }
+  });
+
+  // Age filters
+  if (ageGroup) match["categories.age.ageGroup"] = { $in: splitQueryParam(ageGroup) };
+  if (ageRange) match["categories.age.ageRange"] = { $in: splitQueryParam(ageRange) };
+
+  // Gender handling
   if (gender) {
     if (gender === "Unisex") {
-      // where the product contains both male and female at the same time in the gender array
-      const genderAaray = ["Male", "Female"];
-      match["categories.gender"] = {
-        $all: genderAaray,
-      };
+      match["categories.gender"] = { $all: ["Male", "Female"] };
     } else {
-      match["categories.gender"] = {
-        $in: gender.replace(/\s*,\s*/g, ",").split(","),
-      };
+      match["categories.gender"] = { $in: splitQueryParam(gender) };
     }
   }
-  if (ageGroup) {
-    match["categories.age.ageGroup"] = {
-      $in: ageGroup.replace(/\s*,\s*/g, ",").split(","),
-    };
-  }
-  if (ageRange) {
-    match["categories.age.ageRange"] = {
-      $in: ageRange.replace(/\s*,\s*/g, ",").split(","),
-    };
-  }
-  if (style) {
-    match["categories.style"] = {
-      $in: style.replace(/\s*,\s*/g, ",").split(","),
-    };
-  }
-  if (main) {
-    match["categories.main"] = {
-      $in: main.replace(/\s*,\s*/g, ",").split(","),
-    };
-  }
-  if (sleeveLength) {
-    match["categories.sleeveLength"] = {
-      $in: sleeveLength.replace(/\s*,\s*/g, ",").split(","),
-    };
-  }
-  if (fastening) {
-    match["categories.fastening"] = {
-      $in: fastening.replace(/\s*,\s*/g, ",").split(","),
-    };
-  }
-  if (fit) {
-    match["categories.fit"] = { $in: fit.replace(/\s*,\s*/g, ",").split(",") };
-  }
-  if (occasion) {
-    match["categories.occasion"] = {
-      $in: occasion.replace(/\s*,\s*/g, ",").split(","),
-    };
-  }
-  if (status) {
-    match.status = status;
-  }
+
+  // Price filter
   if (price) {
-    const [min, max] = price.split("-");
-    // where variations.price is greater than or equal to min and less than or equal to max
-    match["variations.price"] = { $gte: Number(min), $lte: Number(max) };
-    // match["variations.price"] = { $gte: min, $lte: max };
-  }
-  if (accessoryType) {
-    match["categories.accessoryType"] = {
-      $in: accessoryType.replace(/\s*,\s*/g, ",").split(","),
-    };
-  }
-  if (heelType) {
-    match["categories.heelType"] = {
-      $in: heelType.replace(/\s*,\s*/g, ",").split(","),
-    };
-  }
-  if (heelHeight) {
-    match["categories.heelHeight"] = {
-      $in: heelHeight.replace(/\s*,\s*/g, ",").split(","),
-    };
-  }
-  if (isBespoke) {
-    match.isBespoke = isBespoke === "true";
-  }
-  if (isReadyMade) {
-    match.isReadyMade = isReadyMade === "true";
+    const [min, max] = price.split("-").map(Number);
+    match["variations.price"] = { $gte: min, $lte: max };
   }
 
-  const query = { ...match };
+  // Status filter
+  if (status) match.status = status;
 
-  return query;
+  // Boolean flags
+  if (isBespoke) match.isBespoke = isBespoke === "true";
+  if (isReadyMade) match.isReadyMade = isReadyMade === "true";
+
+  return match;
 };
+
 
 const verifyColorsHasImages = (colors) => {
   return colors.every((color) => {
@@ -793,35 +732,35 @@ const validateBespokeVariations = (variations) => {
 
   return valid;
 };
-const addPreferredAmountAndCurrency = async (products, preferredCurrency) => {
-  const promises = products.map(async (product) => {
-    const variations = await Promise.all(
-      product.variations.map(async (variation) => {
-        const { price, discount } = variation;
-        const priceInPreferredCurrency = await currencyCoversion(
-          price,
-          preferredCurrency
-        );
+const addPreferredAmountAndCurrency = (products, preferredCurrency) => {
+  // No need for async — runs fully synchronous now
+  return products.map((product) => {
+    const variations = product.variations.map((variation) => {
+      const { price, discount } = variation;
 
-        const discountInPreferredCurrency = await currencyCoversion(
-          discount,
-          preferredCurrency
-        );
+      const priceInPreferredCurrency = currencyConversionFromCache(
+        price,
+        preferredCurrency
+      );
 
-        return {
-          ...variation,
-          price: priceInPreferredCurrency,
-          discount: discountInPreferredCurrency,
-          currency: preferredCurrency,
-        };
-      })
-    );
+      const discountInPreferredCurrency = currencyConversionFromCache(
+        discount,
+        preferredCurrency
+      );
 
-    product.variations = variations;
-    return product;
+      return {
+        ...variation,
+        price: priceInPreferredCurrency,
+        discount: discountInPreferredCurrency,
+        currency: preferredCurrency,
+      };
+    });
+
+    return {
+      ...product,
+      variations,
+    };
   });
-  await Promise.all(promises);
-  return products;
 };
 
 module.exports = {
