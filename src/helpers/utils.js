@@ -23,6 +23,7 @@ const ENCRYPTION_KEY = process.env.ZEAPCRYPTOKEY;
 const IV_LENGTH = 16;
 const { exec } = require("child_process");
 const UAParser = require("ua-parser-js");
+const { cache } = require("./cache");
 
 const deleteLocalFile = async (path) => {
   return new Promise((resolve) => {
@@ -344,29 +345,48 @@ const codeGenerator = (length) => {
   }
   return code;
 };
-const currencyCoversion = async (amount, currency) => {
-  if (amount === null || amount === undefined || amount === "") {
-    return null;
+
+const currencyConversion = async (amount, currency) => {
+  if (amount === null || amount === undefined || amount === "") return null;
+  if (amount === 0) return 0;
+  if (currency === "NGN") return amount;
+
+  // ✅ Try cached rates first
+  let currencyRates = cache.get("exchangeRates");
+
+  // If cache empty, fetch from DB once and set cache
+  if (!currencyRates) {
+    currencyRates = await ExchangeRateModel.find().lean();
+    cache.set("exchangeRates", currencyRates);
+    console.log("💾 Exchange rates loaded into cache");
   }
-  if (amount === 0) {
-    return 0;
-  }
-  if (currency === "NGN") {
+
+  // find rate from cached list
+  const rateObj = currencyRates.find((r) => r.currency === currency);
+  const rate = rateObj ? rateObj.rate : 1;
+
+  const convertedAmount = amount * rate;
+  return convertedAmount.toFixed(2);
+};
+const currencyConversionFromCache = (amount, currency) => {
+  if (amount === null || amount === undefined || amount === "") return null;
+  if (amount === 0) return 0;
+  if (currency === "NGN") return amount;
+
+  // ✅ Get cached exchange rates (already preloaded at startup)
+  const currencyRates = cache.get("exchangeRates");
+  if (!currencyRates) {
+    console.warn(
+      "⚠️ Exchange rates cache is empty — returning unconverted amount."
+    );
     return amount;
   }
-  const currencyRates = await ExchangeRateModel.find();
-  let rate;
-  if (currency === "USD") {
-    rate = currencyRates.find((rate) => rate.currency === "USD").rate;
-    const convertedAmount = amount * rate;
-    return convertedAmount.toFixed(2);
-  }
-  if (currency === "GBP") {
-    rate = currencyRates.find((rate) => rate.currency === "GBP").rate;
-    const convertedAmount = amount * rate;
-    return convertedAmount.toFixed(2);
-  }
-  return amount;
+
+  const rateObj = currencyRates.find((r) => r.currency === currency);
+  const rate = rateObj ? rateObj.rate : 1;
+
+  const convertedAmount = amount * rate;
+  return Number(convertedAmount.toFixed(2));
 };
 const covertToNaira = async (amount, currency) => {
   if (amount === null || amount === undefined || amount === "") {
@@ -378,7 +398,12 @@ const covertToNaira = async (amount, currency) => {
   if (currency === "NGN") {
     return amount;
   }
-  const currencyRates = await ExchangeRateModel.find();
+  let currencyRates = cache.get("exchangeRates");
+  if (!currencyRates) {
+    currencyRates = await ExchangeRateModel.find().lean();
+    cache.set("exchangeRates", currencyRates);
+    console.log("💾 Exchange rates loaded into cache");
+  }
   let rate;
   if (currency === "USD") {
     rate = currencyRates.find((rate) => rate.currency === "USD").rate;
@@ -684,15 +709,19 @@ const getExpectedExpressDeliveryDate = (productType, country) => {
     }
   }
   return { min, max, method, country };
- 
 };
-const calcShopRevenueValue = ({productType, originalAmountDue, amountDue, adminControlledDiscount = false}) => {
+const calcShopRevenueValue = ({
+  productType,
+  originalAmountDue,
+  amountDue,
+  adminControlledDiscount = false,
+}) => {
   const amount = adminControlledDiscount ? originalAmountDue : amountDue;
   const bespokes = ["bespokeCloth", "bespokeShoe"];
   // 75% for bespoke
   // 80% for ready-to-wear
   const isBespoke = bespokes.includes(productType);
-  let revenueValue = amount
+  let revenueValue = amount;
   // I temporarily disabled this logic as per request due to launching incentives for early vendors
   // if (isBespoke) {
   //   revenueValue = amount * 0.75;
@@ -738,7 +767,8 @@ module.exports = {
   calculateTotalBasketPrice,
   validateBodyMeasurements,
   codeGenerator,
-  currencyCoversion,
+  currencyConversion,
+  currencyConversionFromCache,
   covertToNaira,
   addWeekDays,
   getBodyMeasurementEnumsFromGuide,

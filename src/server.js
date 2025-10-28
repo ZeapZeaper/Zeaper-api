@@ -1,7 +1,8 @@
 const rateLimit = require("express-rate-limit");
+const compression = require("compression");
 const cors = require("cors");
 require("dotenv").config();
-const { ENV } = require("./config")
+const { ENV } = require("./config");
 const path = require("path");
 const express = require("express");
 const bodyParser = require("body-parser");
@@ -51,7 +52,9 @@ const limiter = rateLimit({
 });
 
 app.use(limiter);
+app.use(compression());
 const initRoutes = require("./routes");
+const { preloadExchangeRates } = require("./helpers/cache");
 app.use(
   bodyParser.json({
     extended: true,
@@ -103,7 +106,6 @@ app.use(function (req, res, next) {
   next();
 });
 
-
 const start = async () => {
   try {
     console.log("start");
@@ -113,6 +115,7 @@ const start = async () => {
       serverApi: ServerApiVersion.v1,
     });
     console.log("connected", ENV);
+    preloadExchangeRates();
     initRoutes(app);
     const server = app.listen(process.env.PORT || 8080, () => {
       console.log(

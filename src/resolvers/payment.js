@@ -4,7 +4,7 @@ const { ENV } = require("./../config");
 const {
   calculateTotalBasketPrice,
   codeGenerator,
-  currencyCoversion,
+  currencyConversion,
   replaceUserVariablesinTemplate,
   replaceOrderVariablesinTemplate,
   covertToNaira,
@@ -369,13 +369,13 @@ const getReference = async (req, res) => {
     const appliedVoucherAmountDue = calculateTotal.appliedVoucherAmount;
     const totalDue = calculateTotal.total;
     // convert amount to kobo or cent
-    const amount = (await currencyCoversion(amountDue, currency)) * 100;
-    const itemsTotal = (await currencyCoversion(itemsTotalDue, currency)) * 100;
+    const amount = (await currencyConversion(amountDue, currency)) * 100;
+    const itemsTotal = (await currencyConversion(itemsTotalDue, currency)) * 100;
     const deliveryFee =
-      (await currencyCoversion(deliveryFeeDue, currency)) * 100;
+      (await currencyConversion(deliveryFeeDue, currency)) * 100;
     const appliedVoucherAmount =
-      (await currencyCoversion(appliedVoucherAmountDue, currency)) * 100;
-    const total = (await currencyCoversion(totalDue, currency)) * 100;
+      (await currencyConversion(appliedVoucherAmountDue, currency)) * 100;
+    const total = (await currencyConversion(totalDue, currency)) * 100;
 
     const fullName = user.firstName + " " + user.lastName;
     const email = user.email;

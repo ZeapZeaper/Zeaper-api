@@ -6,7 +6,7 @@ const {
 const {
   calculateTotalBasketPrice,
   validateBodyMeasurements,
-  currencyCoversion,
+  currencyConversion,
 
   calcRate,
   getExpectedStandardDeliveryDate,
@@ -223,7 +223,14 @@ const getBaskets = async (req, res) => {
       const currency = user?.prefferedCurrency || "NGN";
       let rate = null;
       if (currency !== "NGN") {
-        const currencyRates = await ExchangeRateModel.find();
+        // ✅ Try cached rates first
+        let currencyRates = cache.get("exchangeRates");
+
+        // If cache empty, fetch from DB once and set cache
+        if (!currencyRates) {
+          currencyRates = await ExchangeRateModel.find().lean();
+          cache.set("exchangeRates", currencyRates);
+        }
         rate = currencyRates.find((rate) => rate.currency === currency).rate;
       }
       const basketCalc = await calculateTotalBasketPrice(basket);
@@ -312,7 +319,14 @@ const getBasket = async (req, res) => {
     }
     let rate = null;
     if (currency !== "NGN") {
-      const currencyRates = await ExchangeRateModel.find();
+      // ✅ Try cached rates first
+      let currencyRates = cache.get("exchangeRates");
+
+      // If cache empty, fetch from DB once and set cache
+      if (!currencyRates) {
+        currencyRates = await ExchangeRateModel.find().lean();
+        cache.set("exchangeRates", currencyRates);
+      }
       rate = currencyRates.find((rate) => rate.currency === currency).rate;
     }
 
@@ -917,14 +931,20 @@ const getBasketTotal = async (req, res) => {
     const totalAmount = basketCalc.total;
     const totalWithoutVoucher = basketCalc.totalWithoutVoucher;
 
-    const convertedSubtotal = await currencyCoversion(subTotalAmount, currency);
-    const convertedDeliveryFee = await currencyCoversion(deliveryFee, currency);
-    const convertedTotal = await currencyCoversion(totalAmount, currency);
-    const convertedVoucherAmount = await currencyCoversion(
+    const convertedSubtotal = await currencyConversion(
+      subTotalAmount,
+      currency
+    );
+    const convertedDeliveryFee = await currencyConversion(
+      deliveryFee,
+      currency
+    );
+    const convertedTotal = await currencyConversion(totalAmount, currency);
+    const convertedVoucherAmount = await currencyConversion(
       voucherAmount,
       currency
     );
-    const convertedTotalWithoutVoucher = await currencyCoversion(
+    const convertedTotalWithoutVoucher = await currencyConversion(
       totalWithoutVoucher,
       currency
     );
@@ -976,13 +996,13 @@ const getBasketDeliveryFees = async (req, res) => {
       "standard"
     );
     const standardDeliveryFee = standard.deliveryFee;
-    const convertedStandardDeliveryFee = await currencyCoversion(
+    const convertedStandardDeliveryFee = await currencyConversion(
       standardDeliveryFee,
       currency
     );
     const express = await calculateTotalBasketPrice(basket, country, "express");
     const expressDeliveryFee = express.deliveryFee;
-    const convertedExpressDeliveryFee = await currencyCoversion(
+    const convertedExpressDeliveryFee = await currencyConversion(
       expressDeliveryFee,
       currency
     );
