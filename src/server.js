@@ -1,5 +1,4 @@
 const rateLimit = require("express-rate-limit");
-const compression = require("compression");
 const cors = require("cors");
 require("dotenv").config();
 const { ENV } = require("./config");
@@ -52,7 +51,6 @@ const limiter = rateLimit({
 });
 
 app.use(limiter);
-app.use(compression());
 const initRoutes = require("./routes");
 const { preloadExchangeRates } = require("./helpers/cache");
 app.use(
