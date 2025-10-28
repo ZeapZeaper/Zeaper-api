@@ -10,6 +10,7 @@ const sharp = require("sharp");
 const { deleteLocalFile } = require("../helpers/utils");
 const BlogCommentModel = require("../models/blogComments");
 const UserModel = require("../models/user");
+const { userCache } = require("../helpers/cache");
 
 //saving image to firebase storage
 const addImage = async (req, filename) => {
@@ -26,12 +27,15 @@ const addImage = async (req, filename) => {
         public: true,
         destination: `/blog/${filename}`,
         metadata: {
-           cacheControl: "public, max-age=31536000, immutable", // 1 year caching
+          cacheControl: "public, max-age=31536000, immutable", // 1 year caching
           firebaseStorageDownloadTokens: uuidv4(),
         },
       }
     );
-    url = { link: `https://storage.googleapis.com/${storageRef.name}/blog/${filename}`, name: filename };
+    url = {
+      link: `https://storage.googleapis.com/${storageRef.name}/blog/${filename}`,
+      name: filename,
+    };
     const deleteSourceFile = await deleteLocalFile(source);
     const deleteResizedFile = await deleteLocalFile(
       path.resolve(req.file.destination, "resized", filename)
@@ -234,7 +238,7 @@ const getSimilarPublisedBlogPosts = async (req, res) => {
   } catch (error) {
     res.status(400).send({ error: error.message });
   }
-}
+};
 const getPublishedTags = async (req, res) => {
   try {
     // sort tags by most used
@@ -876,6 +880,7 @@ const makeUserBlogAuthor = async (req, res) => {
       { isBlogAuthor: true },
       { new: true }
     );
+    userCache.set(updatedUser.uid, updatedUser);
     res.status(200).send({
       message: "User made a blog author successfully",
       data: updateUser,

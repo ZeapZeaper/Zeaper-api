@@ -16,7 +16,7 @@ const { getAuthUser } = require("../middleware/firebaseUserAuth");
 const BasketModel = require("../models/basket");
 const BodyMeasurementModel = require("../models/bodyMeasurement");
 const BodyMeasurementGuideModel = require("../models/bodyMeasurementGuide");
-
+const { cache } = require("../helpers/cache");
 const BodyMeasurementTemplateModel = require("../models/bodyMeasurementTemplate");
 const ExchangeRateModel = require("../models/exchangeRate");
 const ProductOrderModel = require("../models/productOrder");
@@ -225,7 +225,6 @@ const getBaskets = async (req, res) => {
       if (currency !== "NGN") {
         // ✅ Try cached rates first
         let currencyRates = cache.get("exchangeRates");
-
         // If cache empty, fetch from DB once and set cache
         if (!currencyRates) {
           currencyRates = await ExchangeRateModel.find().lean();

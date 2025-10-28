@@ -16,9 +16,9 @@ const {
   allowedLocations,
   getServerIp,
 } = require("../helpers/utils");
+
 const validator = require("email-validator");
 const { firebase } = require("../config/firebase");
-const { generateUniqueShopId } = require("./shop");
 const {
   getAuthUser,
   getAuthUserUid,
@@ -37,7 +37,6 @@ const PaymentModel = require("../models/payment");
 const ProductOrderModel = require("../models/productOrder");
 const DeliveryAddressModel = require("../models/deliveryAddresses");
 const NotificationModel = require("../models/notification");
-const ProductModel = require("../models/products");
 const { userCache } = require("../helpers/cache");
 
 //saving image to firebase storage
@@ -276,7 +275,7 @@ const convertGuestUserWithEmailPasswordProvider = async (req, res) => {
         authUser._id,
         { email, uid: firebaseUser.uid, ...body, isGuest: false },
         { new: true }
-      )
+      );
     } else {
       const userId = await generateUniqueUserId();
       const newUser = new UserModel({
@@ -758,7 +757,6 @@ const mergeGoogleAppleLoginGuestUser = async (req, res) => {
     }).lean();
     let updatedUser;
     if (alreadyExisting) {
-   
       updatedUser = await UserModel.findByIdAndUpdate(
         alreadyExisting._id,
         { isGuest: false, firstName, lastName, email },
