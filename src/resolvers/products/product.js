@@ -1253,12 +1253,9 @@ const getProduct = async (req, res) => {
     if (!productData) {
       return res.status(400).send({ error: "product not found" });
     }
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
-    const addCurrency = await addPreferredAmountAndCurrency(
-      [productData],
-      currency
-    );
+    const addCurrency = addPreferredAmountAndCurrency([productData], currency);
     const product = addCurrency[0];
     if (product?.status === "live" && !authUser.isGuest) {
       const updateRecentView = await addRecentView(product._id, authUser._id);
@@ -1295,15 +1292,12 @@ const getProductById = async (req, res) => {
       return res.status(400).send({ error: "product not found" });
     }
 
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     let currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
     if (noCurrencyConversion) {
       currency = "NGN";
     }
-    const addCurrency = await addPreferredAmountAndCurrency(
-      [productData],
-      currency
-    );
+    const addCurrency = addPreferredAmountAndCurrency([productData], currency);
     const product = addCurrency[0];
 
     return res.status(200).send({ data: product });
@@ -1326,10 +1320,7 @@ const getShopProducts = async (req, res) => {
     // const authUser = await getAuthUser(req);
     // const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
     const currency = "NGN";
-    const products = await addPreferredAmountAndCurrency(
-      productsData,
-      currency
-    );
+    const products = addPreferredAmountAndCurrency(productsData, currency);
     return res.status(200).send({ data: products });
   } catch (err) {
     return res.status(500).send({ error: err.message });
@@ -1348,12 +1339,9 @@ const getCategoryProducts = async (req, res) => {
     if (!productsData) {
       return res.status(400).send({ error: "products not found" });
     }
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
-    const products = await addPreferredAmountAndCurrency(
-      productsData,
-      currency
-    );
+    const products = addPreferredAmountAndCurrency(productsData, currency);
     const dynamicFilters = getDynamicFilters(products);
     const data = {
       products,
@@ -1385,7 +1373,7 @@ const getProducts = async (req, res) => {
     if (sort !== -1 && sort !== 1) {
       return res.status(400).send({ error: "sort value can only be 1 or -1" });
     }
-    const user = await getAuthUser(req);
+    const user = req?.cachedUser || (await getAuthUser(req));
     if (!user?.isAdmin && !user?.superAdmin) {
       return res
         .status(400)
@@ -1435,7 +1423,7 @@ const getProducts = async (req, res) => {
     if (noCurrencyConversion) {
       currency = "NGN";
     }
-    const productsWithCurrency = await addPreferredAmountAndCurrency(
+    const productsWithCurrency = addPreferredAmountAndCurrency(
       products,
       currency
     );
@@ -1470,7 +1458,7 @@ const getAuthShopProducts = async (req, res) => {
     if (sort !== -1 && sort !== 1) {
       return res.status(400).send({ error: "sort value can only be 1 or -1" });
     }
-    const user = await getAuthUser(req);
+    const user = req?.cachedUser || (await getAuthUser(req));
 
     const query = getQuery(req.query);
     const authShop = await ShopModel.findOne({ user: user._id }).exec();
@@ -1506,10 +1494,7 @@ const getAuthShopProducts = async (req, res) => {
     // const currency = req.query.currency || user?.prefferedCurrency || "NGN";
     const currency = "NGN";
     const productsData = productQuery[0].products;
-    const products = await addPreferredAmountAndCurrency(
-      productsData,
-      currency
-    );
+    const products = addPreferredAmountAndCurrency(productsData, currency);
     const allProducts = productQuery[0].allProducts;
     const totalCount = allProducts?.length || 0;
     const dynamicFilters = getDynamicFilters(allProducts);
@@ -1572,7 +1557,7 @@ const getLiveProducts = async (req, res) => {
 
     const productQuery = await ProductModel.aggregate(aggregate).exec();
     // Use cached user if available from authMiddleware
-    const authUser = req.cachedUser || (await getAuthUser(req));
+    const authUser = req?.cachedUser || (await getAuthUser(req));
 
     const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
     const productsData = productQuery;
@@ -1609,7 +1594,7 @@ const getLiveProductsLeastPrice = async (req, res) => {
     });
     products.sort((a, b) => a.minPrice - b.minPrice);
 
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
 
     const minPrice = products[0]?.minPrice || 0;
@@ -1662,46 +1647,31 @@ const getPromoWithLiveProducts = async (req, res) => {
     query.status = "live";
     query.productId = { $in: includedProducts };
     const aggregate = [
+      { $match: query },
       {
-        $facet: {
-          products: [
-            { $match: { ...query } },
-            { $sort: { createdAt: sort } },
-            { $skip: limit * (pageNumber - 1) },
-            { $limit: limit },
-          ],
-          allProducts: [
-            { $match: { ...query } },
-            {
-              $project: {
-                productType: 1,
-                categories: 1,
-                sizes: 1,
-                colors: 1,
-                variations: 1,
-              },
-            },
-          ],
+        $project: {
+          title: 1,
+          variations: 1,
+          colors: 1,
+          productId: 1,
+          promo: 1,
+          createdAt: 1,
         },
       },
+      { $sort: { createdAt: sort } },
+      { $skip: limit * (pageNumber - 1) },
+      { $limit: limit },
     ];
-    const productQuery = await ProductModel.aggregate(aggregate).exec();
-    const authUser = await getAuthUser(req);
-    const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
-    const productsData = productQuery[0].products;
-    const products = await addPreferredAmountAndCurrency(
-      productsData,
-      currency
-    );
 
-    const allProducts = productQuery[0].allProducts;
-    const totalCount = allProducts?.length || 0;
-    const dynamicFilters = getDynamicFilters(allProducts);
+    const productsData = await ProductModel.aggregate(aggregate).exec();
+    const authUser = req?.cachedUser || (await getAuthUser(req));
+    const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
+
+    const products = addPreferredAmountAndCurrency(productsData, currency);
+
     const data = {
       products,
       promo,
-      totalCount,
-      dynamicFilters,
     };
     return res.status(200).send({ data: data });
   } catch (err) {
@@ -1710,7 +1680,7 @@ const getPromoWithLiveProducts = async (req, res) => {
 };
 const getNewestArrivals = async (req, res) => {
   try {
-    const limit = parseInt(req.query.limit);
+    const limit = parseInt(req.query.limit) || 50;
     const pageNumber = parseInt(req.query.pageNumber);
     if (!limit) {
       return res.status(400).send({
@@ -1729,44 +1699,28 @@ const getNewestArrivals = async (req, res) => {
 
     query.status = "live";
     const aggregate = [
+      { $match: query },
       {
-        $facet: {
-          products: [
-            { $match: { ...query } },
-            { $sort: { createdAt: -1 } },
-            { $skip: limit * (pageNumber - 1) },
-            { $limit: limit },
-          ],
-          allProducts: [
-            { $match: { ...query } },
-            {
-              $project: {
-                productType: 1,
-                categories: 1,
-                sizes: 1,
-                colors: 1,
-                variations: 1,
-              },
-            },
-          ],
+        $project: {
+          title: 1,
+          variations: 1,
+          colors: 1,
+          productId: 1,
+          promo: 1,
+          createdAt: 1,
         },
       },
+      { $sort: { createdAt: -1 } },
+      { $skip: limit * (pageNumber - 1) },
+      { $limit: limit },
     ];
-    const productQuery = await ProductModel.aggregate(aggregate).exec();
-    const authUser = await getAuthUser(req);
+    const productsData = await ProductModel.aggregate(aggregate).exec();
+    const authUser = req.cachedUser || (await getAuthUser(req));
     const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
-    const productsData = productQuery[0].products;
-    const products = await addPreferredAmountAndCurrency(
-      productsData,
-      currency
-    );
-    const allProducts = productQuery[0].allProducts;
-    const totalCount = allProducts?.length || 0;
-    const dynamicFilters = getDynamicFilters(allProducts);
+    const products = addPreferredAmountAndCurrency(productsData, currency);
+
     const data = {
       products,
-      totalCount,
-      dynamicFilters,
     };
     return res.status(200).send({ data: data });
   } catch (err) {
@@ -1821,13 +1775,10 @@ const getBespoke = async (req, res) => {
       },
     ];
     const productQuery = await ProductModel.aggregate(aggregate).exec();
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
     const productsData = productQuery[0].products;
-    const products = await addPreferredAmountAndCurrency(
-      productsData,
-      currency
-    );
+    const products = addPreferredAmountAndCurrency(productsData, currency);
     const allProducts = productQuery[0].allProducts;
     const totalCount = allProducts?.length || 0;
     const dynamicFilters = getDynamicFilters(allProducts);
@@ -1845,91 +1796,95 @@ const getMostPopular = async (req, res) => {
   try {
     const limit = parseInt(req.query.limit);
     const pageNumber = parseInt(req.query.pageNumber);
-    if (!limit) {
-      return res.status(400).send({
-        error: "limit is required. This is maximum number you want per page",
+
+    if (!limit || !pageNumber) {
+      return res.status(400).json({
+        error: "Both 'limit' and 'pageNumber' query parameters are required.",
       });
     }
 
-    if (!pageNumber) {
-      return res.status(400).send({
-        error:
-          "pageNumber is required. This is the current page number in the pagination",
-      });
-    }
+    const authUser = req?.cachedUser || (await getAuthUser(req));
 
-    const query = getQuery(req.query);
-    query.status = "live";
-    // get most popular products based on number of productOrders
-    ProductOrderModel.aggregate([
-      {
-        $group: {
-          _id: "$product",
-          count: { $sum: 1 },
-        },
-      },
+    const query = { ...getQuery(req.query), status: "live" };
+
+    // Step 1: Get the most ordered product IDs
+    const popularOrders = await ProductOrderModel.aggregate([
+      { $group: { _id: "$product", count: { $sum: 1 } } },
       { $sort: { count: -1 } },
       { $limit: limit },
-    ]).exec((err, result) => {
-      if (err) {
-        return res.status(500).send({ error: err.message });
-      }
+    ]);
 
-      const product_ids = result.map((r) => r._id);
-      const aggregate = [
-        {
-          $facet: {
-            products: [
-              { $match: { ...query, _id: { $in: product_ids } } },
-              { $sort: { createdAt: -1 } },
-              { $skip: limit * (pageNumber - 1) },
-              { $limit: limit },
-            ],
-            allProducts: [{ $match: { ...query } }],
-          },
+    const productIds = popularOrders.map((r) => r._id);
+    const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
+
+    // Step 2: Query products & all products in a single roundtrip
+    const [productQuery] = await ProductModel.aggregate([
+      {
+        $facet: {
+          products: [
+            { $match: { ...query, _id: { $in: productIds } } },
+            {
+              $project: {
+                title: 1,
+                variations: 1,
+                colors: 1,
+                productId: 1,
+                promo: 1,
+                createdAt: 1,
+              },
+            },
+            { $sort: { createdAt: -1 } },
+            { $skip: limit * (pageNumber - 1) },
+            { $limit: limit },
+          ],
+          allProducts: [
+            { $match: query },
+            {
+              $project: {
+                title: 1,
+                variations: 1,
+                colors: 1,
+                productId: 1,
+                promo: 1,
+                createdAt: 1,
+              },
+            },
+          ],
         },
-      ];
-      ProductModel.aggregate(aggregate).exec(async (err, productQuery) => {
-        if (err) {
-          return res.status(500).send({ error: err.message });
-        }
-        const authUser = await getAuthUser(req);
-        const currency =
-          req.query.currency || authUser?.prefferedCurrency || "NGN";
+      },
+    ]);
 
-        const productsData = productQuery[0].products;
-        const products = await addPreferredAmountAndCurrency(
-          productsData,
-          currency
-        );
-        const allProducts = productQuery[0].allProducts;
-        const totalCount = allProducts?.length || 0;
-        const dynamicFilters = getDynamicFilters(allProducts);
-        const mostPopularProducts = [...products];
-        if (products.length < limit) {
-          const remainingLimit = limit - products.length;
-          // remove products from allProducts
-          const notPopularProducts = allProducts.filter(
-            (p) =>
-              !products.map((p) => p._id.toString()).includes(p._id.toString())
-          );
-          const remainingProducts = notPopularProducts.slice(0, remainingLimit);
-          const remainingProductsData = await addPreferredAmountAndCurrency(
-            remainingProducts,
-            currency
-          );
-          mostPopularProducts.push(...remainingProductsData);
-        }
-        const data = {
-          products: mostPopularProducts,
-          totalCount,
-          dynamicFilters,
-        };
-        return res.status(200).send({ data: data });
-      });
-    });
+    const products = addPreferredAmountAndCurrency(
+      productQuery.products,
+      currency
+    );
+    const allProducts = productQuery.allProducts;
+
+    // Step 3: Fill up remainder if not enough popular ones
+    let mostPopularProducts = [...products];
+
+    if (products.length < limit) {
+      const remainingLimit = limit - products.length;
+      const productIdSet = new Set(productIds.map((id) => id.toString()));
+
+      const notPopularProducts = allProducts.filter(
+        (p) => !productIdSet.has(p._id.toString())
+      );
+
+      const remainingProducts = notPopularProducts
+        .slice(0, remainingLimit)
+        .map((p) => ({
+          ...p,
+          ...addPreferredAmountAndCurrency([p], currency)[0],
+        }));
+
+      mostPopularProducts.push(...remainingProducts);
+    }
+
+    return res.status(200).json({ data: { products: mostPopularProducts } });
   } catch (err) {
-    return res.status(500).send({ error: err.message });
+    console.error("Error in getMostPopular:", err);
+    return res.status(500).json({ error: err.message });
   }
 };
 
@@ -1979,44 +1934,33 @@ const searchLiveProducts = async (req, res) => {
     const { search } = req.query;
     const limit = parseInt(req.query.limit);
     const pageNumber = parseInt(req.query.pageNumber);
-    if (!limit) {
-      return res.status(400).send({
-        error: "limit is required. This is maximum number you want per page",
-      });
-    }
 
-    if (!pageNumber) {
-      return res.status(400).send({
-        error:
-          "pageNumber is required. This is the current page number in the pagination",
+    // ✅ Input validation
+    if (!search) return res.status(400).json({ error: "search is required" });
+    if (!limit || !pageNumber)
+      return res.status(400).json({
+        error: "Both 'limit' and 'pageNumber' query parameters are required.",
       });
-    }
-    if (!search) {
-      return res.status(400).send({ error: "search is required" });
-    }
 
-    const query = getQuery(req.query);
-    query.status = "live";
+    const query = { ...getQuery(req.query), status: "live" };
+
+    // ✅ Build Atlas Search compound query
     const should = [
       {
         text: {
           query: search,
-          path: {
-            wildcard: "*",
-          },
+          path: { wildcard: "*" },
         },
       },
-    ];
-
-    searchQueryAllowedPaths.forEach((p) => {
-      should.push({
+      ...searchQueryAllowedPaths.map((p) => ({
         autocomplete: {
           query: search,
           path: p.value,
         },
-      });
-    });
+      })),
+    ];
 
+    // ✅ Build aggregation
     const aggregate = [
       {
         $search: {
@@ -2028,37 +1972,49 @@ const searchLiveProducts = async (req, res) => {
         },
       },
       {
-        $match: { ...query },
+        $match: query,
       },
       {
-        $sort: { score: { $meta: "textScore" } },
+        // ✅ Project search score metadata before sorting
+        $project: {
+          score: { $meta: "searchScore" },
+          title: 1,
+          variations: 1,
+          colors: 1,
+          productId: 1,
+          promo: 1,
+          createdAt: 1,
+        },
+      },
+      {
+        $sort: { score: -1, createdAt: -1 },
       },
       {
         $facet: {
           products: [{ $skip: limit * (pageNumber - 1) }, { $limit: limit }],
-          allProducts: [{ $count: "count" }],
         },
       },
     ];
-    const productsData = await ProductModel.aggregate(aggregate).exec();
-    const authUser = await getAuthUser(req);
+
+    // ✅ Run aggregation
+    const [result] = await ProductModel.aggregate(aggregate);
+
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
-    const products = await addPreferredAmountAndCurrency(
-      productsData[0].products,
-      currency
-    );
-    const totalCount = productsData[0].allProducts[0]?.count || 0;
-    const dynamicFilters = getDynamicFilters(productsData[0].products);
-    const data = {
-      products,
-      totalCount,
-      dynamicFilters,
-    };
-    return res.status(200).send({ data: data });
+
+    const products = addPreferredAmountAndCurrency(result.products, currency);
+
+    return res.status(200).json({
+      data: {
+        products,
+      },
+    });
   } catch (err) {
-    return res.status(500).send({ error: err.message });
+    console.error("Error in searchLiveProducts:", err);
+    return res.status(500).json({ error: err.message });
   }
 };
+
 const searchSimilarProducts = async (req, res) => {
   try {
     const { productId } = req.query;
@@ -2146,12 +2102,9 @@ const searchSimilarProducts = async (req, res) => {
       },
     ];
     const products = await ProductModel.aggregate(aggregate).exec();
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
-    const productsData = await addPreferredAmountAndCurrency(
-      products,
-      currency
-    );
+    const productsData = addPreferredAmountAndCurrency(products, currency);
     return res.status(200).send({ data: productsData });
   } catch (err) {
     return res.status(500).send({ error: err.message });
@@ -2175,8 +2128,62 @@ const getProductListDynamicFilters = async (req, res) => {
   try {
     const query = getQuery(req.query);
     query.status = req.query.status || "live";
+    const search = req.query.search;
+    let productsData;
+    if (!search) {
+      productsData = await ProductModel.find({ ...query }).lean();
+    } else {
+      const should = [
+        {
+          text: {
+            query: search,
+            path: {
+              wildcard: "*",
+            },
+          },
+        },
+        {
+          autocomplete: {
+            query: search,
+            path: "title",
+          },
+        },
+        {
+          autocomplete: {
+            query: search,
+            path: "categories.design",
+          },
+        },
+        {
+          autocomplete: {
+            query: search,
+            path: "categories.style",
+          },
+        },
+        {
+          autocomplete: {
+            query: search,
+            path: "categories.occasion",
+          },
+        },
+      ];
+      const aggregate = [
+        {
+          $search: {
+            index: "products",
+            compound: {
+              should,
+              minimumShouldMatch: 1,
+            },
+          },
+        },
+        {
+          $match: { ...query },
+        },
+      ];
+      productsData = await ProductModel.aggregate(aggregate).exec();
+    }
 
-    const productsData = await ProductModel.find({ ...query }).lean();
     const totalCount = productsData?.length || 0;
 
     const dynamicFilters = getDynamicFilters(productsData);
@@ -2308,7 +2315,7 @@ const searchSimilarProductsByProductId = async (productId) => {
 };
 const getAuthUserRecommendedProducts = async (req, res) => {
   try {
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     if (!authUser) {
       return res.status(400).send({ error: "user not found" });
     }
@@ -2419,10 +2426,7 @@ const getAuthUserRecommendedProducts = async (req, res) => {
         message: "No recommended products found",
       });
     }
-    const productsData = await addPreferredAmountAndCurrency(
-      products,
-      currency
-    );
+    const productsData = addPreferredAmountAndCurrency(products, currency);
 
     return res.status(200).send({
       data: productsData,
