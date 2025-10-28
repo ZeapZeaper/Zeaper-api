@@ -36,7 +36,7 @@ const {
   checkForDuplicates,
   deleteLocalFile,
   getBodyMeasurementEnumsFromGuide,
-  currencyCoversion,
+  currencyConversion,
 } = require("../../helpers/utils");
 const ShopModel = require("../../models/shop");
 const { v4: uuidv4 } = require("uuid");
@@ -91,6 +91,7 @@ const RecentViewsModel = require("../../models/recentViews");
 const { min } = require("lodash");
 const { female } = require("../../helpers/readyMadeSizeGuide");
 const { title } = require("process");
+const UserModel = require("../../models/user");
 
 //saving image to firebase storage
 const addImage = async (destination, filename) => {
@@ -1553,57 +1554,31 @@ const getLiveProducts = async (req, res) => {
     query.status = "live";
 
     const aggregate = [
+      { $match: query },
       {
-        $facet: {
-          products: [
-            { $match: { ...query } },
-            { $sort: { createdAt: sort } },
-            { $skip: limit * (pageNumber - 1) },
-            { $limit: limit },
-            {
-              $project: {
-                title: 1,
-                variations: 1,
-                colors: 1,
-                productId: 1,
-                promo: 1,
-              },
-            },
-          ],
-
-          // allProducts: [
-          //   { $match: { ...query } },
-          //   {
-          //     $project: {
-          //       productType: 1,
-          //       categories: 1,
-          //       sizes: 1,
-          //       colors: 1,
-          //       variations: 1,
-          //     },
-          //   },
-          // ],
+        $project: {
+          title: 1,
+          variations: 1,
+          colors: 1,
+          productId: 1,
+          promo: 1,
+          createdAt: 1,
         },
       },
+      { $sort: { createdAt: sort } },
+      { $skip: limit * (pageNumber - 1) },
+      { $limit: limit },
     ];
 
     const productQuery = await ProductModel.aggregate(aggregate).exec();
-    const authUser = await getAuthUser(req);
+    // Use cached user if available from authMiddleware
+    const authUser = req.cachedUser || (await getAuthUser(req));
+
     const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
-    const productsData = productQuery[0].products;
-    const products = await addPreferredAmountAndCurrency(
-      productsData,
-      currency
-    );
-
-    // const allProducts = productQuery[0].allProducts;
-
-    // const totalCount = allProducts?.length || 0;
-    // const dynamicFilters = getDynamicFilters(allProducts);
+    const productsData = productQuery;
+    const products = addPreferredAmountAndCurrency(productsData, currency);
     const data = {
       products,
-      // totalCount,
-      // dynamicFilters,
     };
 
     return res.status(200).send({ data: data });
@@ -1639,7 +1614,7 @@ const getLiveProductsLeastPrice = async (req, res) => {
 
     const minPrice = products[0]?.minPrice || 0;
 
-    const convertedAmount = await currencyCoversion(minPrice, currency);
+    const convertedAmount = await currencyConversion(minPrice, currency);
 
     if (convertedAmount.error) {
       return res.status(400).send({ error: convertedAmount.error });

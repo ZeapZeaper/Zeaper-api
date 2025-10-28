@@ -8,7 +8,7 @@ const ProductOrderModel = require("../models/productOrder");
 const ProductModel = require("../models/products");
 const ShopModel = require("../models/shop");
 const {
-  currencyCoversion,
+  currencyConversion,
   addWeekDays,
   getExpectedStandardDeliveryDate,
   getExpectedExpressDeliveryDate,
@@ -153,8 +153,8 @@ const buildProductOrders = async (
     const variation = product.variations.find((v) => v.sku === sku);
     const originalAmountDue = variation?.price * quantity;
     const amountDue = (variation?.discount || variation.price) * quantity;
-    const usdValue = await currencyCoversion(amountDue, "USD");
-    const gbpValue = await currencyCoversion(amountDue, "GBP");
+    const usdValue = await currencyConversion(amountDue, "USD");
+    const gbpValue = await currencyConversion(amountDue, "GBP");
     const amount = [
       {
         currency: "NGN",

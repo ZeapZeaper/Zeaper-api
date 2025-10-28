@@ -38,6 +38,7 @@ const ProductOrderModel = require("../models/productOrder");
 const DeliveryAddressModel = require("../models/deliveryAddresses");
 const NotificationModel = require("../models/notification");
 const ProductModel = require("../models/products");
+const { userCache } = require("../helpers/cache");
 
 //saving image to firebase storage
 const addImage = async (req, filename) => {
@@ -185,6 +186,9 @@ const creatGuestUser = async (req, res) => {
     if (!savedUser) {
       return res.status(400).send({ error: "User not created" });
     }
+
+    userCache.set(uid, savedUser);
+
     // create Notification record for user
     const notification = new NotificationModel({
       user: savedUser._id,
@@ -272,7 +276,7 @@ const convertGuestUserWithEmailPasswordProvider = async (req, res) => {
         authUser._id,
         { email, uid: firebaseUser.uid, ...body, isGuest: false },
         { new: true }
-      );
+      )
     } else {
       const userId = await generateUniqueUserId();
       const newUser = new UserModel({
@@ -285,6 +289,7 @@ const convertGuestUserWithEmailPasswordProvider = async (req, res) => {
       });
       updatedUser = await newUser.save();
     }
+    userCache.set(updatedUser.uid, updatedUser);
     // create point for user
     const point = new PointModel({
       user: updatedUser._id,
@@ -415,6 +420,8 @@ const createUser = async (req, res) => {
 
     const user = new UserModel({ ...params });
     newUser = await user.save();
+    const uid = firebaseUser.uid;
+    userCache.set(uid, user);
     if (!newUser) {
       if (firebaseUser.uid) {
         await deleteUserFromFirebase(firebaseUser.uid);
@@ -532,6 +539,7 @@ const createUserWithGoogleOrApple = async (req, res) => {
       uid,
     });
     const newUser = await user.save();
+    userCache.set(uid, user);
     if (!newUser) {
       return res.status(500).send({ error: "Error creating user" });
     }
@@ -684,6 +692,7 @@ const mergePasswordLoginGuestUser = async (req, res) => {
     }
     await deleteUserFromFirebase(guestUser.uid);
     await UserModel.findByIdAndDelete(guestUser._id);
+    userCache.set(authUser.uid, authUser);
     return res.status(200).send({
       data: authUser,
       message: "Guest user merged successfully to logged in password user",
@@ -749,7 +758,7 @@ const mergeGoogleAppleLoginGuestUser = async (req, res) => {
     }).lean();
     let updatedUser;
     if (alreadyExisting) {
-      console.log("alreadyExisting", alreadyExisting);
+   
       updatedUser = await UserModel.findByIdAndUpdate(
         alreadyExisting._id,
         { isGuest: false, firstName, lastName, email },
@@ -902,6 +911,7 @@ const mergeGoogleAppleLoginGuestUser = async (req, res) => {
       );
     }
 
+    userCache.set(updatedUser.uid, updatedUser);
     return res.status(200).send({
       data: updatedUser,
       message: "Guest user merged successfully to logged in google/apple user",
@@ -1081,6 +1091,7 @@ const updateUser = async (req, res) => {
     const updatedUser = await UserModel.findByIdAndUpdate(_id, req.body, {
       new: true,
     });
+    userCache.set(updatedUser.uid, updatedUser);
 
     return res
       .status(200)

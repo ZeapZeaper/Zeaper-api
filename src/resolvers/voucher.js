@@ -1,7 +1,6 @@
-
 const {
   codeGenerator,
-  currencyCoversion,
+  currencyConversion,
   getDaysDifference,
   calcRate,
 } = require("../helpers/utils");
@@ -93,7 +92,14 @@ const issueVoucher = async (req, res) => {
     const currency = requestedUser.prefferedCurrency || "NGN";
     let rate = null;
     if (currency !== "NGN") {
-      const currencyRates = await ExchangeRateModel.find();
+      // ✅ Try cached rates first
+      let currencyRates = cache.get("exchangeRates");
+
+      // If cache empty, fetch from DB once and set cache
+      if (!currencyRates) {
+        currencyRates = await ExchangeRateModel.find().lean();
+        cache.set("exchangeRates", currencyRates);
+      }
       rate = currencyRates.find((rate) => rate.currency === currency).rate;
     }
 
@@ -143,7 +149,7 @@ const getAuthUserActiveVouchers = async (req, res) => {
 
     const data = [];
     const promises = vouchers.map(async (voucher) => {
-      const amountInPreferredCurrency = await currencyCoversion(
+      const amountInPreferredCurrency = await currencyConversion(
         voucher.amount,
         currency
       );
@@ -176,7 +182,7 @@ const getAuthUserInactiveVouchers = async (req, res) => {
     const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
     const data = [];
     const promises = vouchers.map(async (voucher) => {
-      const amountInPreferredCurrency = await currencyCoversion(
+      const amountInPreferredCurrency = await currencyConversion(
         voucher.amount,
         currency
       );
@@ -221,7 +227,7 @@ const getVoucher = async (req, res) => {
     }
     const currency =
       req.query.currency || voucher?.user?.prefferedCurrency || "NGN";
-    const amountInPreferredCurrency = await currencyCoversion(
+    const amountInPreferredCurrency = await currencyConversion(
       voucher.amount,
       currency
     );
