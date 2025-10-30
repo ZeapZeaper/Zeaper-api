@@ -730,7 +730,7 @@ const mergeGoogleAppleLoginGuestUser = async (req, res) => {
         error: "current logged in Google/Apple User not found in firebase",
       });
     }
-    console.log("firebaseUser", firebaseUser);
+
     const newUid = firebaseUser.uid;
     const firstName = firebaseUser.displayName
       ? firebaseUser.displayName.split(" ")[0]

@@ -24,6 +24,7 @@ const IV_LENGTH = 16;
 const { exec } = require("child_process");
 const UAParser = require("ua-parser-js");
 const { cache } = require("./cache");
+const { ENV } = require("../config");
 
 const deleteLocalFile = async (path) => {
   return new Promise((resolve) => {
@@ -751,6 +752,23 @@ function convertToCdnUrl(url) {
     return null;
   }
 }
+
+/**
+ * Generates a consistent Redis cache key.
+ * - Includes NODE_ENV prefix to isolate dev/prod.
+ * - Hashes complex data objects for safe, short keys.
+ *
+ * @param {string} prefix - The logical key prefix (e.g., 'mostPopular:base')
+ * @param {object} data - Object representing query parameters, IDs, etc.
+ * @returns {string} - A safe, unique Redis key
+ */
+const makeCacheKey = (prefix, data) => {
+  const hash = crypto
+    .createHash("sha1")
+    .update(JSON.stringify(data))
+    .digest("hex");
+  return `${ENV}:${prefix}:${hash}`;
+}
 module.exports = {
   deleteLocalFile,
   numberWithCommas,
@@ -786,4 +804,5 @@ module.exports = {
   detectDeviceType,
   calcShopRevenueValue,
   convertToCdnUrl,
+  makeCacheKey,
 };
