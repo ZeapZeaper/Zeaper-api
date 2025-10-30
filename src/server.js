@@ -53,6 +53,7 @@ const limiter = rateLimit({
 app.use(limiter);
 const initRoutes = require("./routes");
 const { preloadExchangeRates } = require("./helpers/cache");
+const { default: redis } = require("./helpers/redis");
 app.use(
   bodyParser.json({
     extended: true,
@@ -114,6 +115,7 @@ const start = async () => {
     });
     console.log("connected", ENV);
     preloadExchangeRates();
+
     initRoutes(app);
     const server = app.listen(process.env.PORT || 8080, () => {
       console.log(

@@ -3,6 +3,7 @@ const { colorEnums } = require("../../helpers/constants");
 const {
   lowerFirstChar,
   currencyConversionFromCache,
+  makeCacheKey,
 } = require("../../helpers/utils");
 const ProductModel = require("../../models/products");
 
@@ -579,13 +580,16 @@ const getQuery = (queries) => {
   if (productId) match.productId = productId;
 
   if (productType) {
-    match.productType = { $in: splitQueryParam(productType).map(lowerFirstChar) };
+    match.productType = {
+      $in: splitQueryParam(productType).map(lowerFirstChar),
+    };
   }
 
   if (sizes) match.sizes = { $in: splitQueryParam(sizes) };
   if (title) match.title = { $regex: title, $options: "i" };
   if (description) match.description = { $regex: description, $options: "i" };
-  if (color) match.colors = { $elemMatch: { value: { $in: splitQueryParam(color) } } };
+  if (color)
+    match.colors = { $elemMatch: { value: { $in: splitQueryParam(color) } } };
 
   // Category filters
   const categoryFilters = {
@@ -609,8 +613,10 @@ const getQuery = (queries) => {
   });
 
   // Age filters
-  if (ageGroup) match["categories.age.ageGroup"] = { $in: splitQueryParam(ageGroup) };
-  if (ageRange) match["categories.age.ageRange"] = { $in: splitQueryParam(ageRange) };
+  if (ageGroup)
+    match["categories.age.ageGroup"] = { $in: splitQueryParam(ageGroup) };
+  if (ageRange)
+    match["categories.age.ageRange"] = { $in: splitQueryParam(ageRange) };
 
   // Gender handling
   if (gender) {
@@ -636,7 +642,6 @@ const getQuery = (queries) => {
 
   return match;
 };
-
 
 const verifyColorsHasImages = (colors) => {
   return colors.every((color) => {
@@ -762,6 +767,20 @@ const addPreferredAmountAndCurrency = (products, preferredCurrency) => {
     };
   });
 };
+const getProductQueryCacheKey = (prefix, query) => {
+  const { currency, ...rest } = query; // exclude currency
+  const sortedParams = Object.keys(rest)
+    .sort()
+    .reduce((acc, key) => {
+      acc[key] = rest[key];
+      return acc;
+    }, {});
+  // const hash = crypto.createHash("sha256").update(JSON.stringify(sortedParams)).digest("hex");
+  // return `${prefix}:${hash}`;
+  const stringifiedParams = JSON.stringify(sortedParams);
+  const key = makeCacheKey(prefix, stringifiedParams);
+  return key;
+};
 
 module.exports = {
   getDynamicFilters,
@@ -770,4 +789,5 @@ module.exports = {
   verifyColorsHasImages,
   validateVariations,
   validateBespokeVariations,
+  getProductQueryCacheKey,
 };
