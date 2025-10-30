@@ -162,7 +162,11 @@ let routes = (app) => {
   router.get("/shop/revenues", authMiddleware, shopResolver.getShopRevenues);
 
   router.put("/shop/update", authMiddleware, shopResolver.updateShop);
-  router.put("/shop/update/status", authMiddleware, shopResolver.changeShopStatus);
+  router.put(
+    "/shop/update/status",
+    authMiddleware,
+    shopResolver.changeShopStatus
+  );
   router.put("/shop/delete", authMiddleware, shopResolver.deleteShop);
   router.delete(
     "/shop/delete/absolute",
@@ -196,8 +200,16 @@ let routes = (app) => {
     productResolver.getCategoryProducts
   );
   router.get("/products/live", authMiddleware, productResolver.getLiveProducts);
-  router.get("/products/live/leastPrice", authMiddleware, productResolver.getLiveProductsLeastPrice);
-  router.get("/products/live/brand", authMiddleware, productResolver.getAllLiveBrandsAndProductCount);
+  router.get(
+    "/products/live/leastPrice",
+    authMiddleware,
+    productResolver.getLiveProductsLeastPrice
+  );
+  router.get(
+    "/products/live/brand",
+    authMiddleware,
+    productResolver.getAllLiveBrandsAndProductCount
+  );
   router.get(
     "/products/live/promo",
     authMiddleware,
@@ -274,9 +286,8 @@ let routes = (app) => {
   router.put("/product/update", authMiddleware, productResolver.editProduct);
   router.put(
     "/product/update/status",
-     authUserAdminMiddleware,
-     productResolver.setProductStatus
-  
+    authUserAdminMiddleware,
+    productResolver.setProductStatus
   );
   router.put(
     "/product/update/addProductVariation",
@@ -327,7 +338,11 @@ let routes = (app) => {
     productResolver.submitProduct
   );
   router.put("/product/delete", authMiddleware, productResolver.deleteProducts);
-  router.put("/product/delete/absolute", authMiddleware, productResolver.absoluteDeleteProducts);
+  router.put(
+    "/product/delete/absolute",
+    authMiddleware,
+    productResolver.absoluteDeleteProducts
+  );
   router.put(
     "/product/restore",
     authMiddleware,
@@ -535,7 +550,7 @@ let routes = (app) => {
   router.get("/payment", authMiddleware, paymentResolver.getPayment);
 
   router.post("/payment/verify", authMiddleware, paymentResolver.verifyPayment);
-  
+
   router.put("/payment/shop", authMiddleware, paymentResolver.payShop);
   router.put(
     "/payment/revert/shop",
@@ -633,7 +648,7 @@ let routes = (app) => {
     authUserAdminMiddleware,
     orderResolver.getOrders
   );
-  router.get("/order",authMiddleware, orderResolver.getOrder);
+  router.get("/order", authMiddleware, orderResolver.getOrder);
   router.get("/order/rec", orderResolver.getOrderForReceipt);
   router.get("/order/authUser/buyer/orderId", orderResolver.getOrderByOrderId);
   router.get(
@@ -920,10 +935,7 @@ let routes = (app) => {
     authUserAdminMiddleware,
     helpArticlesResolver.addArticle
   );
-  router.get(
-    "/help/articles",
-    helpArticlesResolver.getArticles
-  );
+  router.get("/help/articles", helpArticlesResolver.getArticles);
   router.get(
     "/help/articles/popular",
     helpArticlesResolver.getPopularTopicsByCategory
@@ -1026,7 +1038,6 @@ let routes = (app) => {
     blogResolver.getPostComments
   );
 
-
   // Email List routes
   router.get(
     "/email/list",
@@ -1034,24 +1045,18 @@ let routes = (app) => {
     authUserAdminMiddleware,
     emailListResolver.getEmailList
   );
-  router.post(
-    "/email/waitlist/add",
-    emailListResolver.addToWaitingList
-  );
-  router.post(
-    "/email/newsletter",
-    emailListResolver.addToNewsletter
-  );
+  router.post("/email/waitlist/add", emailListResolver.addToWaitingList);
+  router.post("/email/newsletter", emailListResolver.addToNewsletter);
   router.delete(
     "/email/remove",
     authMiddleware,
     emailListResolver.removeFromEmailList
   );
 
-
   // Policy routes
   router.get(
     "/policy/seller",
+    authMiddleware,
     policyResolver.getSellerPolicyLink
   );
 

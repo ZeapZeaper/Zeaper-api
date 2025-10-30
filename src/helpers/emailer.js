@@ -88,7 +88,8 @@ const sendEmail = async (param) => {
       attachments,
     };
 
-    const response = await transporter.sendMail(mail, (err, data) => {
+    const response = await transporter.sendMa
+    il(mail, (err, data) => {
       if (err) {
         console.log("err", err);
         return { error: err.message };
