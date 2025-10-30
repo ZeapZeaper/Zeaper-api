@@ -14,6 +14,7 @@ const sharp = require("sharp");
 const ShopModel = require("../models/shop");
 const { addPreferredAmountAndCurrency } = require("./products/productHelpers");
 const { type } = require("os");
+const redis = require("../helpers/redis");
 
 // saving video to firebase storage
 /**
@@ -34,7 +35,6 @@ const addVideo = async (filename) => {
       metadata: {
         cacheControl: "public, max-age=31536000, immutable", // 1 year cache
         firebaseStorageDownloadTokens: token,
-       
       },
     });
 
@@ -135,6 +135,15 @@ const generateUniquePromoId = async () => {
   } while (found);
 
   return promoId.toString();
+};
+
+// Helper to create cache key per promo
+const makePromoCacheKey = (promoId) => `promo:${promoId}`;
+// 5️⃣ Invalidate cache when a product joins/leaves promo
+const invalidatePromoCache = async (promoId) => {
+  if (!promoId) return;
+  const cacheKey = makePromoCacheKey(promoId);
+  await redis.del(cacheKey);
 };
 
 const validatePromo = (param) => {
@@ -381,49 +390,49 @@ const getAvailablePromos = async (req, res) => {
 const getLivePromos = async (req, res) => {
   try {
     const { permittedProductTypes } = req.query;
-    const param = {
-      status: "live",
-    };
-    let requestedPermittedProductTypes = [];
-    if (permittedProductTypes) {
-      if (typeof permittedProductTypes === "string") {
-        // convert string to array
-        requestedPermittedProductTypes = permittedProductTypes
-          .split(",")
-          .map((type) => type.trim());
-        param.permittedProductTypes = {
-          $in: requestedPermittedProductTypes,
-        };
-      }
-    } else {
-      param.permittedProductTypes = {
-        $in: productTypeEnums,
-      };
+    const redisKey = "live_promos";
+
+    // 1️⃣ Check cache
+    let cachedPromos = await redis.get(redisKey);
+    if (cachedPromos) {
+      return res.status(200).send({
+        data: JSON.parse(cachedPromos),
+        message: "Promos fetched successfully (from cache)",
+      });
     }
 
-    const promos = await PromoModel.find(param).lean();
-    // get productsCount for each promo
+    // 2️⃣ Query promos directly
+    const filter = { status: "live" };
 
-    const promosWithCounts = await Promise.all(
-      promos.map(async (promo) => {
-        const productsCount = await ProductModel.countDocuments({
-          "promo.promoId": promo.promoId,
-          ...(requestedPermittedProductTypes
-            ? { productType: { $in: requestedPermittedProductTypes } }
-            : {}),
-        });
+    if (permittedProductTypes) {
+      const typesArray = permittedProductTypes.split(",").map((t) => t.trim());
+      filter.permittedProductTypes = { $in: typesArray };
+    } else {
+      filter.permittedProductTypes = { $in: productTypeEnums };
+    }
 
-        return { ...promo, productsCount };
-      })
-    );
+    const promos = await PromoModel.find(filter)
+      .select("promoId name permittedProductTypes status productIds") // only needed fields
+      .lean();
 
-    return res
-      .status(200)
-      .send({ data: promosWithCounts, message: "Promos fetched successfully" });
+    // 3️⃣ Compute productsCount from productIds
+    const promosWithCounts = promos.map((promo) => ({
+      ...promo,
+      productsCount: promo.productIds?.length || 0,
+    }));
+
+    // 4️⃣ Cache result in Redis
+    await redis.set(redisKey, JSON.stringify(promosWithCounts));
+
+    return res.status(200).send({
+      data: promosWithCounts,
+      message: "Promos fetched successfully",
+    });
   } catch (err) {
     return res.status(500).send({ error: err.message });
   }
 };
+
 const getScheduledPromos = async (req, res) => {
   try {
     const promos = await PromoModel.find({
@@ -478,31 +487,65 @@ const getPromo = async (req, res) => {
     return res.status(500).send({ error: err.message });
   }
 };
+
 const getPromoWithProducts = async (req, res) => {
   try {
+    console.log("Fetching promo with products...");
     const { promoId } = req.query;
     if (!promoId) {
       return res.status(400).send({ error: "promoId is required" });
     }
-    const promo = await PromoModel.findOne({ promoId });
+
+    const cacheKey = makePromoCacheKey(promoId);
+    await invalidatePromoCache(promoId);
+    console.log("🔄 Promo cache invalidated for promoId:", promoId);
+
+    // 1️⃣ Try to get from cache
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      return res.status(200).send(JSON.parse(cached));
+    }
+
+    // 2️⃣ Fetch promo from DB
+    const promo = await PromoModel.findOne({ promoId }).lean();
     if (!promo) {
       return res.status(400).send({ error: "Promo not found" });
     }
-    const includedProducts = promo.productIds;
+
+    // 3️⃣ Fetch products
+    const includedProducts = promo.productIds || [];
     const productData = await ProductModel.find({
       productId: { $in: includedProducts },
-    });
-    const authUser = await getAuthUser(req);
+      status: "live",
+    })
+      .select({
+        title: 1,
+        variations: 1,
+        colors: 1,
+        productId: 1,
+        promo: 1,
+        createdAt: 1,
+      })
+      .lean();
+
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
     const products = addPreferredAmountAndCurrency(productData, currency);
-    return res.status(200).send({
+
+    const response = {
       data: { promo, products },
       message: "Promo fetched successfully",
-    });
+    };
+
+    // 4️⃣ Cache result in Redis (e.g., 30 mins)
+    await redis.set(cacheKey, JSON.stringify(response), { EX: 1800 });
+
+    return res.status(200).send(response);
   } catch (err) {
     return res.status(500).send({ error: err.message });
   }
 };
+
 const getProductPromo = async (req, res) => {
   try {
     const { productId } = req.query;
@@ -667,7 +710,6 @@ const updatePromo = async (req, res) => {
   } catch (error) {
     if (req?.files) {
       Object.values(req.files).map(async (file) => {
-        console.log("here 3", file);
         await deleteLocalImagesByFileName(file[0].filename);
       });
     }
@@ -729,6 +771,7 @@ const deletePromo = async (req, res) => {
         ).lean();
       }
     });
+
     await Promise.all(promises);
     return res.status(200).send({ message: "Promo deleted successfully" });
   } catch (error) {
@@ -818,10 +861,10 @@ const joinPromo = async (req, res) => {
 
     //check if user can perform this action
     if (!user?.isAdmin && !user?.superAdmin) {
-      if(adminControlledDiscount){
-        return res
-          .status(400)
-          .send({ error: "You are not authorized to set vendor controlled discount" });
+      if (adminControlledDiscount) {
+        return res.status(400).send({
+          error: "You are not authorized to set vendor controlled discount",
+        });
       }
       const shop = await ShopModel.findOne({ shopId: product.shopId });
       if (!shop) {
@@ -880,7 +923,8 @@ const joinPromo = async (req, res) => {
       },
       { new: true }
     ).lean();
-
+    await redis.del("live_promos"); // deletes the cached promos
+    await invalidatePromoCache(promo.promoId);
     return res.status(200).send({
       data: { promo: updatedPromo, product: updatedProduct },
       message: "Promo joined successfully",
@@ -955,6 +999,9 @@ const leavePromo = async (req, res) => {
 
       { new: true }
     ).lean();
+
+    await redis.del("live_promos"); // deletes the cached promos
+    await invalidatePromoCache(promo.promoId);
     return res.status(200).send({
       data: { promo: updatedPromo, product: updatedProduct },
       message: "Promo left successfully",
@@ -1082,6 +1129,7 @@ const activatePromo = async (req, res) => {
       { status: "live" },
       { new: true }
     ).lean();
+    await redis.del("live_promos"); // deletes the cached promos
     return res
       .status(200)
       .send({ data: updatedPromo, message: "Promo activated successfully" });
@@ -1147,6 +1195,7 @@ const expirePromo = async (req, res) => {
       { status: "expired" },
       { new: true }
     ).lean();
+    await redis.del("live_promos"); // deletes the cached promos
     return res
       .status(200)
       .send({ data: updatedPromo, message: "Promo deactivated successfully" });

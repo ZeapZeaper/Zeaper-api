@@ -33,10 +33,10 @@ const {
   nonClothMainEnums,
 } = require("../../helpers/constants");
 const {
-  checkForDuplicates,
   deleteLocalFile,
   getBodyMeasurementEnumsFromGuide,
   currencyConversion,
+  makeCacheKey,
 } = require("../../helpers/utils");
 const ShopModel = require("../../models/shop");
 const { v4: uuidv4 } = require("uuid");
@@ -54,6 +54,7 @@ const {
   getDynamicFilters,
   getQuery,
   addPreferredAmountAndCurrency,
+  getProductQueryCacheKey,
 } = require("./productHelpers");
 const ProductModel = require("../../models/products");
 const {
@@ -84,14 +85,10 @@ const {
 } = require(".././notification");
 const ReviewModel = require("../../models/review");
 const ProductOrderModel = require("../../models/productOrder");
-const { all } = require("axios");
-const { type } = require("os");
 const { addRecentView } = require("../recentviews");
 const RecentViewsModel = require("../../models/recentViews");
-const { min } = require("lodash");
-const { female } = require("../../helpers/readyMadeSizeGuide");
-const { title } = require("process");
-const UserModel = require("../../models/user");
+const redis = require("../../helpers/redis");
+const mongoose = require("mongoose");
 
 //saving image to firebase storage
 const addImage = async (destination, filename) => {
@@ -1509,111 +1506,119 @@ const getAuthShopProducts = async (req, res) => {
     return res.status(500).send({ error: err.message });
   }
 };
+
 const getLiveProducts = async (req, res) => {
   try {
-    if (req.query.currency) {
-      const isValid = currencyEnums.includes(req.query.currency);
-      if (!isValid) {
-        return res.status(400).send({ error: "invalid currency" });
-      }
-    }
     const limit = parseInt(req.query.limit);
     const pageNumber = parseInt(req.query.pageNumber);
-    if (!limit) {
-      return res.status(400).send({
-        error: "limit is required. This is maximum number you want per page",
+    const sort = req.query.sort ? parseInt(req.query.sort) : -1;
+
+    if (!limit || !pageNumber) {
+      return res.status(400).json({
+        error: "'limit' and 'pageNumber' query parameters are required.",
       });
     }
 
-    if (!pageNumber) {
-      return res.status(400).send({
-        error:
-          "pageNumber is required. This is the current page number in the pagination",
-      });
-    }
-    const sort = req.query.sort || -1;
     if (sort !== -1 && sort !== 1) {
-      return res.status(400).send({ error: "sort value can only be 1 or -1" });
+      return res.status(400).json({ error: "sort value can only be 1 or -1" });
     }
-    const query = getQuery(req.query);
-    query.status = "live";
 
-    const aggregate = [
-      { $match: query },
-      {
-        $project: {
-          title: 1,
-          variations: 1,
-          colors: 1,
-          productId: 1,
-          promo: 1,
-          createdAt: 1,
+    const cacheKey = getProductQueryCacheKey("liveProducts", req.query);
+
+    // 1️⃣ Try fetching from Redis cache first
+    const cachedData = await redis.get(cacheKey);
+    let productsData;
+
+    if (cachedData) {
+      productsData = JSON.parse(cachedData);
+    } else {
+      // 2️⃣ Query Mongo if cache miss
+      const query = getQuery(req.query);
+      query.status = "live";
+
+      const aggregate = [
+        { $match: query },
+        {
+          $project: {
+            title: 1,
+            variations: 1,
+            colors: 1,
+            productId: 1,
+            promo: 1,
+            createdAt: 1,
+          },
         },
-      },
-      { $sort: { createdAt: sort } },
-      { $skip: limit * (pageNumber - 1) },
-      { $limit: limit },
-    ];
+        { $sort: { createdAt: sort } },
+        { $skip: limit * (pageNumber - 1) },
+        { $limit: limit },
+      ];
 
-    const productQuery = await ProductModel.aggregate(aggregate).exec();
-    // Use cached user if available from authMiddleware
+      productsData = await ProductModel.aggregate(aggregate).exec();
+
+      // save to redis cache for future requests only if result is not empty
+      if (productsData && productsData.length > 0) {
+        await redis.set(cacheKey, JSON.stringify(productsData), "EX", 300); // Cache for 5 minutes
+      }
+    }
+
+    // 4️⃣ Add currency-specific amounts at runtime
     const authUser = req?.cachedUser || (await getAuthUser(req));
-
     const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
-    const productsData = productQuery;
     const products = addPreferredAmountAndCurrency(productsData, currency);
-    const data = {
-      products,
-    };
 
-    return res.status(200).send({ data: data });
+    return res.status(200).json({ data: { products } });
   } catch (err) {
-    return res.status(500).send({ error: err.message });
+    console.error("getLiveProducts error:", err);
+    return res.status(500).json({ error: err.message });
   }
 };
+
 const getLiveProductsLeastPrice = async (req, res) => {
   try {
     const query = getQuery(req.query);
     query.status = "live";
-    // sort by variations.discount if its more than zero, else sort by variations.price
 
-    const productQuery = await ProductModel.find(query).select("variations");
-    const products = [];
-    productQuery.forEach((product) => {
-      const productId = product.productId;
-      if (product?.variations && product?.variations.length > 0) {
-        const minPrice = product.variations.reduce((min, variation) => {
-          const price =
-            variation.discount > 0 ? variation.discount : variation.price;
-          return price < min ? price : min;
-        }, Infinity);
-        products.push({
-          minPrice: minPrice,
-        });
-      }
-    });
-    products.sort((a, b) => a.minPrice - b.minPrice);
+    // Aggregate min price in MongoDB itself
+    const [result] = await ProductModel.aggregate([
+      { $match: query },
+      { $unwind: "$variations" }, // explode variations
+      {
+        $project: {
+          price: {
+            $cond: [
+              { $gt: ["$variations.discount", 0] },
+              "$variations.discount",
+              "$variations.price",
+            ],
+          },
+        },
+      },
+      { $sort: { price: 1 } },
+      { $limit: 1 },
+    ]);
+
+    const minPrice = result?.price || 0;
 
     const authUser = req?.cachedUser || (await getAuthUser(req));
     const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
-
-    const minPrice = products[0]?.minPrice || 0;
 
     const convertedAmount = await currencyConversion(minPrice, currency);
 
     if (convertedAmount.error) {
       return res.status(400).send({ error: convertedAmount.error });
     }
-    const data = {
-      minPrice: convertedAmount,
-      currency: currency,
-    };
 
-    return res.status(200).send({ data: data });
+    return res.status(200).send({
+      data: {
+        minPrice: convertedAmount,
+        currency: currency,
+      },
+    });
   } catch (err) {
     return res.status(500).send({ error: err.message });
   }
 };
+
 const getPromoWithLiveProducts = async (req, res) => {
   try {
     const limit = parseInt(req.query.limit);
@@ -1698,23 +1703,37 @@ const getNewestArrivals = async (req, res) => {
     const query = getQuery(req.query);
 
     query.status = "live";
-    const aggregate = [
-      { $match: query },
-      {
-        $project: {
-          title: 1,
-          variations: 1,
-          colors: 1,
-          productId: 1,
-          promo: 1,
-          createdAt: 1,
+    const cacheKey = getProductQueryCacheKey("newestArrivals", req.query);
+
+    // 1️⃣ Try fetching from Redis cache first
+    const cachedData = await redis.get(cacheKey);
+    let productsData;
+
+    if (cachedData) {
+      productsData = JSON.parse(cachedData);
+    } else {
+      const aggregate = [
+        { $match: query },
+        {
+          $project: {
+            title: 1,
+            variations: 1,
+            colors: 1,
+            productId: 1,
+            promo: 1,
+            createdAt: 1,
+          },
         },
-      },
-      { $sort: { createdAt: -1 } },
-      { $skip: limit * (pageNumber - 1) },
-      { $limit: limit },
-    ];
-    const productsData = await ProductModel.aggregate(aggregate).exec();
+        { $sort: { createdAt: -1 } },
+        { $skip: limit * (pageNumber - 1) },
+        { $limit: limit },
+      ];
+      productsData = await ProductModel.aggregate(aggregate).exec();
+      // save to redis cache for future requests only if result is not empty
+      if (productsData && productsData.length > 0) {
+        await redis.set(cacheKey, JSON.stringify(productsData), "EX", 300); // Cache for 5 minutes
+      }
+    }
     const authUser = req.cachedUser || (await getAuthUser(req));
     const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
     const products = addPreferredAmountAndCurrency(productsData, currency);
@@ -1722,6 +1741,7 @@ const getNewestArrivals = async (req, res) => {
     const data = {
       products,
     };
+    
     return res.status(200).send({ data: data });
   } catch (err) {
     return res.status(500).send({ error: err.message });
@@ -1792,6 +1812,7 @@ const getBespoke = async (req, res) => {
     return res.status(500).send({ error: err.message });
   }
 };
+
 const getMostPopular = async (req, res) => {
   try {
     const limit = parseInt(req.query.limit);
@@ -1804,84 +1825,96 @@ const getMostPopular = async (req, res) => {
     }
 
     const authUser = req?.cachedUser || (await getAuthUser(req));
-
     const query = { ...getQuery(req.query), status: "live" };
-
-    // Step 1: Get the most ordered product IDs
-    const popularOrders = await ProductOrderModel.aggregate([
-      { $group: { _id: "$product", count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
-      { $limit: limit },
-    ]);
-
-    const productIds = popularOrders.map((r) => r._id);
     const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
 
-    // Step 2: Query products & all products in a single roundtrip
-    const [productQuery] = await ProductModel.aggregate([
-      {
-        $facet: {
-          products: [
-            { $match: { ...query, _id: { $in: productIds } } },
-            {
-              $project: {
-                title: 1,
-                variations: 1,
-                colors: 1,
-                productId: 1,
-                promo: 1,
-                createdAt: 1,
+    // Generate Redis cache key
+    const cacheKey = makeCacheKey("mostPopular:base", {
+      limit,
+      pageNumber,
+      query,
+    });
+    console.log("🔑 Cache Key:", cacheKey);
+    // 🧠 1️⃣ Check if we already have cached base products
+    const cachedBase = await redis.get(cacheKey);
+    let baseProducts;
+
+    if (cachedBase) {
+      baseProducts = JSON.parse(cachedBase);
+    } else {
+      // Get most ordered product IDs
+      const popularOrders = await ProductOrderModel.aggregate([
+        { $group: { _id: "$product", count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: limit },
+      ]);
+
+      const productIds = popularOrders.map((r) => r._id);
+
+      // Get product details
+      const [productQuery] = await ProductModel.aggregate([
+        {
+          $facet: {
+            products: [
+              { $match: { ...query, _id: { $in: productIds } } },
+              {
+                $project: {
+                  title: 1,
+                  variations: 1,
+                  colors: 1,
+                  productId: 1,
+                  promo: 1,
+                  createdAt: 1,
+                },
               },
-            },
-            { $sort: { createdAt: -1 } },
-            { $skip: limit * (pageNumber - 1) },
-            { $limit: limit },
-          ],
-          allProducts: [
-            { $match: query },
-            {
-              $project: {
-                title: 1,
-                variations: 1,
-                colors: 1,
-                productId: 1,
-                promo: 1,
-                createdAt: 1,
+              { $sort: { createdAt: -1 } },
+              { $skip: limit * (pageNumber - 1) },
+              { $limit: limit },
+            ],
+            allProducts: [
+              { $match: query },
+              {
+                $project: {
+                  title: 1,
+                  variations: 1,
+                  colors: 1,
+                  productId: 1,
+                  promo: 1,
+                  createdAt: 1,
+                },
               },
-            },
-          ],
+            ],
+          },
         },
-      },
-    ]);
+      ]);
 
-    const products = addPreferredAmountAndCurrency(
-      productQuery.products,
-      currency
-    );
-    const allProducts = productQuery.allProducts;
+      const products = productQuery.products;
+      const allProducts = productQuery.allProducts;
 
-    // Step 3: Fill up remainder if not enough popular ones
-    let mostPopularProducts = [...products];
+      // Fill remaining products if not enough popular ones
+      let mostPopularProducts = [...products];
+      if (products.length < limit) {
+        const remainingLimit = limit - products.length;
+        const productIdSet = new Set(productIds.map((id) => id.toString()));
 
-    if (products.length < limit) {
-      const remainingLimit = limit - products.length;
-      const productIdSet = new Set(productIds.map((id) => id.toString()));
+        const notPopularProducts = allProducts.filter(
+          (p) => !productIdSet.has(p._id.toString())
+        );
 
-      const notPopularProducts = allProducts.filter(
-        (p) => !productIdSet.has(p._id.toString())
-      );
+        const remainingProducts = notPopularProducts.slice(0, remainingLimit);
+        mostPopularProducts.push(...remainingProducts);
+      }
 
-      const remainingProducts = notPopularProducts
-        .slice(0, remainingLimit)
-        .map((p) => ({
-          ...p,
-          ...addPreferredAmountAndCurrency([p], currency)[0],
-        }));
+      baseProducts = mostPopularProducts;
 
-      mostPopularProducts.push(...remainingProducts);
+      // 💾 Cache only base products (no currency)
+      await redis.set(cacheKey, JSON.stringify(baseProducts), { EX: 600 * 6 }); // 1 hour expiration
     }
 
-    return res.status(200).json({ data: { products: mostPopularProducts } });
+    // 💱 2️⃣ Apply currency conversion *after* cache retrieval
+    const finalProducts = addPreferredAmountAndCurrency(baseProducts, currency);
+
+    return res.status(200).json({ data: { products: finalProducts } });
   } catch (err) {
     console.error("Error in getMostPopular:", err);
     return res.status(500).json({ error: err.message });
@@ -2216,7 +2249,7 @@ const getShopDraftProducts = async (req, res) => {
 
 const getBuyAgainList = async (req, res) => {
   try {
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     if (!authUser) {
       return res.status(400).send({ error: "user not found" });
     }
@@ -2239,12 +2272,11 @@ const getBuyAgainList = async (req, res) => {
     return res.status(500).send({ error: err.message });
   }
 };
-const searchSimilarProductsByProductId = async (productId) => {
-  const product = await ProductModel.findOne({ productId }).exec();
+const searchSimilarProductsForProduct = async (product) => {
   if (!product) {
     return res.status(400).send({ error: "product not found" });
   }
-
+  const productId = product.productId;
   const styles = product.categories.style;
   const design = product.categories.design;
   const occasion = product.categories.occasion;
@@ -2307,138 +2339,164 @@ const searchSimilarProductsByProductId = async (productId) => {
       $match: { ...queryParam, productId: { $ne: productId } },
     },
     {
+      $project: {
+        title: 1,
+        variations: 1,
+        colors: 1,
+        productId: 1,
+        promo: 1,
+        createdAt: 1,
+      },
+    },
+    {
       $limit: 20,
     },
   ];
   const products = await ProductModel.aggregate(aggregate).exec();
   return products;
 };
+
 const getAuthUserRecommendedProducts = async (req, res) => {
   try {
     const authUser = req?.cachedUser || (await getAuthUser(req));
-    if (!authUser) {
-      return res.status(400).send({ error: "user not found" });
+    if (!authUser) return res.status(400).send({ error: "user not found" });
+
+    const userId = authUser._id;
+    const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
+
+    // Generate a Redis cache key for this user
+    const cacheKey = makeCacheKey("recommendedProducts", { userId });
+
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      const productsData = addPreferredAmountAndCurrency(
+        JSON.parse(cached),
+        currency
+      );
+      return res.status(200).send({
+        data: productsData,
+        message: "Recommended products fetched successfully (cache)",
+      });
     }
-    const products = [];
-    const recommendedProductList = [];
-    const user_id = authUser._id;
+    const MAX_PRODUCTS = 20;
+    const PRODUCT_FIELDS = "title variations colors productId promo createdAt";
+    // Step 1: Fetch recent user orders
     const userOrders = await ProductOrderModel.find({
-      user: user_id,
+      user: userId,
       status: { $ne: "cancelled" },
     })
       .populate("product")
       .sort({ createdAt: -1 })
       .lean();
 
-    const productIds = userOrders.map((o) => o.product._id.toString());
+    const userProductIds = userOrders.map((o) => o.product._id.toString());
 
-    const recommendedProducts = await ProductOrderModel.aggregate([
+    // Step 2: Find popular products among other users who bought the same products
+    const recommendedProductsAgg = await ProductOrderModel.aggregate([
       {
         $match: {
-          product: { $in: productIds },
-          user: { $ne: user_id },
+          product: {
+            $in: userProductIds.map((id) => new mongoose.Types.ObjectId(id)),
+          },
+          user: { $ne: userId },
         },
       },
-      {
-        $group: {
-          _id: "$product",
-          count: { $sum: 1 },
-        },
-      },
+      { $group: { _id: "$product", count: { $sum: 1 } } },
       { $sort: { count: -1 } },
+      { $limit: MAX_PRODUCTS },
     ]);
 
-    const recommendedProductIds = recommendedProducts.map((r) => r._id);
+    const recommendedProductIds = recommendedProductsAgg.map((r) => r._id);
 
-    const recommendedProductsData = await ProductModel.find({
+    // Step 3: Fetch live product data in a single query
+    const recommendedProducts = await ProductModel.find({
       _id: { $in: recommendedProductIds },
       status: "live",
-    }).lean();
-    recommendedProductList.push(...recommendedProductsData);
+    })
+      .select(PRODUCT_FIELDS)
+      .lean();
 
-    if (recommendedProductList.length < 20) {
-      // if no recommended products, similar products to their orders
-      const lastOrder = userOrders[0];
-      const lastProduct = lastOrder?.product;
-      const lastProductId = lastProduct?.productId;
-      if (lastProductId) {
-        const similarLastOrder = await searchSimilarProductsByProductId(
-          lastProductId
+    let recommendedList = recommendedProducts;
+
+    // Step 4: Fill in recommendations if < MAX_PRODUCTS
+    if (recommendedList.length < MAX_PRODUCTS) {
+      const lastOrderProduct = userOrders[0]?.product;
+      if (lastOrderProduct) {
+        const similarProducts = await searchSimilarProductsForProduct(
+          lastOrderProduct
         );
-
-        recommendedProductList.push(...similarLastOrder);
+        recommendedList.push(...similarProducts);
       }
     }
 
-    if (recommendedProductList.length < 20) {
-      // check recently viewed products
-      const recentViews = await RecentViewsModel.findOne({ user: user_id })
-        .populate("products")
+    if (recommendedList.length < MAX_PRODUCTS) {
+      const recentViews = await RecentViewsModel.findOne({ user: userId })
+        .populate({ path: "products", select: PRODUCT_FIELDS })
         .sort({ createdAt: -1 })
         .lean();
 
       const recentProducts = recentViews?.products?.filter(
-        (p) => p.status === "live" && !productIds.includes(p._id.toString())
+        (p) => p.status === "live" && !userProductIds.includes(p._id.toString())
       );
 
-      if (recentProducts) {
-        recommendedProductList.push(...recentProducts);
-      }
+      if (recentProducts) recommendedList.push(...recentProducts);
     }
 
-    const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
+    // Step 5: Remove duplicates & already purchased products
+    const seen = new Set();
+    const uniqueProducts = recommendedList.filter((p) => {
+      const id = p._id.toString();
+      if (seen.has(id) || userProductIds.includes(id)) return false;
+      seen.add(id);
+      return p.status === "live";
+    });
 
-    const filteredProducts = recommendedProductList.filter(
-      (p) => !productIds.includes(p._id.toString())
+    // Step 6: Sort by most recent, limit
+    const sortedProducts = uniqueProducts.sort(
+      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
     );
-    // ensure unique products
-    const uniqueProducts = Array.from(
-      new Set(filteredProducts.map((p) => p._id.toString()))
-    ).map((id) => {
-      return filteredProducts.find((p) => p._id.toString() === id);
-    });
-    const filterLiveProducts = uniqueProducts.filter(
-      (p) => p.status === "live"
-    );
-    const sortedProducts = filterLiveProducts.sort((a, b) => {
-      const aDate = new Date(a.createdAt);
-      const bDate = new Date(b.createdAt);
-      return bDate - aDate;
-    });
-    const limitedProducts = sortedProducts.slice(0, 20);
-    products.push(...limitedProducts);
-    if (products.length < 20) {
-      const addedProductIds = products.map((p) => p._id.toString());
-      const remainingLimit = 20 - products.length;
+    const finalProducts = sortedProducts.slice(0, MAX_PRODUCTS);
+
+    // Step 7: Fallback if still not enough products
+    if (finalProducts.length < MAX_PRODUCTS) {
+      const existingIds = finalProducts.map((p) => p._id.toString());
+      const remaining = MAX_PRODUCTS - finalProducts.length;
       const moreProducts = await ProductModel.find({
         status: "live",
-        productId: { $nin: addedProductIds },
+        productId: { $nin: existingIds },
       })
+        .select(PRODUCT_FIELDS)
         .sort({ createdAt: -1 })
-        .limit(remainingLimit)
+        .limit(remaining)
         .lean();
+      finalProducts.push(...moreProducts);
+    }
 
-      products.push(...moreProducts);
-    }
-    if (products?.length === 0) {
-      return res.status(200).send({
-        data: [],
-        message: "No recommended products found",
-      });
-    }
-    const productsData = addPreferredAmountAndCurrency(products, currency);
+    // Step 8: Cache the results for 30–60 mins
+    await redis.setEx(cacheKey, 3600, JSON.stringify(finalProducts));
+
+    const productsData = addPreferredAmountAndCurrency(finalProducts, currency);
 
     return res.status(200).send({
       data: productsData,
       message: "Recommended products fetched successfully",
     });
   } catch (err) {
+    console.error("Error in getAuthUserRecommendedProducts:", err);
     return res.status(500).send({ error: err.message });
   }
 };
 
 const getProductOptions = async (req, res) => {
   try {
+    const cacheKey = "productOptionsEnums";
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      return res.status(200).send({
+        data: JSON.parse(cached),
+        message: "Product options enums fetched successfully (cache)",
+      });
+    }
     const bodyMeasurementEnums = await getBodyMeasurementEnumsFromGuide();
 
     const readyMadeClothesParams = {
@@ -2538,15 +2596,19 @@ const getProductOptions = async (req, res) => {
       brandEnums: brandEnums.sort(),
       colorEnums: colorEnums.sort((a, b) => a.name.localeCompare(b.name)),
     };
-    res.status(200).send({
-      data: {
-        readyMadeClothes: readyMadeClothesParams,
-        readyMadeShoes: readyMadeShoeParams,
-        accessories: accessoriesParams,
-        bespokeClothes: bespokeClothesParams,
-        bespokeShoes: bespokeShoeParams,
-        productTypeEnums: productTypeEnums,
-      },
+    const data = {
+      readyMadeClothes: readyMadeClothesParams,
+      readyMadeShoes: readyMadeShoeParams,
+      accessories: accessoriesParams,
+      bespokeClothes: bespokeClothesParams,
+      bespokeShoes: bespokeShoeParams,
+      productTypeEnums: productTypeEnums,
+    };
+    // cache for 1 week
+    await redis.setEx(cacheKey, 604800, JSON.stringify(data)); // 1 week
+    return res.status(200).send({
+      data,
+      message: "Product options enums fetched successfully",
     });
   } catch (err) {
     return res.status(500).send({ error: err.message });
