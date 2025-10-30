@@ -6,6 +6,7 @@ const { getAuthUser } = require("../middleware/firebaseUserAuth");
 const {
   deleteLocalFile,
   deleteLocalImagesByFileName,
+  deleteRedisKeysByPrefix,
 } = require("../helpers/utils");
 const root = require("../../root");
 const path = require("path");
@@ -15,6 +16,7 @@ const ShopModel = require("../models/shop");
 const { addPreferredAmountAndCurrency } = require("./products/productHelpers");
 const { type } = require("os");
 const redis = require("../helpers/redis");
+const { ENV } = require("../config");
 
 // saving video to firebase storage
 /**
@@ -390,8 +392,7 @@ const getAvailablePromos = async (req, res) => {
 const getLivePromos = async (req, res) => {
   try {
     const { permittedProductTypes } = req.query;
-    const redisKey = "live_promos";
-
+    const redisKey = `${ENV}:live_promos:${permittedProductTypes || "all"}`;
     // 1️⃣ Check cache
     let cachedPromos = await redis.get(redisKey);
     if (cachedPromos) {
@@ -490,7 +491,6 @@ const getPromo = async (req, res) => {
 
 const getPromoWithProducts = async (req, res) => {
   try {
-    console.log("Fetching promo with products...");
     const { promoId } = req.query;
     if (!promoId) {
       return res.status(400).send({ error: "promoId is required" });
@@ -923,7 +923,7 @@ const joinPromo = async (req, res) => {
       },
       { new: true }
     ).lean();
-    await redis.del("live_promos"); // deletes the cached promos
+    await deleteRedisKeysByPrefix(`$${ENV}:live_promos`); // deletes the cached live promos
     await invalidatePromoCache(promo.promoId);
     return res.status(200).send({
       data: { promo: updatedPromo, product: updatedProduct },
@@ -1000,7 +1000,7 @@ const leavePromo = async (req, res) => {
       { new: true }
     ).lean();
 
-    await redis.del("live_promos"); // deletes the cached promos
+    await deleteRedisKeysByPrefix(`$${ENV}:live_promos`); // deletes the cached live promos
     await invalidatePromoCache(promo.promoId);
     return res.status(200).send({
       data: { promo: updatedPromo, product: updatedProduct },
@@ -1129,7 +1129,7 @@ const activatePromo = async (req, res) => {
       { status: "live" },
       { new: true }
     ).lean();
-    await redis.del("live_promos"); // deletes the cached promos
+    await deleteRedisKeysByPrefix(`$${ENV}:live_promos`); // deletes the cached live promos
     return res
       .status(200)
       .send({ data: updatedPromo, message: "Promo activated successfully" });
@@ -1195,7 +1195,7 @@ const expirePromo = async (req, res) => {
       { status: "expired" },
       { new: true }
     ).lean();
-    await redis.del("live_promos"); // deletes the cached promos
+    await deleteRedisKeysByPrefix(`$${ENV}:live_promos`); // deletes the cached live promos
     return res
       .status(200)
       .send({ data: updatedPromo, message: "Promo deactivated successfully" });
