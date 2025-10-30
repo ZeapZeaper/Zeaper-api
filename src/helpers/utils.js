@@ -25,6 +25,7 @@ const { exec } = require("child_process");
 const UAParser = require("ua-parser-js");
 const { cache } = require("./cache");
 const { ENV } = require("../config");
+const redis = require("./redis");
 
 const deleteLocalFile = async (path) => {
   return new Promise((resolve) => {
@@ -768,7 +769,36 @@ const makeCacheKey = (prefix, data) => {
     .update(JSON.stringify(data))
     .digest("hex");
   return `${ENV}:${prefix}:${hash}`;
-}
+};
+const deleteRedisKeysByPrefix = async (prefix) => {
+  try {
+    let cursor = "0";
+    let totalDeleted = 0;
+
+    do {
+      // Ensure cursor is a string
+      const { cursor: nextCursor, keys } = await redis.scan(cursor, "MATCH", `${prefix}*`, "COUNT", 100);
+
+      if (keys && keys.length > 0) {
+        const pipeline = redis.multi();
+        for (const key of keys) {
+          pipeline.del(key);
+        }
+
+        const results = await pipeline.exec();
+        totalDeleted += results?.length || 0;
+      }
+
+      cursor = nextCursor;
+    } while (cursor !== "0");
+
+    console.log(`✅ Deleted ${totalDeleted} Redis keys with prefix: ${prefix}`);
+  } catch (err) {
+    console.error(`❌ Failed to delete keys with prefix ${prefix}:`, err);
+  }
+};
+
+
 module.exports = {
   deleteLocalFile,
   numberWithCommas,
@@ -805,4 +835,5 @@ module.exports = {
   calcShopRevenueValue,
   convertToCdnUrl,
   makeCacheKey,
+  deleteRedisKeysByPrefix,
 };
