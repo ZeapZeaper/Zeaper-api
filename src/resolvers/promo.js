@@ -412,9 +412,7 @@ const getLivePromos = async (req, res) => {
       filter.permittedProductTypes = { $in: productTypeEnums };
     }
 
-    const promos = await PromoModel.find(filter)
-      .select("promoId name permittedProductTypes status productIds") // only needed fields
-      .lean();
+    const promos = await PromoModel.find(filter).lean();
 
     // 3️⃣ Compute productsCount from productIds
     const promosWithCounts = promos.map((promo) => ({
