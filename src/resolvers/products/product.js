@@ -83,7 +83,6 @@ const {
   sendPushAllAdmins,
   addNotification,
 } = require(".././notification");
-const ReviewModel = require("../../models/review");
 const ProductOrderModel = require("../../models/productOrder");
 const { addRecentView } = require("../recentviews");
 const RecentViewsModel = require("../../models/recentViews");
@@ -235,7 +234,7 @@ const addProductColorAndImages = async (req, res) => {
       }
     }
 
-    const user = await getAuthUser(req);
+    const user = req?.cachedUser || (await getAuthUser(req));
     if (user.shopId !== product.shopId && !user?.isAdmin && !user?.superAdmin) {
       await deleLocalImages(files);
       return res
@@ -353,7 +352,7 @@ const addImagesToProductColor = async (req, res) => {
       await deleLocalImages(files);
       return res.status(400).send({ error: "color not found" });
     }
-    const user = await getAuthUser(req);
+    const user = req?.cachedUser || (await getAuthUser(req));
     if (user.shopId !== product.shopId && !user?.isAdmin && !user?.superAdmin) {
       await deleLocalImages(files);
       return res
@@ -416,7 +415,7 @@ const deleteProductColor = async (req, res) => {
     if (!product) {
       return res.status(400).send({ error: "product not found" });
     }
-    const user = await getAuthUser(req);
+    const user = req?.cachedUser || (await getAuthUser(req));
     if (user.shopId !== product.shopId && !user?.isAdmin && !user?.superAdmin) {
       return res
         .status(400)
@@ -471,7 +470,7 @@ const deleteProductImage = async (req, res) => {
     if (!product) {
       return res.status(400).send({ error: "product not found" });
     }
-    const user = await getAuthUser(req);
+    const user = req?.cachedUser || (await getAuthUser(req));
     if (user.shopId !== product.shopId && !user?.isAdmin && !user?.superAdmin) {
       return res
         .status(400)
@@ -529,7 +528,7 @@ const setProductImageAsDefault = async (req, res) => {
     if (!product) {
       return res.status(400).send({ error: "product not found" });
     }
-    const user = await getAuthUser(req);
+    const user = req?.cachedUser || (await getAuthUser(req));
     if (user.shopId !== product.shopId && !user?.isAdmin && !user?.superAdmin) {
       return res
         .status(400)
@@ -611,7 +610,7 @@ const editProduct = async (req, res) => {
     if (description && description == "") {
       return res.status(400).send({ error: "description is required" });
     }
-    const user = await getAuthUser(req);
+    const user = req?.cachedUser || (await getAuthUser(req));
     if (user.shopId !== product.shopId && !user?.isAdmin && !user?.superAdmin) {
       return res
         .status(400)
@@ -685,7 +684,7 @@ const absoluteDeleteProducts = async (req, res) => {
       return res.status(400).send({ error: "one or more products not found" });
     }
 
-    const user = await getAuthUser(req);
+    const user = req?.cachedUser || (await getAuthUser(req));
     const shopIds = products.map((product) => product.shopId);
     const shopId = shopIds[0];
     if (
@@ -775,7 +774,7 @@ const deleteProducts = async (req, res) => {
     if (products.length !== productIds.length) {
       return res.status(400).send({ error: "one or more products not found" });
     }
-    const user = await getAuthUser(req);
+    const user = req?.cachedUser || (await getAuthUser(req));
     const shopIds = products.map((product) => product.shopId);
     const shopId = shopIds[0];
     if (
@@ -932,7 +931,7 @@ const createProduct = async (req, res) => {
       return res.status(400).send({ error: "description is required" });
     }
 
-    const user = await getAuthUser(req);
+    const user = req?.cachedUser || (await getAuthUser(req));
     if (
       shopId &&
       user.shopId !== shopId &&
@@ -1033,7 +1032,7 @@ const setProductStatus = async (req, res) => {
       });
     }
 
-    const user = await getAuthUser(req);
+    const user = req?.cachedUser || (await getAuthUser(req));
     if (user.shopId !== product.shopId && !user?.isAdmin && !user?.superAdmin) {
       return res
         .status(400)
@@ -1175,7 +1174,7 @@ const submitProduct = async (req, res) => {
         return res.status(400).send({ error: verify.error });
       }
     }
-    const user = await getAuthUser(req);
+    const user = req?.cachedUser || (await getAuthUser(req));
     const newTimeLine = {
       date: new Date(),
       description: "product submitted for review",
@@ -1530,6 +1529,7 @@ const getLiveProducts = async (req, res) => {
     let productsData;
 
     if (cachedData) {
+      console.log("Cache hit for live products");
       productsData = JSON.parse(cachedData);
     } else {
       // 2️⃣ Query Mongo if cache miss
@@ -1546,6 +1546,7 @@ const getLiveProducts = async (req, res) => {
             productId: 1,
             promo: 1,
             createdAt: 1,
+            "categories.productGroup": 1,
           },
         },
         { $sort: { createdAt: sort } },
@@ -1661,6 +1662,7 @@ const getPromoWithLiveProducts = async (req, res) => {
           productId: 1,
           promo: 1,
           createdAt: 1,
+           "categories.productGroup": 1,
         },
       },
       { $sort: { createdAt: sort } },
@@ -1722,6 +1724,7 @@ const getNewestArrivals = async (req, res) => {
             productId: 1,
             promo: 1,
             createdAt: 1,
+             "categories.productGroup": 1,
           },
         },
         { $sort: { createdAt: -1 } },
@@ -1741,7 +1744,7 @@ const getNewestArrivals = async (req, res) => {
     const data = {
       products,
     };
-    
+
     return res.status(200).send({ data: data });
   } catch (err) {
     return res.status(500).send({ error: err.message });
@@ -1834,7 +1837,7 @@ const getMostPopular = async (req, res) => {
       pageNumber,
       query,
     });
-    console.log("🔑 Cache Key:", cacheKey);
+
     // 🧠 1️⃣ Check if we already have cached base products
     const cachedBase = await redis.get(cacheKey);
     let baseProducts;
@@ -1865,6 +1868,7 @@ const getMostPopular = async (req, res) => {
                   productId: 1,
                   promo: 1,
                   createdAt: 1,
+                   "categories.productGroup": 1,
                 },
               },
               { $sort: { createdAt: -1 } },
@@ -1881,6 +1885,7 @@ const getMostPopular = async (req, res) => {
                   productId: 1,
                   promo: 1,
                   createdAt: 1,
+                   "categories.productGroup": 1,
                 },
               },
             ],
@@ -2017,6 +2022,7 @@ const searchLiveProducts = async (req, res) => {
           productId: 1,
           promo: 1,
           createdAt: 1,
+           "categories.productGroup": 1,
         },
       },
       {
@@ -2346,6 +2352,7 @@ const searchSimilarProductsForProduct = async (product) => {
         productId: 1,
         promo: 1,
         createdAt: 1,
+         "categories.productGroup": 1,
       },
     },
     {
@@ -2631,7 +2638,7 @@ const addProductVariation = async (req, res) => {
     if (currentStep) {
       product.currentStep = currentStep;
     }
-    const user = await getAuthUser(req);
+    const user = req?.cachedUser || (await getAuthUser(req));
     if (user.shopId !== product.shopId && !user?.isAdmin && !user?.superAdmin) {
       return res
         .status(400)
@@ -2716,7 +2723,7 @@ const editProductVariation = async (req, res) => {
     if (!product) {
       return res.status(400).send({ error: "product not found" });
     }
-    const user = await getAuthUser(req);
+    const user = req?.cachedUser || (await getAuthUser(req));
     if (user.shopId !== product.shopId && !user?.isAdmin && !user?.superAdmin) {
       return res
         .status(400)
@@ -2829,7 +2836,7 @@ const deleteProductVariation = async (req, res) => {
     if (!product) {
       return res.status(400).send({ error: "product not found" });
     }
-    const user = await getAuthUser(req);
+    const user = req?.cachedUser || (await getAuthUser(req));
     if (user.shopId !== product.shopId && !user?.isAdmin && !user?.superAdmin) {
       return res
         .status(400)
@@ -2898,7 +2905,7 @@ const updateAutoPriceAdjustment = async (req, res) => {
     if (!product) {
       return res.status(400).send({ error: "product not found" });
     }
-    const user = await getAuthUser(req);
+    const user = req?.cachedUser || (await getAuthUser(req));
     if (user.shopId !== product.shopId && !user?.isAdmin && !user?.superAdmin) {
       return res
         .status(400)
