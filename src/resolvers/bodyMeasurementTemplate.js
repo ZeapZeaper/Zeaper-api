@@ -74,7 +74,7 @@ const addBodyMeasurementTemplate = async (req, res) => {
       });
     }
 
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
     }
@@ -159,7 +159,7 @@ const getBodyMeasurementTemplates = async (req, res) => {
     if (!user_id) {
       return res.status(400).send({ error: "required user_id" });
     }
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
     }
@@ -188,7 +188,7 @@ const getBodyMeasurementTemplates = async (req, res) => {
 
 const getAuthUserBodyMeasurementTemplates = async (req, res) => {
   try {
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
     }
@@ -234,7 +234,7 @@ const updateBodyMeasurementTemplate = async (req, res) => {
       return res.status(400).send({ error: "required template name" });
     }
 
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
     }
@@ -316,7 +316,7 @@ const deleteBodyMeasurementTemplate = async (req, res) => {
     if (!template_id) {
       return res.status(400).send({ error: "required template_id" });
     }
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
     }

@@ -39,6 +39,7 @@ const helpArticlesResolver = require("../resolvers/helpArticles");
 const blogResolver = require("../resolvers/blog");
 const emailListResolver = require("../resolvers/emailList");
 const policyResolver = require("../resolvers/policy");
+const onboadingDocumentsResolver = require("../resolvers/onboadingDocuments");
 const handleMoreFieldsUploads = uploadMultiple.fields([
   { name: "documents", maxCount: 5 },
   { name: "images", maxCount: 5 },
@@ -1058,6 +1059,19 @@ let routes = (app) => {
     "/policy/seller",
     authMiddleware,
     policyResolver.getSellerPolicyLink
+  );
+
+  // Onboarding Documents routes
+  router.post(
+    "/shop/onboarding-document/add",
+    authMiddleware,
+    upload,
+    onboadingDocumentsResolver.uploadOnboardingDocument
+  );
+  router.get(
+    "/shop/onboarding-documents",
+    authMiddleware,
+    onboadingDocumentsResolver.getShopOnboardingDocuments
   );
 
   return app.use("/", router);

@@ -425,7 +425,7 @@ const calcOrderProgress = (productOrders) => {
 };
 const getAuthBuyerOrders = async (req, res) => {
   try {
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
     }
@@ -462,7 +462,7 @@ const getAuthBuyerOrders = async (req, res) => {
 
 const getAuthVendorProductOrders = async (req, res) => {
   try {
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
     }
@@ -520,7 +520,7 @@ const getOrder = async (req, res) => {
     if (!order_id) {
       return res.status(400).send({ error: "required order_id" });
     }
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
     }
@@ -599,7 +599,7 @@ const getOrderByOrderId = async (req, res) => {
     if (!orderId) {
       return res.status(400).send({ error: "required orderId of order" });
     }
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
     }
@@ -722,7 +722,7 @@ const getProductOrder = async (req, res) => {
 
     // check if auth user is the owner of the product order or super admin or admin or the shop owner
     // if not, return error
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     if (
       !authUser ||
       (productOrder.user &&
@@ -851,7 +851,7 @@ const updateProductOrderStatus = async (req, res) => {
         .status(400)
         .send({ error: "You can't cancel an order using this endpoint" });
     }
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
     }
@@ -1055,7 +1055,7 @@ const cancelOrder = async (req, res) => {
       return res.status(400).send({ error: "Product Order already cancelled" });
     }
 
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     if (
       productOrder.status.value !== "order placed" &&
       !authUser.superAdmin &&

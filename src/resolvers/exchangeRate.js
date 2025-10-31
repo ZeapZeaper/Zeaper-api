@@ -25,7 +25,7 @@ const updateExchangeRate = async (req, res) => {
       return res.status(400).send({ error: "required currency" });
     }
 
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
 
     const exchangeRate = await ExchangeRateModel.findOne({
       currency,

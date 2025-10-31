@@ -5,7 +5,7 @@ const { generateVoucher } = require("./voucher");
 
 const getAuthUserPoint = async (req, res) => {
   try {
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
     }
@@ -84,7 +84,7 @@ const convertPointToVoucher = async (req, res) => {
         error: "Oops! You need at least 1000 points to convert.",
       });
     }
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
     }

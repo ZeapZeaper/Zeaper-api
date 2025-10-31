@@ -36,7 +36,7 @@ const createDeliveryAddress = async (req, res) => {
       return res.status(400).send({ error: "required phoneNumber" });
     }
 
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
     }
@@ -100,7 +100,7 @@ const getDeliveryAddresses = async (req, res) => {
   try {
     const { user_id } = req.query;
 
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     if (
       user_id &&
       !authUser.isAdmin &&
@@ -143,7 +143,7 @@ const updateDeliveryAddress = async (req, res) => {
       return res.status(400).send({ error: "required phoneNumber" });
     }
 
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
     }
@@ -172,7 +172,7 @@ const deleteDeliveryAddress = async (req, res) => {
       return res.status(400).send({ error: "required address_id" });
     }
 
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
     }
@@ -204,7 +204,7 @@ const setDefaultDeliveryAddress = async (req, res) => {
       return res.status(400).send({ error: "required address_id" });
     }
 
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
     }
@@ -246,7 +246,7 @@ const getDeliveryAddress = async (req, res) => {
       return res.status(400).send({ error: "required address_id" });
     }
 
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
     }

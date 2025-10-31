@@ -26,7 +26,7 @@ const updateDeliveryFee = async (req, res) => {
     }
 
     const currency = "NGN";
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
 
     const deliveryFee = await DeliveryFeeModel.findById(id);
     if (!deliveryFee) {

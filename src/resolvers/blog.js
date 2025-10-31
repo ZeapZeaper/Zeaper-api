@@ -120,7 +120,7 @@ const createBlogPost = async (req, res) => {
     if (tags && tags.length < 1) {
       return res.status(400).send({ error: "At least one tag is required" });
     }
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     if (!authUser) {
       return res.status(401).send({ error: "Unauthorized" });
     }
@@ -164,7 +164,7 @@ const getBlogPosts = async (req, res) => {
       return res.status(400).send({ error: "Invalid status" });
     }
 
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     if (
       authUser &&
       !authUser.isBlogAuthor &&
@@ -400,7 +400,7 @@ const updateBlogPost = async (req, res) => {
     }
     const blogPostImageName =
       blogPost.image && blogPost.image.name ? blogPost.image.name : null;
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
 
     const isAuthor = authUser && authUser.isBlogAuthor;
     if (!isAuthor) {
@@ -650,7 +650,7 @@ const deleteBlogPost = async (req, res) => {
     if (!blogPostId) {
       return res.status(400).send({ error: "Blog post ID is required" });
     }
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     if (!authUser) {
       return res.status(401).send({ error: "Unauthorized" });
     }
@@ -695,7 +695,7 @@ const changeBlogPostStatus = async (req, res) => {
     if (!blogPost) {
       return res.status(404).send({ error: "Blog post not found" });
     }
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     const isAuthor = authUser && authUser.isBlogAuthor;
     if (!isAuthor) {
       return res
@@ -864,7 +864,7 @@ const makeUserBlogAuthor = async (req, res) => {
     if (!user) {
       return res.status(404).send({ error: "User not found" });
     }
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     if (!authUser || !authUser.isAdmin) {
       return res
         .status(403)
@@ -899,7 +899,7 @@ const removeUserBlogAuthor = async (req, res) => {
     if (!user) {
       return res.status(404).send({ error: "User not found" });
     }
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     if (!authUser || !authUser.isAdmin) {
       return res
         .status(403)
