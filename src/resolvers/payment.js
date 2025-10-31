@@ -150,7 +150,7 @@ const getReference = async (req, res) => {
       lastName,
       postCode,
     };
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
     }
@@ -1004,7 +1004,7 @@ const payShop = async (req, res) => {
     if (!reference) {
       return res.status(400).send({ error: "required reference" });
     }
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     if (!authUser.isAdmin && !authUser.superAdmin) {
       return res.status(400).send({
         error: "You are not authorized to make payment to shop for this order",
@@ -1069,7 +1069,7 @@ const revertPayShop = async (req, res) => {
     if (!productOrder_id) {
       return res.status(400).send({ error: "required productOrder_id" });
     }
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     if (!authUser.isAdmin && !authUser.superAdmin) {
       return res.status(400).send({
         error:

@@ -1,13 +1,12 @@
-const {  vendorContract, ZeaperPolicy } = require("../helpers/constants");
+const { vendorContract, ZeaperPolicy } = require("../helpers/constants");
 const { getAuthUser } = require("../middleware/firebaseUserAuth");
 
 const getSellerPolicyLink = async (req, res) => {
   try {
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     if (!authUser) {
       return res.status(401).send({ error: "Unauthorized" });
     }
-   
 
     const data = [
       {

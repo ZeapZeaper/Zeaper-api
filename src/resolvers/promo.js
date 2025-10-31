@@ -611,7 +611,7 @@ const updatePromo = async (req, res) => {
       return res.status(400).send({ error: "Promo not found" });
     }
 
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
     }
@@ -723,7 +723,7 @@ const deletePromo = async (req, res) => {
     if (!promoId) {
       return res.status(400).send({ error: "promoId is required" });
     }
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
     }
@@ -1077,7 +1077,7 @@ const activatePromo = async (req, res) => {
     if (endDate < new Date()) {
       return res.status(400).send({ error: "Promo end date is passed" });
     }
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
     }
@@ -1155,7 +1155,7 @@ const expirePromo = async (req, res) => {
       return res.status(400).send({ error: "Promo end date is not passed" });
     }
 
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
     }
@@ -1225,7 +1225,7 @@ const schedulePromo = async (req, res) => {
     if (endDate < new Date()) {
       return res.status(400).send({ error: "Promo end date is passed" });
     }
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
     }

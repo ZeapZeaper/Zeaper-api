@@ -57,7 +57,7 @@ const addArticle = async (req, res) => {
     if (tags && !Array.isArray(tags)) {
       throw new Error("Tags must be an array");
     }
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
     }
@@ -120,7 +120,7 @@ const deleteArticle = async (req, res) => {
     if (!articleId) {
       throw new Error("Article ID is required");
     }
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
     }
@@ -168,7 +168,7 @@ const updateArticle = async (req, res) => {
     if (tags && !Array.isArray(tags)) {
       throw new Error("Tags must be an array");
     }
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
     }
@@ -208,7 +208,7 @@ const getArticle = async (req, res) => {
       return res.status(404).send({ error: "Article not found" });
     }
     if (article) {
-      const authUser = await getAuthUser(req);
+      const authUser = req?.cachedUser || (await getAuthUser(req));
       // check if user marked this article as helpful or not helpful
       if (authUser) {
         article.markedIsHelpful = article.helpfulCount.find((userId) =>
@@ -235,7 +235,7 @@ const addToPopularTopics = async (req, res) => {
     if (!articleId) {
       return res.status(400).send({ error: "Article ID is required" });
     }
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
     }
@@ -279,7 +279,7 @@ const removeFromPopularTopics = async (req, res) => {
     if (!articleId) {
       return res.status(400).send({ error: "Article ID is required" });
     }
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
     }
@@ -334,7 +334,7 @@ const markHelpful = async (req, res) => {
     if (!articleId) {
       return res.status(400).send({ error: "Article ID is required" });
     }
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
     }

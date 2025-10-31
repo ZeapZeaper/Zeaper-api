@@ -35,7 +35,7 @@ const registerPushToken = async (req, res) => {
     }
     const pushTokenDate = new Date();
 
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
 
     if (isAdminPanel && !authUser.isAdmin && !authUser.superAdmin) {
       return res.status(400).send({ error: "Unauthorized" });
@@ -112,7 +112,7 @@ const testPushNotification = async (req, res) => {
     if (roleTypeEnums.indexOf(roleType) === -1) {
       return res.status(400).send({ error: "Invalid roleType" });
     }
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     const userNotification = await NotificationModel.findOne({
       user: authUser._id,
     });
@@ -311,7 +311,7 @@ const testMultiplePushNotification = async (req, res) => {
 
 const getNotifications = async (req, res) => {
   try {
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     const userNotification = (await NotificationModel.findOne({
       user: authUser._id,
     })
@@ -329,7 +329,7 @@ const getNotifications = async (req, res) => {
 
 const getAdminsNotifications = async (req, res) => {
   try {
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     if (!authUser.isAdmin && !authUser.superAdmin) {
       return res.status(400).send({ error: "Unauthorized" });
     }
@@ -354,7 +354,7 @@ const deleteNotification = async (req, res) => {
     if (!notification_id) {
       return res.status(400).send({ error: "required notification_id" });
     }
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     const query = {
       ...(isAdminPanel && { isAdminPanel }),
       ...(!isAdminPanel && { user: authUser._id }),
@@ -385,7 +385,7 @@ const deleteNotification = async (req, res) => {
 };
 const clearAllAuthUserNotifications = async (req, res) => {
   try {
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     const userNotification = await NotificationModel.findOne({
       user: authUser._id,
     });

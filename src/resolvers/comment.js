@@ -15,7 +15,7 @@ const createComment = async (req, res) => {
         .status(400)
         .send({ error: "required userId in user comment type" });
     }
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
 
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
@@ -77,7 +77,7 @@ const deleteComment = async (req, res) => {
     if (!_id) {
       return res.status(400).send({ error: "required _id" });
     }
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
     }
@@ -107,7 +107,7 @@ const updateComment = async (req, res) => {
     if (!comment) {
       return res.status(400).send({ error: "required comment" });
     }
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
     }
