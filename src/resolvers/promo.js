@@ -1017,11 +1017,8 @@ const updatePromoImage = async (req, res) => {
     const { promoId } = req.body;
     const promo = await PromoModel.findOne({ promoId });
     if (!promo) {
-      if (req?.files) {
-        Object.values(req.files).map(async (file) => {
-          console.log("here 3", file);
-          await deleteLocalImagesByFileName(file[0].filename);
-        });
+      if (req?.file) {
+        await deleteLocalImagesByFileName(req.file.filename);
       }
       return res.status(400).send({ error: "Promo not found" });
     }

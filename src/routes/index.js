@@ -7,6 +7,7 @@ const {
   upload,
   uploadMultiple,
   validateFileSizes,
+  uploadPDFandImages,
 } = require("../middleware/uploadImage");
 const {
   authMiddleware,
@@ -1065,7 +1066,7 @@ let routes = (app) => {
   router.post(
     "/shop/onboarding-document/add",
     authMiddleware,
-    upload,
+    uploadPDFandImages,
     onboadingDocumentsResolver.uploadOnboardingDocument
   );
   router.get(

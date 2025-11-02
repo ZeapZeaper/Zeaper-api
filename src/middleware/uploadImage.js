@@ -43,7 +43,7 @@ const validateFileSizes = (request, response, next) => {
         .json({ error: "File is too large. Max file size is 1.5MB" });
     }
   }
- 
+
   if (request?.files) {
     const images = request.files.images;
 
@@ -110,6 +110,30 @@ const uploadMultiple = multer({
   },
 });
 
+const uploadPDFandImages = multer({
+  storage: storage,
+  // limits: {
+  //   fileSize: 1024 * 1024 * 5,
+  // },
+  fileFilter: (req, file, cb) => {
+
+    if (
+      file.mimetype == "image/png" ||
+      file.mimetype == "image/jpg" ||
+      file.mimetype == "image/jpeg" ||
+      file.mimetype == "image/webp" ||
+      file.mimetype == "application/pdf"
+    ) {
+      
+      cb(null, true);
+    } else {
+      req.fileValidationError =
+        "Only .png, .jpg, .jpeg, .webp and .pdf format allowed!";
+      return cb(null, false, req.fileValidationError);
+    }
+  },
+}).single("file");
+
 // saving the image on uploads folder to fasten loaden of images
 
 // const storage = multer.diskStorage({
@@ -145,4 +169,9 @@ const uploadMultiple = multer({
 //   },
 // });
 
-module.exports = { upload, uploadMultiple, validateFileSizes };
+module.exports = {
+  upload,
+  uploadMultiple,
+  validateFileSizes,
+  uploadPDFandImages,
+};
