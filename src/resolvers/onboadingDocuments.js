@@ -1,50 +1,75 @@
 const { storageRef } = require("../config/firebase");
-const { deleteLocalFile, deleLocalImages } = require("../helpers/utils");
+const {
+  deleteLocalFile,
+  deleLocalImages,
+  deleteLocalImagesByFileName,
+} = require("../helpers/utils");
 const path = require("path");
+const root = require("../../root");
 const sharp = require("sharp");
 const { v4: uuidv4 } = require("uuid");
 const OnboardingDocumentModel = require("../models/onboadingDocuments");
 const { onboardingDocumentEnums } = require("../helpers/constants");
 const { getAuthUser } = require("../middleware/firebaseUserAuth");
+const ShopModel = require("../models/shop");
+const fs = require("fs");
 
-//saving image to firebase storage
-const addImage = async (destination, filename) => {
-  let url = {};
-  if (filename) {
-    const source = path.join(root + "/uploads/" + filename);
-    await sharp(source)
-      .resize(1500, 1500, {
-        fit: "inside",
-        withoutEnlargement: true,
-      })
-      // .jpeg({ quality: 90 })
-      .toFile(path.resolve(destination, "resized", filename));
+const addImageOrPdf = async (destination, filename, fileType) => {
+  if (!filename) return {};
 
-    const storage = await storageRef.upload(
-      path.resolve(destination, "resized", filename),
-      // path.resolve(source),
-      {
-        public: true,
-        destination: `shop/${filename}`,
-        metadata: {
-          firebaseStorageDownloadTokens: uuidv4(),
-          cacheControl: "public, max-age=31536000", // 1 year
-        },
-      }
-    );
-    // get the public url that avoids egress charges
-    url = {
+  const source = path.join(root, "uploads", filename);
+  if (!fs.existsSync(source)) throw new Error(`File not found: ${source}`);
+
+  // detect type automatically if not specified
+  const isPdf =
+    fileType === "application/pdf" || filename.toLowerCase().endsWith(".pdf");
+
+  const destPath = isPdf
+    ? path.resolve(destination, "resized", filename)
+    : path.resolve(destination, "resized", filename);
+
+  // ensure resized folder exists
+  fs.mkdirSync(path.resolve(destination, "resized"), { recursive: true });
+
+  try {
+    if (!isPdf) {
+      // process image via sharp
+      await sharp(source)
+        .resize(1500, 1500, {
+          fit: "inside",
+          withoutEnlargement: true,
+        })
+        .toFile(destPath);
+    } else {
+      // for PDFs, just copy file directly
+      fs.copyFileSync(source, destPath);
+    }
+
+    // upload to storage
+    const storage = await storageRef.upload(destPath, {
+      public: true,
+      destination: `shop/${filename}`,
+      metadata: {
+        firebaseStorageDownloadTokens: uuidv4(),
+        cacheControl: "public, max-age=31536000", // 1 year
+      },
+    });
+
+    // construct public URL
+    const url = {
       link: `https://storage.googleapis.com/${storageRef.name}/shop/${filename}`,
       name: filename,
+      filetype: isPdf ? "pdf" : "image",
     };
-    const deleteSourceFile = await deleteLocalFile(source);
-    const deleteResizedFile = await deleteLocalFile(
-      path.resolve(destination, "resized", filename)
-    );
-    await Promise.all([deleteSourceFile, deleteResizedFile]);
+
+    // clean up local files
+    await Promise.all([deleteLocalFile(source), deleteLocalFile(destPath)]);
+
     return url;
+  } catch (err) {
+    console.error("Error processing file:", err);
+    throw err;
   }
-  return url;
 };
 
 const deleteImageFromFirebase = async (name) => {
@@ -62,6 +87,7 @@ const deleteImageFromFirebase = async (name) => {
   }
 };
 const uploadOnboardingDocument = async (req, res) => {
+  let firebaseImageUrl = null;
   try {
     const { slug, shopId } = req.body;
     if (!slug) {
@@ -70,24 +96,40 @@ const uploadOnboardingDocument = async (req, res) => {
     if (!shopId) {
       return res.status(400).send({ error: "required shopId" });
     }
-    if (!onboardingDocumentEnums.includes(slug)) {
-      return res.status(400).send({ error: "Invalid slug" });
-    }
-    if (!req.files || req.files.length === 0) {
+    const onboardingDocumentEnumSlugs = onboardingDocumentEnums.map(
+      (item) => item.slug
+    );
+    if (!req.file) {
       return res.status(400).send({ error: "No file uploaded" });
     }
+    if (!onboardingDocumentEnumSlugs.includes(slug)) {
+      await deleteLocalImagesByFileName(req.file.filename);
+
+      return res.status(400).send({ error: "Invalid slug" });
+    }
+
     const user = req?.cachedUser || (await getAuthUser(req));
     if (user.shopId !== shopId && !user?.isAdmin && !user?.superAdmin) {
-      await deleLocalImages(req.files);
+      await deleteLocalImagesByFileName(req.file.filename);
       return res
         .status(400)
         .send({ error: "You are not authorized to edit this product" });
     }
-    const file = req.files[0];
+    const shop = await ShopModel.findOne({ shopId });
+    if (!shop) {
+      await deleteLocalImagesByFileName(req.file.filename);
+      return res.status(400).send({ error: "Shop not found" });
+    }
+    const file = req.file;
 
-    const imageUrl = await addImage(path.join(root, "uploads"), file.filename);
+    const imageUrl = await addImageOrPdf(
+      path.join(root, "uploads"),
+      file.filename,
+      file.mimetype
+    );
+    firebaseImageUrl = imageUrl;
     const existingDocument = await OnboardingDocumentModel.findOne({
-      shop: shopId,
+      shopId,
       slug,
     });
     if (existingDocument) {
@@ -99,26 +141,32 @@ const uploadOnboardingDocument = async (req, res) => {
       return res.status(200).send({ data: existingDocument });
     } else {
       const newDocument = new OnboardingDocumentModel({
-        shop: shopId,
+        shopId,
+        shop: shop._id,
         slug,
         imageUrl,
       });
       await newDocument.save();
-      return res
-        .status(200)
-        .send({
-          data: newDocument,
-          message: "Onboarding document uploaded successfully",
-        });
+      return res.status(200).send({
+        data: newDocument,
+        message: "Onboarding document uploaded successfully",
+      });
     }
   } catch (err) {
+    if (req?.file) {
+      await deleteLocalImagesByFileName(req.file.filename);
+    }
+    if (firebaseImageUrl) {
+      await deleteImageFromFirebase(firebaseImageUrl.name);
+    }
+
     return res.status(500).send({ error: err.message });
   }
 };
 
 const getShopOnboardingDocuments = async (req, res) => {
   try {
-    const { shopId } = req.params;
+    const { shopId } = req.query;
     if (!shopId) {
       return res.status(400).send({ error: "required shopId" });
     }
@@ -129,16 +177,20 @@ const getShopOnboardingDocuments = async (req, res) => {
         .send({ error: "You are not authorized to view these documents" });
     }
     const documents = await OnboardingDocumentModel.find({
-      shop: shopId,
+      shopId,
     }).lean();
-    const data = onboardingDocumentEnums.map((slug) => {
-      const doc = documents.find((d) => d.slug === slug);
+    const data = onboardingDocumentEnums.map((doc) => {
+      const document = documents.find((d) => d.slug === doc.slug);
       return {
-        slug,
-        imageUrl: doc ? doc.imageUrl : null,
+        slug: doc.slug,
+        link: document ? document.imageUrl.link : null,
+        label: doc.label,
+        filetype: document ? document.imageUrl.filetype : null,
       };
     });
-    return res.status(200).send({ data });
+    return res
+      .status(200)
+      .send({ data, message: "Documents fetched successfully" });
   } catch (err) {
     return res.status(500).send({ error: err.message });
   }

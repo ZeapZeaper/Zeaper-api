@@ -7,6 +7,10 @@ const OnboardingDocumentSchema = new mongoose.Schema({
     ref: "Shops",
     required: true,
   },
+  shopId: {
+    type: String,
+    required: true,
+  },
   slug: {
     type: String,
     required: true,
@@ -14,6 +18,7 @@ const OnboardingDocumentSchema = new mongoose.Schema({
   imageUrl: {
     name: { type: String, required: true },
     link: { type: String, required: true },
+    filetype: { type: String, required: true, enum: ["image", "pdf"] },
   },
 });
 
