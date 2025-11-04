@@ -348,18 +348,22 @@ const convertGuestUserWithEmailPasswordProvider = async (req, res) => {
     return res.status(500).send({ error: err.message });
   }
 };
-const sendWelcomeEmailToUser = async (email) => {
+const sendWelcomeEmailToUser = async ({ user }) => {
+  const { email } = user;
+  if (!email) {
+    return null;
+  }
   const welcomeUserEmailTemplate = await EmailTemplateModel.findOne({
     name: "welcome-user",
   }).lean();
   const formattedUserTemplateBody = replaceUserVariablesinTemplate(
     welcomeUserEmailTemplate?.body,
-    { email }
+    user
   );
 
   const formattedUserTemplateSubject = replaceUserVariablesinTemplate(
     welcomeUserEmailTemplate?.subject,
-    { email }
+    user
   );
 
   const param = {
@@ -1298,7 +1302,7 @@ const getUserByUid = async (req, res) => {
     }
 
     if (user?.email && !user?.welcomeEmailSent) {
-      const sendEmailUser = await sendWelcomeEmailToUser(user.email);
+      const sendEmailUser = await sendWelcomeEmailToUser({ user });
       if (sendEmailUser?.uid) {
         return res.status(200).send({ data: sendEmailUser });
       }
