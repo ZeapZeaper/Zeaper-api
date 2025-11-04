@@ -1346,7 +1346,8 @@ const helpCenterSubCategoryEnums = [
   "support",
 ];
 const ZeaperPolicy = "https://admin.zeaper.com/docs/Zeaper_Policy.pdf";
-const vendorContract = "https://admin.zeaper.com/docs/Zeap_vendor_contract.pdf";
+const vendorContract =
+  "https://admin.zeaper.com/docs/Zeap_vendor_contract.v2.pdf";
 const notificationTypeEnums = [
   "general",
   "order",
