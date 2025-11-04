@@ -348,6 +348,39 @@ const convertGuestUserWithEmailPasswordProvider = async (req, res) => {
     return res.status(500).send({ error: err.message });
   }
 };
+const sendWelcomeEmailToUser = async (email) => {
+  const welcomeUserEmailTemplate = await EmailTemplateModel.findOne({
+    name: "welcome-user",
+  }).lean();
+  const formattedUserTemplateBody = replaceUserVariablesinTemplate(
+    welcomeUserEmailTemplate?.body,
+    { email }
+  );
+
+  const formattedUserTemplateSubject = replaceUserVariablesinTemplate(
+    welcomeUserEmailTemplate?.subject,
+    { email }
+  );
+
+  const param = {
+    from: "admin@zeaper.com",
+    to: [email],
+    subject: formattedUserTemplateSubject || "Welcome",
+    body: formattedUserTemplateBody || "Welcome to Zeaper",
+  };
+
+  const userMail = await sendEmail(param);
+  const welcomeEmailSent = userMail?.data ? true : false;
+  if (welcomeEmailSent) {
+    const user = await UserModel.findOneAndUpdate(
+      { email },
+      { welcomeEmailSent },
+      { new: true }
+    );
+    return user;
+  }
+  return null;
+};
 
 const createUser = async (req, res) => {
   const { email, password } = req.body;
@@ -1264,25 +1297,13 @@ const getUserByUid = async (req, res) => {
       return res.status(404).send({ error: "User is disabled" });
     }
 
-    // const excludedUids = [
-    //   "irpcyKwIKzYrUfwbG53siYWFwg93",
-    //   "YSobakEdRvSK2Ucr0axNhzykCxd2",
-    //   "oBPFvBMrhbcrRDbdFu5Gm15F4o83",
-    //   "fedbNgNH7kTA2XHXti1r4yk2BUG2",
-    //   "Ly0fAlDTCQfCQZHv1oxPW3vhAwE3",
-    //   "SSG9gZI9EnPr37YADpAZfNkPIcn2",
-    // ];
-    // const deleteableUsers = await UserModel.find({
-    //   uid: { $nin: excludedUids },
+    if (user?.email && !user?.welcomeEmailSent) {
+      const sendEmailUser = await sendWelcomeEmailToUser(user.email);
+      if (sendEmailUser?.uid) {
+        return res.status(200).send({ data: sendEmailUser });
+      }
+    }
 
-    // }).lean();
-    // console.log("deleteableUsers", deleteableUsers);
-    // for (const deleteableUser of deleteableUsers) {
-    //   // delete user from firebase
-    //   //delete user from database
-    //   await deleteUserFromFirebase(deleteableUser.uid);
-    //   await UserModel.findByIdAndDelete(deleteableUser._id);
-    // }
     return res.status(200).send({ data: user });
   } catch (error) {
     return res.status(500).send({ error: error.message });

@@ -46,6 +46,45 @@ const generateUniqueShopId = async () => {
   return shopId.toString();
 };
 
+const sendWelcomeShopEmailToUser = async ({ user, shop }) => {
+  const { email } = user;
+  if (!email) {
+    return null;
+  }
+  if (!shop) {
+    return null;
+  }
+  const welcomeShopEmailTemplate = await EmailTemplateModel.findOne({
+    name: "welcome-shop",
+  }).lean();
+  const formattedShopTemplateBody = replaceShopVariablesinTemplate(
+    replaceUserVariablesinTemplate(welcomeShopEmailTemplate?.body, user),
+    shop
+  );
+  const formattedShopTemplateSubject = replaceShopVariablesinTemplate(
+    replaceUserVariablesinTemplate(welcomeShopEmailTemplate?.subject, user),
+    shop
+  );
+  const param = {
+    from: "admin@zeaper.com",
+    to: [email],
+    subject: formattedShopTemplateSubject?.subject || "Welcome",
+    body: formattedShopTemplateBody || "Welcome to Zeaper",
+  };
+  const shopMail = await sendEmail(param);
+  if (shopMail?.data) {
+    await ShopModel.findOneAndUpdate(
+      {
+        _id: shop._id,
+      },
+      { welcomeEmailSent: true },
+      { new: true }
+    ).lean();
+    return shopMail;
+  }
+  return null;
+};
+
 const createShop = async (req, res) => {
   try {
     const { shopName, country, region, phoneNumber, address, source } =
@@ -288,6 +327,10 @@ const getAuthUserShop = async (req, res) => {
         { link: vendorContract || "", name: "Zeaper Vendor Contract" },
       ];
       shop.documents = documents;
+    }
+    const user = shop?.user || {};
+    if (shop && user?.email && !shop.welcomeEmailSent) {
+      const sendWelcomeEmail = await sendWelcomeShopEmailToUser({ user, shop });
     }
     return res.status(200).send({ data: shop });
   } catch (err) {
@@ -612,7 +655,6 @@ const getShopRevenues = async (req, res) => {
 };
 
 const changeShopStatus = async (req, res) => {
- 
   try {
     const { shopId, status } = req.body;
     if (!shopId) {
