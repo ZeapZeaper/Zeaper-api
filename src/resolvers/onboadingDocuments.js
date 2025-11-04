@@ -113,7 +113,7 @@ const uploadOnboardingDocument = async (req, res) => {
       await deleteLocalImagesByFileName(req.file.filename);
       return res
         .status(400)
-        .send({ error: "You are not authorized to edit this product" });
+        .send({ error: "You are not authorized to upload this document" });
     }
     const shop = await ShopModel.findOne({ shopId });
     if (!shop) {
