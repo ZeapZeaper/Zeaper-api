@@ -17,6 +17,7 @@ const {
   notifyAllAdmins,
 } = require("./notification");
 const NotificationModel = require("../models/notification");
+const { userCache } = require("../helpers/cache");
 
 function getRandomInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));
@@ -105,7 +106,7 @@ const createShop = async (req, res) => {
       return res.status(400).send({ error: "address is required" });
     }
 
-    const authUser = await getAuthUser(req);
+    const authUser = req?.cachedUser || (await getAuthUser(req));
 
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
@@ -178,6 +179,7 @@ const createShop = async (req, res) => {
         .status(400)
         .send({ error: "Shop created but User not updated" });
     }
+     userCache.set(updatedUser.uid, updatedUser);
 
     if (shop && updatedUser?.email) {
       const welcomeShopEmailTemplate = await EmailTemplateModel.findOne({
