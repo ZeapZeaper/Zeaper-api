@@ -412,6 +412,10 @@ const createUser = async (req, res) => {
     if (email && !validator.validate(email)) {
       return res.status(400).send({ error: "email is invalid" });
     }
+    // Reject double .com domains for Gmail
+    if (email.toLowerCase().endsWith("@gmail.com.com")) {
+      return res.status(400).send({ error: "email is invalid" });
+    }
     if (email) {
       const alreadyUser = await UserModel.findOne({ email }).lean();
 

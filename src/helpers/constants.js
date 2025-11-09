@@ -684,6 +684,7 @@ const clothSizeEnumsByRegion = {
     "XXS",
     "XXXL",
     "XXXS",
+    "Custom"
   ],
 };
 
@@ -866,7 +867,7 @@ const shoeSizeEnumsByRegion = {
     "29.5",
     "30",
   ],
-  INTL: ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "One Size", "Adjustable"],
+  INTL: ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "One Size", "Adjustable", "Custom"],
 };
 
 // Combine, deduplicate, and sort
