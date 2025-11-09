@@ -77,7 +77,7 @@ const sendProductOrdershopEmail = async (productOrder) => {
     return;
   }
   const user = shop?.user;
-  const email = user?.email || shop?.email || null;
+  const email = shop?.email || user?.email || null;
   if (!email) {
     return;
   }
@@ -174,7 +174,8 @@ const buildProductOrders = async (
       });
     }
     const productType = product.productType;
-    const adminControlledDiscount = product?.promo?.adminControlledDiscount || false;
+    const adminControlledDiscount =
+      product?.promo?.adminControlledDiscount || false;
     const shopRevenue = {
       currency: "NGN",
       status: "pending",

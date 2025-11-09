@@ -44,7 +44,7 @@ const ShopSchema = new mongoose.Schema({
     type: String,
     enum: ["individual", "registered business"],
   },
-  businessSocial: BusinessSocialSchema,
+  social: BusinessSocialSchema,
   // currency: {
   //   type: {
   //     name: { type: String, required: true },
