@@ -179,7 +179,7 @@ const createShop = async (req, res) => {
         .status(400)
         .send({ error: "Shop created but User not updated" });
     }
-     userCache.set(updatedUser.uid, updatedUser);
+    userCache.set(updatedUser.uid, updatedUser);
 
     if (shop && updatedUser?.email) {
       const welcomeShopEmailTemplate = await EmailTemplateModel.findOne({
@@ -199,9 +199,10 @@ const createShop = async (req, res) => {
         ),
         shop
       );
+      const email = shop?.email || updatedUser?.email;
       const param = {
         from: "admin@zeaper.com",
-        to: [updatedUser?.email],
+        to: [email],
         subject: formattedShopTemplateSubject?.subject || "Welcome",
         body: formattedShopTemplateBody || "Welcome to Zeaper",
       };
@@ -386,6 +387,40 @@ const updateShop = async (req, res) => {
         .status(400)
         .send({ error: "You are not authorized to perform this operation" });
     }
+    if (
+      req.body?.shopName &&
+      req.body?.shopName !== shop.shopName &&
+      !autUser?.isAdmin &&
+      !autUser?.superAdmin
+    ) {
+      return res
+        .status(400)
+        .send({ error: "You are not authorized to change shop name" });
+    }
+    if (
+      req.body?.isTailor &&
+      shop.isTailor !== req.body?.isTailor &&
+      !shop.disabled &&
+      !autUser?.isAdmin &&
+      !autUser?.superAdmin
+    ) {
+      return res.status(400).send({
+        error:
+          "You are not authorized to indicate you are a tailor at this stage. Please contact support to make the change.",
+      });
+    }
+    if (
+      req.body?.isShoeMaker &&
+      shop.isShoeMaker !== req.body?.isShoeMaker &&
+      !shop.disabled &&
+      !autUser?.isAdmin &&
+      !autUser?.superAdmin
+    ) {
+      return res.status(400).send({
+        error:
+          "You are not authorized to indicate you are a shoe maker at this stage. Please contact support to make the change.",
+      });
+    }
 
     if (req.body?.shopName && req.body?.shopName !== shop.shopName) {
       const shopExist = await ShopModel.findOne({
@@ -398,6 +433,10 @@ const updateShop = async (req, res) => {
     if (req.body?.shopName === "") {
       return res.status(400).send({ error: "shopName cannot be empty" });
     }
+    if (typeof req.body?.social === "string") {
+      req.body.social = JSON.parse(req.body.social);
+    }
+
     const updatedShop = await ShopModel.findOneAndUpdate(
       {
         shopId,
