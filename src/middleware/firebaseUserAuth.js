@@ -103,7 +103,7 @@ const authUserAdminMiddleware = async (request, response, next) => {
         .status(400)
         .json({ error: "You are not authorized to perform this operation" });
     }
-    request.reqUser = cachedUser;
+    request.cachedUser = cachedUser;
     return next();
   }
   const user = await UserModel.findOne({ uid });
@@ -116,7 +116,7 @@ const authUserAdminMiddleware = async (request, response, next) => {
       .status(400)
       .json({ error: "You are not authorized to perform this operation" });
   }
-  request.reqUser = user;
+  request.cachedUser = user;
   next();
 };
 
