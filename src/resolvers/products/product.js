@@ -1033,7 +1033,12 @@ const setProductStatus = async (req, res) => {
     }
 
     const user = req?.cachedUser || (await getAuthUser(req));
-    if (user.shopId !== product.shopId && !user?.isAdmin && !user?.superAdmin) {
+
+    if (
+      user?.shopId !== product?.shopId &&
+      !user?.isAdmin &&
+      !user?.superAdmin
+    ) {
       return res
         .status(400)
         .send({ error: "You are not authorized to edit this product" });
@@ -1662,7 +1667,7 @@ const getPromoWithLiveProducts = async (req, res) => {
           productId: 1,
           promo: 1,
           createdAt: 1,
-           "categories.productGroup": 1,
+          "categories.productGroup": 1,
         },
       },
       { $sort: { createdAt: sort } },
@@ -1724,7 +1729,7 @@ const getNewestArrivals = async (req, res) => {
             productId: 1,
             promo: 1,
             createdAt: 1,
-             "categories.productGroup": 1,
+            "categories.productGroup": 1,
           },
         },
         { $sort: { createdAt: -1 } },
@@ -1868,7 +1873,7 @@ const getMostPopular = async (req, res) => {
                   productId: 1,
                   promo: 1,
                   createdAt: 1,
-                   "categories.productGroup": 1,
+                  "categories.productGroup": 1,
                 },
               },
               { $sort: { createdAt: -1 } },
@@ -1885,7 +1890,7 @@ const getMostPopular = async (req, res) => {
                   productId: 1,
                   promo: 1,
                   createdAt: 1,
-                   "categories.productGroup": 1,
+                  "categories.productGroup": 1,
                 },
               },
             ],
@@ -2022,7 +2027,7 @@ const searchLiveProducts = async (req, res) => {
           productId: 1,
           promo: 1,
           createdAt: 1,
-           "categories.productGroup": 1,
+          "categories.productGroup": 1,
         },
       },
       {
@@ -2352,7 +2357,7 @@ const searchSimilarProductsForProduct = async (product) => {
         productId: 1,
         promo: 1,
         createdAt: 1,
-         "categories.productGroup": 1,
+        "categories.productGroup": 1,
       },
     },
     {
