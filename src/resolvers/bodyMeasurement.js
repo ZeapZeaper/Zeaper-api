@@ -54,13 +54,16 @@ const validateBodyMeasurement = (measurements, bodyMeasurementEnums) => {
 
 const addBodyMeasurement = async (req, res) => {
   try {
-    const { productId, measurements, currentStep } = req.body;
+    const { productId, measurements, currentStep, additionalMeasurementNote } = req.body;
 
     if (!productId) {
       return res.status(400).send({ error: "required productId" });
     }
     if (!measurements || !measurements.length) {
       return res.status(400).send({ error: "required measurements" });
+    }
+    if (additionalMeasurementNote && typeof additionalMeasurementNote !== "string") {
+      return res.status(400).send({ error: "additionalMeasurementNote must be a string" });
     }
     const bodyMeasurementEnums = await BodyMeasurementGuideModel.find().lean();
 
@@ -84,7 +87,6 @@ const addBodyMeasurement = async (req, res) => {
       }, [])
       .filter((m) => measurementNames.includes(m.name));
 
-
     const validate = validateBodyMeasurement(
       measurements,
       mergedBodyMeasurementEnums
@@ -103,7 +105,7 @@ const addBodyMeasurement = async (req, res) => {
     if (existedProductBodyMeasurement) {
       const updatedMeasurement = await BodyMeasurementModel.findOneAndUpdate(
         { productId },
-        { measurements },
+        { measurements, additionalMeasurementNote },
         { new: true }
       );
       if (currentStep) {
@@ -128,6 +130,7 @@ const addBodyMeasurement = async (req, res) => {
     const newBodyMeasurement = new BodyMeasurementModel({
       productId: productId,
       measurements,
+      additionalMeasurementNote,
     });
     const savedBodyMeasurement = await newBodyMeasurement.save();
     if (!savedBodyMeasurement?._id) {

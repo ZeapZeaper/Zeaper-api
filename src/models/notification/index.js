@@ -1,6 +1,6 @@
-
 const mongoose = require("mongoose");
 const timestamp = require("mongoose-timestamp");
+const { sendEmail } = require("../../helpers/emailer");
 
 const NotificationSchema = new mongoose.Schema({
   pushToken: [{ type: String, required: false }],
@@ -17,6 +17,7 @@ const NotificationSchema = new mongoose.Schema({
       body: { type: String, required: true },
       data: { type: Object, required: false },
       image: { type: String, required: false },
+      seen: { type: Boolean, required: true, default: false },
       createdAt: { type: Date, required: true, default: Date.now },
     },
   ],
