@@ -1396,6 +1396,7 @@ const getProducts = async (req, res) => {
                 colors: 1,
                 productId: 1,
                 promo: 1,
+                status: 1,
               },
             },
           ],
@@ -1485,6 +1486,7 @@ const getAuthShopProducts = async (req, res) => {
                 sizes: 1,
                 colors: 1,
                 variations: 1,
+                status: 1,
               },
             },
           ],
@@ -1534,7 +1536,6 @@ const getLiveProducts = async (req, res) => {
     let productsData;
 
     if (cachedData) {
-      console.log("Cache hit for live products");
       productsData = JSON.parse(cachedData);
     } else {
       // 2️⃣ Query Mongo if cache miss
@@ -1571,6 +1572,31 @@ const getLiveProducts = async (req, res) => {
     const authUser = req?.cachedUser || (await getAuthUser(req));
     const currency = req.query.currency || authUser?.prefferedCurrency || "NGN";
     const products = addPreferredAmountAndCurrency(productsData, currency);
+
+    // side action
+    // from database, get products that has A-line Dress in the style. change this to A-Line Dress
+    const styleToCheck = "A-line Dress";
+    const standardizedStyle = "A-Line Dress";
+    const ALineDressProducts = await ProductModel.find({
+      status: "live",
+      "categories.style": styleToCheck,
+    }).exec();
+    console.log(
+      `Found ${ALineDressProducts.length} products with style ${styleToCheck}`
+    );
+    for (let product of ALineDressProducts) {
+      const categories = product.categories;
+      const style = categories.style || [];
+      const index = style.indexOf(styleToCheck);
+      if (index !== -1) {
+        style[index] = standardizedStyle;
+        product.categories.style = style;
+        await product.save();
+        console.log(
+          `Updated product ${product.productId} style to ${standardizedStyle}`
+        );
+      }
+    }
 
     return res.status(200).json({ data: { products } });
   } catch (err) {

@@ -99,35 +99,6 @@ const addBodyMeasurementTemplate = async (req, res) => {
       });
     }
 
-    // const bodyMeasurementEnums = await BodyMeasurementGuideModel.find().lean();
-    // const mappedBodyMeasurementEnums = bodyMeasurementEnums.map((b) => {
-    //   const { name, fields } = b;
-    //   return {
-    //     name,
-    //     fields: fields.map((f) => f.field),
-    //   };
-    // });
-    // const mergedBodyMeasurementEnums = mappedBodyMeasurementEnums.reduce(
-    //   (acc, cur) => {
-    //     const found = acc.find((m) => m.name === cur.name);
-    //     if (found) {
-    //       found.fields = [...found.fields, ...cur.fields];
-    //     } else {
-    //       acc.push(cur);
-    //     }
-    //     return acc;
-    //   },
-    //   []
-    // );
-    // const validate = validateBodyMeasurements(
-    //   measurements,
-    //   mergedBodyMeasurementEnums
-    // );
-    // if (validate.error) {
-    //   return res.status(400).send({ error: validate.error });
-    // }
-
-    // add unit = inch to all measurements
     const formattedMeasurements = measurements.map((measurement) => {
       measurement.unit = "inch";
       return measurement;
@@ -229,9 +200,9 @@ const getBodyMeasurementTemplate = async (req, res) => {
 
 const updateBodyMeasurementTemplate = async (req, res) => {
   try {
-    const { templateName, measurements, user_id } = req.body;
-    if (!templateName) {
-      return res.status(400).send({ error: "required template name" });
+    const { template_id, measurements, user_id } = req.body;
+    if (!template_id) {
+      return res.status(400).send({ error: "required template _id" });
     }
 
     const authUser = req?.cachedUser || (await getAuthUser(req));
@@ -250,7 +221,7 @@ const updateBodyMeasurementTemplate = async (req, res) => {
       });
     }
     const exist = await BodyMeasurementTemplateModel.findOne({
-      templateName,
+      _id: template_id,
       user: user_id || authUser._id,
     }).lean();
 
@@ -292,8 +263,8 @@ const updateBodyMeasurementTemplate = async (req, res) => {
     }
     const bodyMeasurementTemplate =
       await BodyMeasurementTemplateModel.findOneAndUpdate(
-        { templateName },
-        { templateName, measurements },
+        { _id: template_id },
+        { measurements },
         { new: true }
       );
     if (!bodyMeasurementTemplate?._id) {

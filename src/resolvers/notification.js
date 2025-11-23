@@ -652,7 +652,44 @@ const testEmailNotification = async (req, res) => {
     return res.status(500).send({ error: err.message });
   }
 };
-
+const markNotificationsAsSeen = async (req, res) => {
+  try {
+    const { notification_ids } = req.body;
+    if (!notification_ids || notification_ids.length === 0) {
+      return res.status(400).send({ error: "required notification_ids" });
+    }
+    // check if array
+    if (!Array.isArray(notification_ids)) {
+      return res
+        .status(400)
+        .send({ error: "notification_ids must be an array" });
+    }
+    const authUser = req?.cachedUser || (await getAuthUser(req));
+    const userNotification = await NotificationModel.findOne({
+      user: authUser._id,
+    });
+    if (!userNotification) {
+      return res.status(200).send({ message: "No notifications found" });
+    }
+    const notifications = userNotification.notifications;
+    const updatedNotifications = notifications.map((notification) => {
+      if (notification_ids.includes(notification._id.toString())) {
+        notification.seen = true;
+      }
+      return notification;
+    });
+    userNotification.notifications = updatedNotifications;
+    await userNotification.save();
+    return res
+      .status(200)
+      .send({
+        data: userNotification,
+        message: "Notifications marked as seen",
+      });
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
+};
 module.exports = {
   registerPushToken,
   testPushNotification,
@@ -671,4 +708,5 @@ module.exports = {
   notifyAllAdmins,
   notifyAllShops,
   testEmailNotification,
+  markNotificationsAsSeen,
 };

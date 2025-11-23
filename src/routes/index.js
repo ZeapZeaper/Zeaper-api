@@ -904,6 +904,11 @@ let routes = (app) => {
     authMiddleware,
     notificationResolver.clearAllAuthUserNotifications
   );
+  router.put(
+    "/notification/inbox/markAsSeen",
+    authMiddleware,
+    notificationResolver.markNotificationsAsSeen
+  );
 
   // Email Template routes
   router.post(
