@@ -249,13 +249,6 @@ const getAuthUserReviews = async (req, res) => {
 
     const product_ids = reviews.map((review) => review?.product._id) || [];
 
-    // const orderWithoutReviewQuery = {
-    //   user: user._id,
-    //   status: "delivered",
-    // };
-    // if (product_ids.length > 0) {
-    //   orderWithoutReviewQuery.product = { $nin: product_ids };
-    // }
     const ordersWithoutReview =
       (await ProductOrderModel.find({
         user: user._id.toString(),
@@ -281,14 +274,19 @@ const getAuthUserReviews = async (req, res) => {
         rating: null,
       };
     });
+
     const givenReviews = await Promise.all(
       reviews.map(async (review) => {
         const product = review.product;
+
         const order = await ProductOrderModel.findOne({
           user: user._id.toString(),
           product: product._id,
           orderId: review.orderId,
         }).lean();
+        if (!order) {
+          return null;
+        }
         return {
           ...review,
           order: {
@@ -303,7 +301,8 @@ const getAuthUserReviews = async (req, res) => {
           },
         };
       })
-    );
+    ).then((results) => results.filter((item) => item !== null));
+
     const data = {
       givenReviews,
       pendingReviews,

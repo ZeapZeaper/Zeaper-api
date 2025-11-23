@@ -314,17 +314,17 @@ const validateBodyMeasurements = (bodyMeasurements, bodyMeasurementEnums) => {
         error = `One or more measurements in ${name} has no field`;
         return { error };
       }
-      const validField = validItemFields.find(
-        (f) =>
-          f.toLowerCase().replaceAll(/\s/g, "") ===
-          field.toLowerCase().replaceAll(/\s/g, "")
-      );
-      if (!validField) {
-        error = `One or more measurements in ${name} has an invalid field ${field}. Valid fields are ${validItemFields.join(
-          ", "
-        )}`;
-        return { error };
-      }
+      // const validField = validItemFields.find(
+      //   (f) =>
+      //     f.toLowerCase().replaceAll(/\s/g, "") ===
+      //     field.toLowerCase().replaceAll(/\s/g, "")
+      // );
+      // if (!validField) {
+      //   error = `One or more measurements in ${name} has an invalid field ${field}. Valid fields are ${validItemFields.join(
+      //     ", "
+      //   )}`;
+      //   return { error };
+      // }
       if (!value || value === "" || value === undefined) {
         error = `One or more measurements in ${name} with field ${m.field} has no value`;
         return { error };

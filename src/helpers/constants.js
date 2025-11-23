@@ -1365,17 +1365,17 @@ const roleTypeEnums = ["buyer", "vendor", "admin"];
 const onboardingDocumentEnums = [
   {
     slug: "proof_of_identity",
-    label: "Proof of identity",
+    label: "Proof of Identity",
     hint: "International Passport, Driver's Licence, Voter's Card.",
   },
   {
     slug: "business_registration",
-    label: "Business registration document",
+    label: "Business Registration Document",
     hint: "CAC certificate, incorporation docs, etc.",
   },
   {
     slug: "business_address",
-    label: "Proof of business address",
+    label: "Proof of Business Address",
     hint: "Utility bill, bank statement (≤ 3 months).",
   },
 ];

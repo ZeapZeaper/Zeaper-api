@@ -10,6 +10,7 @@ const BodyMeasurementSchema = new mongoose.Schema({
       fields: [{ type: String, required: true }],
     },
   ],
+  additionalMeasurementNote: { type: String, required: false },
 });
 
 BodyMeasurementSchema.plugin(timestamp);
