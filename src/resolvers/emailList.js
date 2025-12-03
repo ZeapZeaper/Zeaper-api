@@ -53,7 +53,7 @@ const addToWaitingList = async (req, res) => {
 };
 
 const addToNewsletter = async (req, res) => {
-  console.log("Adding to newsletter");
+
   const { email } = req.body;
 
   if (!email) {

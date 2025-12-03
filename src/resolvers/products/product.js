@@ -1581,9 +1581,7 @@ const getLiveProducts = async (req, res) => {
       status: "live",
       "categories.style": styleToCheck,
     }).exec();
-    console.log(
-      `Found ${ALineDressProducts.length} products with style ${styleToCheck}`
-    );
+
     for (let product of ALineDressProducts) {
       const categories = product.categories;
       const style = categories.style || [];

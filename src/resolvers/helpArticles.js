@@ -2,6 +2,7 @@ const {
   helpCenterCategoryEnums,
   helpCenterSubCategoryEnums,
 } = require("../helpers/constants");
+const { normalizeQuillLists } = require("../helpers/utils");
 const { getAuthUser } = require("../middleware/firebaseUserAuth");
 const HelpArticleModel = require("../models/helpArticles");
 
@@ -196,7 +197,8 @@ const updateArticle = async (req, res) => {
 };
 const getArticle = async (req, res) => {
   try {
-    const { articleId } = req.query;
+    const { articleId, formatQuillContent = true } = req.query;
+
     if (!articleId) {
       throw new Error("Article ID is required");
     }
@@ -222,7 +224,12 @@ const getArticle = async (req, res) => {
           ? true
           : false;
       }
+      // normalize content lists
+      if (formatQuillContent === "true" || formatQuillContent === true) {
+        article.content = normalizeQuillLists(article.content);
+      }
     }
+
     res.status(200).send({ data: article });
   } catch (error) {
     res.status(400).send({ error: error.message });
