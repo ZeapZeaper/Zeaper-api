@@ -201,12 +201,12 @@ const validateProductAvailability = async (
   if (!variation) {
     return { error: "Product variation not found. ensure sku is correct" };
   }
-  if (variation.quantity === 0) {
-    return { error: `Product with sku ${sku} is out of stock` };
+  if (variation.quantity <= 0) {
+    return { error: `The requested product variation is out of stock` };
   }
   if (variation.quantity < quantity) {
     return {
-      error: `Product with sku ${sku} has only ${variation.quantity} left`,
+      error: `The requested product variation has only ${variation.quantity} left`,
     };
   }
   return { success: true };

@@ -33,6 +33,7 @@ const addBodyMeasurementTemplate = async (req, res) => {
 
     const bodyMeasurementGuideFields =
       await BodyMeasurementGuideFieldModel.find().lean();
+      
 
     // if measurement item is not object containing field and value
     // field must be in bodyMeasurementGuideFields
