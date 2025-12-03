@@ -444,13 +444,20 @@ const getAuthBuyerOrders = async (req, res) => {
       return res.status(200).send({ data: [], message: "No orders found" });
     }
     orders.forEach((order) => {
-      const progressValue = calcOrderProgress(order.productOrders);
+      const productOrders = order.productOrders;
+      const progressValue = calcOrderProgress(productOrders);
       const progress = {
         value: progressValue,
         max: 100,
         min: 0,
       };
       order.progress = progress;
+      // map status enum to each product order
+      productOrders.forEach((productOrder) => {
+        productOrder.status = orderStatusEnums.find(
+          (status) => status.value === productOrder.status.value
+        );
+      });
     });
 
     return res
@@ -746,6 +753,9 @@ const getProductOrder = async (req, res) => {
     const deliveryDetails = order.deliveryDetails;
     productOrder.order = order;
     productOrder.deliveryDetails = deliveryDetails;
+    productOrder.status = orderStatusEnums.find(
+      (status) => status.value === productOrder.status.value
+    );
 
     return res.status(200).send({
       data: productOrder,

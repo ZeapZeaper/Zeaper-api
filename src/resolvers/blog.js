@@ -349,6 +349,7 @@ const getBlogPost = async (req, res) => {
         { new: true }
       );
       blogPost.impressions = updatedBlogPost.impressions;
+      
     }
 
     res.status(200).send({

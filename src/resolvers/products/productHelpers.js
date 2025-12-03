@@ -23,7 +23,7 @@ const getDynamicFilters = (products) => {
     let value;
 
     if (productType === "readyMadeCloth") {
-      value = "Ready Made Cloth";
+      value = "Ready To Wear Cloth";
     }
     if (productType === "bespokeCloth") {
       value = "Bespoke Cloth";
@@ -32,7 +32,7 @@ const getDynamicFilters = (products) => {
       value = "Accessory";
     }
     if (productType === "readyMadeShoe") {
-      value = "Ready Made Shoe";
+      value = "Ready To Wear Shoe";
     }
     if (productType === "bespokeShoe") {
       value = "Bespoke Shoe";
@@ -526,15 +526,15 @@ const getDynamicFilters = (products) => {
   if (heelTypeObj.options.length > 0) {
     filters.push(heelTypeObj);
   }
-  const priceObj = {
-    name: "Price",
-    type: "range",
-    options: {
-      min: Math.min(...allPrices),
-      max: Math.max(...allPrices),
-    },
-  };
-  filters.push(priceObj);
+  // const priceObj = {
+  //   name: "Price",
+  //   type: "range",
+  //   options: {
+  //     min: Math.min(...allPrices),
+  //     max: Math.max(...allPrices),
+  //   },
+  // };
+  // filters.push(priceObj);
 
   return filters;
 };

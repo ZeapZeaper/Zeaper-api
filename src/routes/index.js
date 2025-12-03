@@ -1053,7 +1053,7 @@ let routes = (app) => {
     emailListResolver.getEmailList
   );
   router.post("/email/waitlist/add", emailListResolver.addToWaitingList);
-  router.post("/email/newsletter", emailListResolver.addToNewsletter);
+  router.post("/email/newsletter/add", emailListResolver.addToNewsletter);
   router.delete(
     "/email/remove",
     authMiddleware,

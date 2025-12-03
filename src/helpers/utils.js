@@ -26,6 +26,7 @@ const UAParser = require("ua-parser-js");
 const { cache } = require("./cache");
 const { ENV } = require("../config");
 const redis = require("./redis");
+const cheerio = require("cheerio");
 
 const deleteLocalFile = async (path) => {
   return new Promise((resolve) => {
@@ -124,12 +125,12 @@ const validateProductAvailability = async (product, quantity, sku) => {
   if (!variation) {
     return { error: "Product variation not found. ensure sku is correct" };
   }
-  if (variation.quantity === 0) {
-    return { error: `Product with sku ${sku} is out of stock` };
+  if (variation.quantity <= 0) {
+    return { error: `The requested product variation is out of stock` };
   }
   if (variation.quantity < quantity) {
     return {
-      error: `Product with sku ${sku} has only ${variation.quantity} left`,
+      error: `The requested product variation has only ${variation.quantity} left`,
     };
   }
   return { success: true };
@@ -777,7 +778,13 @@ const deleteRedisKeysByPrefix = async (prefix) => {
 
     do {
       // Ensure cursor is a string
-      const { cursor: nextCursor, keys } = await redis.scan(cursor, "MATCH", `${prefix}*`, "COUNT", 100);
+      const { cursor: nextCursor, keys } = await redis.scan(
+        cursor,
+        "MATCH",
+        `${prefix}*`,
+        "COUNT",
+        100
+      );
 
       if (keys && keys.length > 0) {
         const pipeline = redis.multi();
@@ -798,7 +805,85 @@ const deleteRedisKeysByPrefix = async (prefix) => {
   }
 };
 
+const normalizeQuillLists = (html) => {
+  /**
+   * Advanced Quill → Clean HTML List Normalizer
+   * - Fixes bullet and ordered lists
+   * - Fixes nested lists
+   * - Fixes mixed bullet/ordered lists inside the same parent
+   * - Converts Quill OL/UL misuse into proper semantic lists
+   * - Removes all Quill artifacts (.ql-ui, data-list)
+   */
+  const $ = cheerio.load(html, { decodeEntities: false });
 
+  // STEP 1: Remove all .ql-ui spans
+  $(".ql-ui").remove();
+
+  // STEP 2: Process all lists and rebuild correct HTML structure
+  $("li").each((_, li) => {
+    const $li = $(li);
+    const listType = $li.attr("data-list"); // "bullet" or "ordered" or undefined
+    const parent = $li.parent();
+
+    // Remove data-list now that we captured its meaning
+    $li.removeAttr("data-list");
+
+    // Determine correct parent tag
+    let correctParentTag =
+      listType === "bullet"
+        ? "ul"
+        : listType === "ordered"
+        ? "ol"
+        : parent[0]?.tagName; // fallback
+
+    // Fix parent container if wrong
+    if (
+      listType &&
+      parent[0] &&
+      parent[0].tagName.toLowerCase() !== correctParentTag
+    ) {
+      const newList = $(`<${correctParentTag}></${correctParentTag}>`);
+      parent.replaceWith(newList);
+      newList.append(parent.children());
+    }
+  });
+
+  // STEP 3: Fix nested lists
+  $("li").each((_, li) => {
+    const $li = $(li);
+    const next = $li.next("li");
+
+    if (next.length === 0) return;
+
+    // Detect a nested list by indentation rules (Quill uses extra <li>)
+    const nextData = next.attr("data-list");
+
+    if (!nextData) return;
+
+    const nestedType = nextData === "bullet" ? "ul" : "ol";
+
+    // Create nested list if needed
+    if ($li.children(nestedType).length === 0) {
+      const nestedList = $(`<${nestedType}></${nestedType}>`);
+      $li.append(nestedList);
+    }
+
+    // Move the next li into the nested list
+    const nestedList = $li.children(nestedType);
+    nestedList.append(next);
+    next.removeAttr("data-list");
+  });
+
+  // STEP 4: Remove leftover empty lists or invalid nodes
+  $("ol, ul").each((_, el) => {
+    const $list = $(el);
+    if ($list.children("li").length === 0) {
+      $list.remove();
+    }
+  });
+
+  return $.html();
+};
 module.exports = {
   deleteLocalFile,
   numberWithCommas,
@@ -836,4 +921,5 @@ module.exports = {
   convertToCdnUrl,
   makeCacheKey,
   deleteRedisKeysByPrefix,
+  normalizeQuillLists,
 };
