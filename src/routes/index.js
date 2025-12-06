@@ -955,7 +955,6 @@ let routes = (app) => {
   );
   router.put(
     "/help/article/update/markHelpful",
-    authMiddleware,
     helpArticlesResolver.markHelpful
   );
   router.put(

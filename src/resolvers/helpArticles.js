@@ -343,7 +343,9 @@ const markHelpful = async (req, res) => {
     }
     const authUser = req?.cachedUser || (await getAuthUser(req));
     if (!authUser) {
-      return res.status(400).send({ error: "User not found" });
+      return res.status(200).send({
+        message: "User not logged in. Cannot mark article as helpful.",
+      });
     }
     const article = await HelpArticleModel.findOne({ articleId });
     if (!article) {
