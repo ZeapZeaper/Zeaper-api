@@ -652,7 +652,11 @@ let routes = (app) => {
   );
   router.get("/order", authMiddleware, orderResolver.getOrder);
   router.get("/order/rec", orderResolver.getOrderForReceipt);
-  router.get("/order/authUser/buyer/orderId", orderResolver.getOrderByOrderId);
+  router.get(
+    "/order/authUser/buyer/orderId",
+    authMiddleware,
+    orderResolver.getOrderByOrderId
+  );
   router.get(
     "/order/authUser/buyer/order",
     authMiddleware,
@@ -955,7 +959,6 @@ let routes = (app) => {
   );
   router.put(
     "/help/article/update/markHelpful",
-    authMiddleware,
     helpArticlesResolver.markHelpful
   );
   router.put(
