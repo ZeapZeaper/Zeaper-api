@@ -26,7 +26,10 @@ const { allowedDeliveryCountries } = require("../helpers/constants");
 const { update } = require("lodash");
 const ShopModel = require("../models/shop");
 const { verifyStripePayment } = require("../helpers/stripe");
-const { verifyPaystack, verifyPaystackPayment } = require("../helpers/paystack");
+const {
+  verifyPaystack,
+  verifyPaystackPayment,
+} = require("../helpers/paystack");
 
 const secretKey =
   ENV === "dev"
@@ -377,7 +380,9 @@ const getReference = async (req, res) => {
       (await currencyConversion(deliveryFeeDue, currency)) * 100;
     const appliedVoucherAmount =
       (await currencyConversion(appliedVoucherAmountDue, currency)) * 100;
-    const total = (await currencyConversion(totalDue, currency)) * 100;
+    const total = (
+      (await currencyConversion(totalDue, currency)) * 100
+    )?.toFixed(2);
 
     const fullName = user.firstName + " " + user.lastName;
     const email = user.email;
@@ -487,8 +492,6 @@ const getReference = async (req, res) => {
     res.status(400).send({ error: error.message });
   }
 };
-
-
 
 const initializePayment = (form, mycallback) => {
   const options = {
