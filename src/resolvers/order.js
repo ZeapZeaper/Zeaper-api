@@ -427,6 +427,7 @@ const calcOrderProgress = (productOrders) => {
 const getAuthBuyerOrders = async (req, res) => {
   try {
     const authUser = req?.cachedUser || (await getAuthUser(req));
+
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
     }
@@ -447,7 +448,7 @@ const getAuthBuyerOrders = async (req, res) => {
       const productOrders = order.productOrders;
       const progressValue = calcOrderProgress(productOrders);
       const progress = {
-        value: progressValue,
+        value: progressValue?.toFixed(2),
         max: 100,
         min: 0,
       };
@@ -506,7 +507,7 @@ const getOrders = async (req, res) => {
     orders.forEach((order) => {
       const progressValue = calcOrderProgress(order.productOrders);
       const progress = {
-        value: progressValue,
+        value: progressValue?.toFixed(2),
         max: 100,
         min: 0,
       };
@@ -639,7 +640,7 @@ const getOrderByOrderId = async (req, res) => {
 
     const progressValue = calcOrderProgress(order.productOrders);
     const progress = {
-      value: progressValue,
+      value: progressValue?.toFixed(2),
       max: 100,
       min: 0,
     };
