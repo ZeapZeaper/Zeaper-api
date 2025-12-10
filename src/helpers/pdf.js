@@ -18,7 +18,8 @@ const generatePdf = async (param) => {
       "--no-zygote",
     ],
   });
-
+  console.log("Chrome path:", puppeteer.executablePath());
+  console.log("Exists:", fs.existsSync(puppeteer.executablePath()));
   // Create a new page
   const page = await browser.newPage();
 
