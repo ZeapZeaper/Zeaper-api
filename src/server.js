@@ -69,31 +69,13 @@ app.use(
   })
 );
 
-var corsOptions = {
-  // origin: "http://localhost:4200",
-
-  origin: ENV === "dev" ? "*" : "*",
-  // [
-  //     "https://app.francongtech.com/:3001",
-  //     "https://elog.francongtech.com/:*",
-  //     "https://francongtech.com/:*",
-  //     "https://elog.francongtech.com/:*",
-  //     "https://app.francongtech.com/:*",
-  //     "https://dev-elog-nemfra.netlify.app/:*",
-  //     "https://www.francongtech.com/:*",
-  //     "https://www.francongtech.com/:3000",
-  //     "https://elog.francongtech.com/:3000",
-  //     "https://francongtech.com/:3000",
-  //     "https://elog.francongtech.com/:3000",
-  //     "https://app.francongtech.com/:3000",
-  //     "https://dev-elog-nemfra.netlify.app/:3000",
-  //     "https://elog.francongtech.com",
-  //     "http://localhost:3000",
-  //   ],
-
+const corsOptions = {
+  origin: "*",
   exposedHeaders: ["f-version"],
 };
+
 app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 
 //adding version to response body
 app.use(function (req, res, next) {
