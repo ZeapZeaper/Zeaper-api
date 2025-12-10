@@ -3,38 +3,13 @@ const path = require("path");
 const root = require("../../root");
 const fs = require("fs");
 
-const isRender = process.env.RENDER === "true";
-function getChromePath() {
-  try {
-    const chromeRoot = "/opt/render/.cache/puppeteer/chrome";
-
-    // Get version folder (e.g. linux-134.0.6998.165)
-    const versions = fs.readdirSync(chromeRoot);
-    if (!versions.length) return null;
-
-    const versionDir = versions[0]; // first one
-    const chromePath = path.join(
-      chromeRoot,
-      versionDir,
-      "chrome-linux64",
-      "chrome"
-    );
-
-    return chromePath;
-  } catch (err) {
-    return null;
-  }
-}
-const executablePath = isRender ? getChromePath() : undefined; // local machine uses its own Chromium
 const generatePdf = async (param) => {
   const { type, website_url, usePath, filename } = param;
-  console.log("Detected Chrome path:", executablePath);
-  console.log("Exists:", fs.existsSync(executablePath));
 
   // Create a browser instance
   const browser = await puppeteer.launch({
     headless: "new",
-    executablePath,
+    executablePath: puppeteer.executablePath(),
     args: [
       "--no-sandbox",
       "--disable-setuid-sandbox",
