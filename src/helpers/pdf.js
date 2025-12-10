@@ -9,9 +9,17 @@ const generatePdf = async (param) => {
   const { type, website_url, usePath, filename } = param;
 
   // Create a browser instance
-  const browser = await puppeteer.launch({
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
-  });
+ const browser = await puppeteer.launch({
+  headless: "new",
+  args: [
+    "--no-sandbox",
+    "--disable-setuid-sandbox",
+    "--disable-dev-shm-usage",
+    "--single-process",
+    "--no-zygote"
+  ]
+});
+
 
   // Create a new page
   const page = await browser.newPage();
