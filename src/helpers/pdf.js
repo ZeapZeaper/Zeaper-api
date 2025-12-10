@@ -3,23 +3,23 @@ const path = require("path");
 const root = require("../../root");
 const fs = require("fs");
 
-
-
 const generatePdf = async (param) => {
   const { type, website_url, usePath, filename } = param;
-
+  const isRender = process.env.RENDER === "true";
   // Create a browser instance
- const browser = await puppeteer.launch({
-  headless: "new",
-  args: [
-    "--no-sandbox",
-    "--disable-setuid-sandbox",
-    "--disable-dev-shm-usage",
-    "--single-process",
-    "--no-zygote"
-  ]
-});
-
+  const browser = await puppeteer.launch({
+    headless: "new",
+    executablePath: isRender
+      ? "/opt/render/.cache/puppeteer/chrome/linux-134.0.6998.165/chrome-linux64/chrome"
+      : undefined, // local machine uses its own Chromium
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--single-process",
+      "--no-zygote",
+    ],
+  });
 
   // Create a new page
   const page = await browser.newPage();
@@ -33,7 +33,7 @@ const generatePdf = async (param) => {
     await page.goto(website_url, { waitUntil: "networkidle0" });
   } else if (type === "file") {
     //Get HTML content from HTML file
-   
+
     const html = fs.readFileSync(
       path.join(root + "/templates/index.html"),
       "utf-8"
@@ -48,7 +48,6 @@ const generatePdf = async (param) => {
   // To reflect CSS used for screens instead of print
   await page.emulateMediaType("screen");
 
-
   // Downlaod the PDF
   const pdf = await page.pdf({
     // if you want to save the pdf in a file then use path
@@ -59,7 +58,6 @@ const generatePdf = async (param) => {
     printBackground: true,
     format: "A4",
   });
- 
 
   // Close the browser instance
   await browser.close();
