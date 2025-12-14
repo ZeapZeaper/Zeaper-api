@@ -3,13 +3,26 @@ const path = require("path");
 const root = require("../../root");
 const fs = require("fs");
 
-const generatePdf = async (param) => {
-  const { type, website_url, usePath, filename } = param;
+const generatePdf = async (param, progressParams) => {
+  const { type, website_url, usePath } = param;
+  const { onProgress, eventName, startPercent, endPercent } =
+    progressParams || {};
+  // Helper to send progress update only if provided
+  const emitProgress = (progress, status) => {
+    if (typeof onProgress === "function") {
+      onProgress({ progress, status });
+    }
+  };
+  const totalSteps = 3;
+  const stepPercent = (endPercent - startPercent) / totalSteps;
+  emitProgress(startPercent, `Launching ${eventName} browser...`);
 
   // Create a browser instance
+  const chromePath = puppeteer.executablePath();
+  const chromeExists = fs.existsSync(chromePath);
   const browser = await puppeteer.launch({
     headless: "new",
-    executablePath: puppeteer.executablePath(),
+   // executablePath: chromeExists ? chromePath : undefined, // ✅ fallback for local dev
     args: [
       "--no-sandbox",
       "--disable-setuid-sandbox",
@@ -18,8 +31,7 @@ const generatePdf = async (param) => {
       "--no-zygote",
     ],
   });
-  console.log("Chrome path:", puppeteer.executablePath());
-  console.log("Exists:", fs.existsSync(puppeteer.executablePath()));
+  emitProgress(startPercent + stepPercent, `Preparing ${eventName} page...`);
   // Create a new page
   const page = await browser.newPage();
 
@@ -47,6 +59,10 @@ const generatePdf = async (param) => {
   // To reflect CSS used for screens instead of print
   await page.emulateMediaType("screen");
 
+  emitProgress(
+    startPercent + 2 * stepPercent,
+    `Generating ${eventName} PDF...`
+  );
   // Downlaod the PDF
   const pdf = await page.pdf({
     // if you want to save the pdf in a file then use path
@@ -57,6 +73,7 @@ const generatePdf = async (param) => {
     printBackground: true,
     format: "A4",
   });
+  emitProgress(endPercent, `Finalizing ${eventName} PDF...`);
 
   // Close the browser instance
   await browser.close();
