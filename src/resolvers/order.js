@@ -24,10 +24,8 @@ const {
   notifyShop,
   notifyIndividualUser,
 } = require("./notification");
-const NotificationModel = require("../models/notification");
 const generatePdf = require("../helpers/pdf");
 const { ENV } = require("../config");
-const { first } = require("lodash");
 const { sendEmail } = require("../helpers/emailer");
 const EmailTemplateModel = require("../models/emailTemplate");
 const url =
@@ -117,7 +115,7 @@ const buildProductOrders = async (
 ) => {
   const productOrders = [];
   const orderId = order.orderId;
-
+  let defaultImage = null;
   const promises = basketItems.map(async (item, index) => {
     const product = await ProductModel.findOne({
       _id: item.product,
@@ -252,12 +250,15 @@ const buildProductOrders = async (
       };
       const notify = await notifyShop(notifyShopParam);
       const sendEmail = await sendProductOrdershopEmail(savedProductOrder);
+      if (defaultImage === null && savedProductOrder?.images[0]) {
+        defaultImage = savedProductOrder?.images[0]?.link;
+      }
     }
     productOrders.push(savedProductOrder._id);
   });
 
   await Promise.all(promises);
-  return productOrders;
+  return { productOrders, defaultImage };
 };
 const updateVariationQuantity = async (basketItems, action) => {
   return new Promise(async (resolve) => {
@@ -341,13 +342,15 @@ const createOrder = async (param) => {
   }
   const currency = payment.currency;
 
-  const productOrders = await buildProductOrders(
+  const buildOrder = await buildProductOrders(
     savedOrder,
     basketItems,
     currency,
     deliveryMethod,
     deliveryDetails
   );
+  const productOrders = buildOrder.productOrders;
+  const defaultImage = buildOrder.defaultImage;
   if (!productOrders || productOrders.length === 0) {
     return {
       error:
@@ -371,7 +374,7 @@ const createOrder = async (param) => {
   }
   const title = "Order Placed";
   const body = `Your order with order ID ${orderId} has been placed successfully`;
-  const image = null;
+  const image = defaultImage || null;
   const pushAllAdmins = await sendPushAllAdmins({
     title,
     body,
@@ -448,7 +451,7 @@ const getAuthBuyerOrders = async (req, res) => {
       const productOrders = order.productOrders;
       const progressValue = calcOrderProgress(productOrders);
       const progress = {
-        value: progressValue?.toFixed(2),
+        value: progressValue ? progressValue.toFixed(0) : 0,
         max: 100,
         min: 0,
       };
@@ -1210,10 +1213,23 @@ const downloadReciept = async (req, res) => {
       status: "Generating PDF...",
     });
     const website_url = `${url}/${order_id}`;
-    pdf = await generatePdf({
-      type: "url",
-      website_url,
-    });
+    const onProgress = socketInstance
+      ? ({ progress, status }) =>
+          socketInstance.emit("downloadProgress", { progress, status })
+      : null;
+    const progressParams = {
+      onProgress,
+      eventName: "Receipt",
+      startPercent: 60,
+      endPercent: 90,
+    };
+    pdf = await generatePdf(
+      {
+        type: "url",
+        website_url,
+      },
+      progressParams
+    );
 
     const today = new Date();
     const pdfFilename = fileName
