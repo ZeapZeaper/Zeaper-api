@@ -700,6 +700,7 @@ let routes = (app) => {
     orderResolver.updateProductOrderStatus
   );
   router.put("/order/cancel", authMiddleware, orderResolver.cancelOrder);
+  router.put("/order/reject", authMiddleware, orderResolver.rejectOrder);
   router.post(
     "/order/reciept/download",
     authMiddleware,

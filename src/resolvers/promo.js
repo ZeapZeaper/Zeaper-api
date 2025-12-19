@@ -74,7 +74,7 @@ const addImage = async (destination, filename) => {
       path.resolve(destination, "resized", filename),
       {
         public: true,
-        destination: `/promo/${filename}`,
+        destination: `promo/${filename}`,
         metadata: {
           cacheControl: "public, max-age=31536000, immutable", // 1 year caching
           firebaseStorageDownloadTokens: uuidv4(),

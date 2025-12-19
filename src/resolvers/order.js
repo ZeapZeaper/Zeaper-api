@@ -434,6 +434,7 @@ const getAuthBuyerOrders = async (req, res) => {
     if (!authUser) {
       return res.status(400).send({ error: "User not found" });
     }
+
     const orders = await OrderModel.find({ user: authUser._id })
       .populate("productOrders")
       .populate("payment")
@@ -711,6 +712,20 @@ const getProductOrders = async (req, res) => {
     res.status(400).send({ error: error.message });
   }
 };
+const isPermittedToViewProductOrder = ({ user, productOrder }) => {
+  if (!user || !productOrder) return false;
+  if (user?.isAdmin || user?.superAdmin) return true;
+  if (productOrder.shop && productOrder.shop.shopId === user.shopId) {
+    return true;
+  }
+  if (
+    productOrder.user &&
+    productOrder.user?._id?.toString() === user._id.toString()
+  ) {
+    return true;
+  }
+  return false;
+};
 const getProductOrder = async (req, res) => {
   try {
     const { productOrder_id } = req.query;
@@ -735,21 +750,14 @@ const getProductOrder = async (req, res) => {
     // check if auth user is the owner of the product order or super admin or admin or the shop owner
     // if not, return error
     const authUser = req?.cachedUser || (await getAuthUser(req));
-    if (
-      !authUser ||
-      (productOrder.user &&
-        productOrder.user.toString() !== authUser._id.toString() &&
-        !authUser.superAdmin &&
-        !authUser.isAdmin &&
-        productOrder.shop &&
-        productOrder.shop.shopId !== authUser.shopId)
-    ) {
+
+    if (!isPermittedToViewProductOrder({ user: authUser, productOrder })) {
       return res.status(200).send({
         data: null,
         error: "You are not authorized to view this product order",
       });
     }
-
+    console.log("permitted");
     const order = await OrderModel.findOne({
       _id: productOrder.order,
     }).lean();
@@ -1051,7 +1059,8 @@ const updateProductOrderStatus = async (req, res) => {
 };
 const cancelOrder = async (req, res) => {
   try {
-    const { productOrder_id, reason } = req.body;
+    const { productOrder_id, reason, cancelledBy } = req.body;
+
     if (!productOrder_id) {
       return res
         .status(400)
@@ -1059,6 +1068,14 @@ const cancelOrder = async (req, res) => {
     }
     if (!reason) {
       return res.status(400).send({ error: "required reason" });
+    }
+    const cancelledByEnums = ["buyer", "seller", "admin", "system"];
+    if (cancelledBy && !cancelledByEnums.includes(cancelledBy)) {
+      return res.status(400).send({
+        error: `cancelledBy must be one of the following: ${cancelledByEnums.join(
+          ", "
+        )}`,
+      });
     }
     const productOrder = await ProductOrderModel.findOne({
       _id: productOrder_id,
@@ -1082,7 +1099,7 @@ const cancelOrder = async (req, res) => {
       });
     }
     if (
-      productOrder.user !== authUser._id &&
+      productOrder.user.toString() !== authUser._id.toString() &&
       !authUser.superAdmin &&
       !authUser.isAdmin
     ) {
@@ -1108,6 +1125,7 @@ const cancelOrder = async (req, res) => {
       reason,
       cancelledAt: new Date(),
       lastStatusBeforeCancel: productOrder.status,
+      cancelledBy: cancelledBy || "buyer",
     };
     const shopRevenue = productOrder.shopRevenue;
     shopRevenue.status = "cancelled";
@@ -1117,9 +1135,14 @@ const cancelOrder = async (req, res) => {
       { status: cancelledStatus, cancel, shopRevenue },
       { new: true }
     );
+    const isRejectedBySeller = cancelledBy === "seller";
     const user = productOrder.user;
     const title = "Order Status Update";
-    let body = `An item in your order with order ID - ${productOrder.orderId} with item number - ${productOrder.itemNo} has been cancelled`;
+    let body = `An item in your order with order ID - ${
+      productOrder.orderId
+    } with item number - ${productOrder.itemNo} has been ${
+      isRejectedBySeller ? "rejected by the seller" : "cancelled"
+    }`;
     const image = productOrder.images[0].link;
 
     const notificationParam = {
@@ -1140,12 +1163,18 @@ const cancelOrder = async (req, res) => {
 
     notificationParam.isAdminPanel = true;
     notificationParam.user_id = null;
-    body = `An item in order with order ID - ${productOrder.orderId} with item number - ${productOrder.itemNo} has been cancelled`;
+    body = `An item in order with order ID - ${
+      productOrder.orderId
+    } with item number - ${productOrder.itemNo} has been ${
+      isRejectedBySeller ? "rejected by the seller" : "cancelled"
+    }`;
     const addAdminNotification = await addNotification(notificationParam);
     const pushAllAdmins = await sendPushAllAdmins(title, body, image);
     const shop_id = productOrder.shop.toString();
     if (shop_id) {
-      body = `Order with order ID - ${productOrder.orderId} and item number - ${productOrder.itemNo} has been cancelled`;
+      body = `Order with order ID - ${productOrder.orderId} and item number - ${
+        productOrder.itemNo
+      } has been ${isRejectedBySeller ? "rejected by you" : "cancelled"}`;
       const notifyShopParam = {
         shop_id,
         title,
@@ -1163,7 +1192,105 @@ const cancelOrder = async (req, res) => {
     }
     return res.status(200).send({
       data: updatedStatus,
-      message: "Order Item Cancelled successfully",
+      message: `Order Item ${
+        isRejectedBySeller ? "Rejected" : "Cancelled"
+      } successfully`,
+    });
+  } catch (error) {
+    res.status(400).send({ error: error.message });
+  }
+};
+const rejectOrder = async (req, res) => {
+  try {
+    const { productOrder_id, reason } = req.body;
+
+    if (!productOrder_id) {
+      return res
+        .status(400)
+        .send({ error: "required productOrder_id for the item" });
+    }
+    if (!reason) {
+      return res.status(400).send({ error: "required reason" });
+    }
+
+    const productOrder = await ProductOrderModel.findOne({
+      _id: productOrder_id,
+    }).lean();
+    if (!productOrder) {
+      return res.status(400).send({ error: "Product Order not found" });
+    }
+    if (productOrder.status.value === "order cancelled") {
+      return res
+        .status(400)
+        .send({ error: "Product Order already cancelled or rejected" });
+    }
+    if (
+      productOrder.status.value === "dispatched" ||
+      productOrder.status.value === "delivered"
+    ) {
+      return res.status(400).send({
+        error:
+          "You cannot reject an order that has been dispatched or delivered. Contact support",
+      });
+    }
+
+    const authUser = req?.cachedUser || (await getAuthUser(req));
+
+    const shop = await ShopModel.findOne({ _id: productOrder.shop }).lean();
+    if (authUser.shopId !== shop.shopId) {
+      return res
+        .status(400)
+        .send({ error: "You are not authorized to reject this product order" });
+    }
+
+    const cancelledStatus = orderStatusEnums.find(
+      (s) => s.value === "order cancelled"
+    );
+    const cancel = {
+      isCancelled: true,
+      reason,
+      cancelledAt: new Date(),
+      lastStatusBeforeCancel: productOrder.status,
+      cancelledBy: "seller",
+    };
+    const shopRevenue = productOrder.shopRevenue;
+    shopRevenue.status = "cancelled";
+
+    const updatedStatus = await ProductOrderModel.findOneAndUpdate(
+      { _id: productOrder._id },
+      { status: cancelledStatus, cancel, shopRevenue },
+      { new: true }
+    );
+
+    const user = productOrder.user;
+    const title = "Order Status Update";
+    let body = `An item in your order with order ID - ${productOrder.orderId} with item number - ${productOrder.itemNo} has been rejected by the seller`;
+    const image = productOrder.images[0].link;
+
+    const notificationParam = {
+      title,
+      body,
+      image,
+      data: {
+        orderId: productOrder.orderId,
+        itemNo: productOrder.itemNo,
+        productOrder_id: productOrder._id.toString(),
+        notificationType: "order",
+        roleType: "buyer",
+      },
+      isAdminPanel: false,
+      user_id: user,
+    };
+    const userNotification = await notifyIndividualUser(notificationParam);
+
+    notificationParam.isAdminPanel = true;
+    notificationParam.user_id = null;
+    body = `An item in order with order ID - ${productOrder.orderId} with item number - ${productOrder.itemNo} has been rejected by the seller`;
+    const addAdminNotification = await addNotification(notificationParam);
+    const pushAllAdmins = await sendPushAllAdmins(title, body, image);
+    return res.status(200).send({
+      data: updatedStatus,
+      message: `Order Item Rejected successfully`,
     });
   } catch (error) {
     res.status(400).send({ error: error.message });
@@ -1265,6 +1392,7 @@ module.exports = {
   getProductOrder,
   getProductOrderStatusHistory,
   cancelOrder,
+  rejectOrder,
   downloadReciept,
   sendProductOrdershopEmail,
 };
