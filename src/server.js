@@ -99,6 +99,10 @@ const start = async () => {
     preloadExchangeRates();
 
     initRoutes(app);
+    // start worker if enabled
+    if (process.env.RUN_WORKER === "true") {
+      require("./workers/orderWorker");
+    }
     const server = app.listen(process.env.PORT || 8080, () => {
       console.log(
         `Server is running.... on port ${

@@ -355,7 +355,6 @@ const createPromo = async (req, res) => {
     }
     if (req?.files) {
       Object.values(req.files).map(async (file) => {
-        console.log("here 3", file);
         await deleteLocalImagesByFileName(file[0].filename);
       });
     }
@@ -396,8 +395,12 @@ const getLivePromos = async (req, res) => {
     // 1️⃣ Check cache
     let cachedPromos = await redis.get(redisKey);
     if (cachedPromos) {
+      const promoData = JSON.parse(cachedPromos)?.sort(
+        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+      );
+
       return res.status(200).send({
-        data: JSON.parse(cachedPromos),
+        data: promoData,
         message: "Promos fetched successfully (from cache)",
       });
     }
@@ -424,7 +427,10 @@ const getLivePromos = async (req, res) => {
     await redis.set(redisKey, JSON.stringify(promosWithCounts));
 
     return res.status(200).send({
-      data: promosWithCounts,
+      // sort by createdAt descending
+      data: promosWithCounts.sort(
+        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+      ),
       message: "Promos fetched successfully",
     });
   } catch (err) {
@@ -449,9 +455,12 @@ const getDraftPromos = async (req, res) => {
     const promos = await PromoModel.find({
       status: "draft",
     });
-    return res
-      .status(200)
-      .send({ data: promos, message: "Promos fetched successfully" });
+    return res.status(200).send({
+      data: promos.sort(
+        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+      ),
+      message: "Promos fetched successfully",
+    });
   } catch (err) {
     return res.status(500).send({ error: err.message });
   }
@@ -461,9 +470,12 @@ const getFinishedPromos = async (req, res) => {
     const promos = await PromoModel.find({
       status: "expired",
     });
-    return res
-      .status(200)
-      .send({ data: promos, message: "Promos fetched successfully" });
+    return res.status(200).send({
+      data: promos.sort(
+        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+      ),
+      message: "Promos fetched successfully",
+    });
   } catch (err) {
     return res.status(500).send({ error: err.message });
   }
@@ -496,7 +508,6 @@ const getPromoWithProducts = async (req, res) => {
 
     const cacheKey = makePromoCacheKey(promoId);
     await invalidatePromoCache(promoId);
-    console.log("🔄 Promo cache invalidated for promoId:", promoId);
 
     // 1️⃣ Try to get from cache
     const cached = await redis.get(cacheKey);

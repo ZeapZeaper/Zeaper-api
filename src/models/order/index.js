@@ -24,6 +24,7 @@ const OrderSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Payments",
     required: true,
+    unique: true,
   },
   deliveryDetails: {
     type: deliveryDetailsSchema,
