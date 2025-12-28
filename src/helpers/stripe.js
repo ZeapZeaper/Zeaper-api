@@ -1,18 +1,15 @@
 const Stripe = require("stripe");
 const { ENV } = require("../config");
+
 const stripeKey =
   ENV === "dev"
     ? process.env.STRIPE_SECRET_KEY_TEST
     : process.env.STRIPE_SECRET_KEY_LIVE;
 
 const stripe = new Stripe(stripeKey, {
-  apiVersion: "2024-06-20", // keep current
+  apiVersion: "2024-06-20",
 });
 
-/**
- * Verifies a Stripe payment by PaymentIntent ID.
- * Returns: { paymentIntent, log }
- */
 async function verifyStripePayment(payment) {
   const paymentIntentId = payment.stripePaymentIntentId;
 
@@ -21,7 +18,6 @@ async function verifyStripePayment(payment) {
   }
 
   try {
-    // Retrieve PaymentIntent with full expansion
     const paymentIntent = await stripe.paymentIntents.retrieve(
       paymentIntentId,
       {
@@ -37,35 +33,30 @@ async function verifyStripePayment(payment) {
       throw new Error("Payment not successful");
     }
 
-    // Fetch logs
-    const events = await stripe.events.list({ limit: 50 });
-    const filteredEvents = events.data.filter(
-      (event) => event.data.object?.id === paymentIntent.id
-    );
-
-    const log = filteredEvents.map((event) => ({
-      id: event.id,
-      type: event.type,
-      created: new Date(event.created * 1000),
-      data: event.data.object,
-    }));
-
-    // Extract data for DB
-    const paymentMethod = paymentIntent.payment_method;
-    const charge = paymentIntent.charges?.data?.[0] || null;
+    const charge = paymentIntent.charges?.data?.[0] || {};
+    const pm = paymentIntent.payment_method || {};
 
     return {
       status: "success",
-      paidAt: new Date(paymentIntent.created * 1000),
-      channel: paymentMethod?.type || "card",
-      currency: paymentIntent.currency?.toUpperCase(),
-      transactionDate: paymentIntent.created,
-      log,
-      fees: charge?.balance_transaction?.fee || 0,
-      cardType: paymentMethod?.card?.brand || "",
-      bank: paymentMethod?.card?.funding || "",
-      countryCode: paymentMethod?.card?.country,
-      gatewayResponse: charge?.outcome?.seller_message || "",
+      normalizedData: {
+        paidAt: new Date(paymentIntent.created * 1000),
+        channel: pm.type || "card",
+        currency: paymentIntent.currency?.toUpperCase(),
+        transactionDate: paymentIntent.created,
+        log: [
+          {
+            id: paymentIntent.id,
+            type: "payment_intent.succeeded",
+            created: new Date(paymentIntent.created * 1000),
+          },
+        ],
+        fees: charge.balance_transaction?.fee || 0,
+        cardType: pm.card?.brand || "",
+        bank: pm.card?.funding || "",
+        countryCode: pm.card?.country || "",
+        gatewayResponse: charge.outcome?.seller_message || "",
+        gateway: "stripe",
+      },
     };
   } catch (error) {
     throw new Error(

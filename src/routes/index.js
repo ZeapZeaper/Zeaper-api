@@ -41,6 +41,7 @@ const blogResolver = require("../resolvers/blog");
 const emailListResolver = require("../resolvers/emailList");
 const policyResolver = require("../resolvers/policy");
 const onboadingDocumentsResolver = require("../resolvers/onboadingDocuments");
+const orderQueue = require("../queue/orderQueue");
 const handleMoreFieldsUploads = uploadMultiple.fields([
   { name: "documents", maxCount: 5 },
   { name: "images", maxCount: 5 },
@@ -1083,7 +1084,28 @@ let routes = (app) => {
     authMiddleware,
     onboadingDocumentsResolver.getShopOnboardingDocuments
   );
+  router.get("/test-queue", async (req, res) => {
+    const fakeWorkerTasks = [
+      {
+        taskType: "notifyUser",
+        user_id: "64f…", // some test user id
+        title: "Test order",
+        body: "Your order is successful",
+        image: null,
+        orderId: "TEST123",
+      },
+      {
+        taskType: "addLoyaltyPoints",
+        user_id: "64f…",
+        points: 5,
+      },
+    ];
 
+    const job = await orderQueue.add("testOrderJob", {
+      workerTasks: fakeWorkerTasks,
+    });
+    console.log("Job queued:", job.id);
+  });
   return app.use("/", router);
 };
 

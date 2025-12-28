@@ -1193,8 +1193,8 @@ const submitProduct = async (req, res) => {
     if (!updatedProduct) {
       return res.status(400).send({ error: "product not found" });
     }
-    const title = "Order Item Status Update";
-    const body = `Order item with productId ${productId} has been set to under review`;
+    const title = "Product Status Update";
+    const body = `Product with productId ${productId} has been set to under review`;
     const image = updatedProduct?.colors[0]?.images[0]?.link;
     const shop_id = updatedProduct?.shop.toString();
     const notificationData = {

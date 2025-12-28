@@ -1,5 +1,6 @@
 const { ENV } = require("../config");
 const request = require("request");
+
 const secretKey =
   ENV === "dev"
     ? process.env.PAYSTACK_SECRET_TEST_KEY
@@ -15,11 +16,12 @@ const verifyPaystack = (ref, mycallback) => {
       "cache-control": "no-cache",
     },
   };
-  const callback = (error, response, body) => {
-    return mycallback(error, body);
-  };
-  request(options, callback);
+
+  request(options, (error, response, body) => {
+    mycallback(error, body);
+  });
 };
+
 function verifyPaystackPayment(reference) {
   return new Promise((resolve, reject) => {
     verifyPaystack(reference, (error, body) => {
@@ -27,7 +29,30 @@ function verifyPaystackPayment(reference) {
 
       try {
         const parsed = JSON.parse(body);
-        resolve(parsed);
+
+        if (!parsed.status || !parsed.data) {
+          return reject(new Error("Payment not successful"));
+        }
+
+        const data = parsed.data;
+        const auth = data.authorization || {};
+
+        resolve({
+          status: "success",
+          normalizedData: {
+            paidAt: new Date(data.paidAt || data.transaction_date),
+            channel: data.channel,
+            currency: data.currency?.toUpperCase(),
+            transactionDate: data.transaction_date,
+            log: data.log || [],
+            fees: data.fees || 0,
+            cardType: auth.card_type || "",
+            bank: auth.bank || "",
+            countryCode: auth.country_code || "",
+            gatewayResponse: data.gateway_response || "",
+            gateway: "paystack",
+          },
+        });
       } catch (e) {
         reject(e);
       }
@@ -36,6 +61,6 @@ function verifyPaystackPayment(reference) {
 }
 
 module.exports = {
-  verifyPaystackPayment,
   verifyPaystack,
+  verifyPaystackPayment,
 };
