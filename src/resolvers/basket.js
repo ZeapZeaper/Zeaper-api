@@ -609,6 +609,12 @@ const addProductToBasket = async (req, res) => {
           },
         ],
       });
+      // ifsuccesful and user is guest, increase expiresAt by 30 days
+      if (user.isGuest) {
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 30);
+        await BasketModel.findByIdAndUpdate(newBasket._id, { expiresAt });
+      }
       return res.status(200).send({
         message: "Product added to basket successfully",
         data: newBasket,

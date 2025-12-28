@@ -116,7 +116,12 @@ const ProductOrderSchema = new mongoose.Schema({
       name: { type: String, required: false },
       value: { type: String, required: false },
     },
-    cancelledBy: {type: String, required: false, enum: ["buyer", "seller", "admin", "system"], default: "buyer" },
+    cancelledBy: {
+      type: String,
+      required: false,
+      enum: ["buyer", "seller", "admin", "system"],
+      default: "buyer",
+    },
   },
 });
 

@@ -2,7 +2,7 @@ const geoip = require("geoip-lite");
 const requestIp = require("request-ip");
 const UserModel = require("../models/user");
 const ShopModel = require("../models/shop");
-const { storageRef } = require("../config/firebase"); // reference to our db
+const { storageRef, deleteUserFromFirebase } = require("../config/firebase"); // reference to our db
 const root = require("../../root");
 const path = require("path");
 const { v4: uuidv4 } = require("uuid");
@@ -127,14 +127,7 @@ const addUserToFirebase = async (params) => {
     return error;
   }
 };
-const deleteUserFromFirebase = async (uid) => {
-  try {
-    const user = await firebase.auth().deleteUser(uid);
-    return user;
-  } catch (error) {
-    return error;
-  }
-};
+
 
 const creatGuestUser = async (req, res) => {
   try {
@@ -285,6 +278,7 @@ const convertGuestUserWithEmailPasswordProvider = async (req, res) => {
         isGuest: false,
         emailVerified: firebaseUser.emailVerified,
         userId,
+        expiresAt: null,
       });
       updatedUser = await newUser.save();
     }
@@ -456,6 +450,7 @@ const createUser = async (req, res) => {
       userId,
       uid: firebaseUser.uid,
       emailVerified: firebaseUser.emailVerified,
+      expiresAt: null,
     };
 
     const user = new UserModel({ ...params });
@@ -577,6 +572,7 @@ const createUserWithGoogleOrApple = async (req, res) => {
       imageUrl,
       userId,
       uid,
+      expiresAt: null,
     });
     const newUser = await user.save();
     userCache.set(uid, user);
@@ -887,6 +883,7 @@ const mergeGoogleAppleLoginGuestUser = async (req, res) => {
           lastName,
           uid: newUid,
           isGuest: false,
+          expiresAt: null,
         },
         { new: true }
       );

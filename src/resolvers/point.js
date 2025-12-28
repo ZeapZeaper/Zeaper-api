@@ -1,6 +1,5 @@
 const { getAuthUser } = require("../middleware/firebaseUserAuth");
 const PointModel = require("../models/points");
-const VoucherModel = require("../models/voucher");
 const { generateVoucher } = require("./voucher");
 
 const getAuthUserPoint = async (req, res) => {

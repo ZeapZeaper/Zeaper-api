@@ -1,8 +1,6 @@
-const { isCancel } = require("axios");
 const { orderStatusEnums } = require("../helpers/constants");
 const { getAuthUser } = require("../middleware/firebaseUserAuth");
 const BasketModel = require("../models/basket");
-const DeliveryAddressModel = require("../models/deliveryAddresses");
 const OrderModel = require("../models/order");
 const ProductOrderModel = require("../models/productOrder");
 const ProductModel = require("../models/products");
@@ -331,7 +329,12 @@ const createOrder = async ({ payment, user, gainedPoints }) => {
         orderId,
       });
     }
-
+    // add updateBuyerHasOrders as worker task to update buyer
+    workerTasks.push({
+      taskType: "updateBuyerHasOrders",
+      user_id: user,
+      orderId,
+    });
     updatedOrder.defaultImage = defaultImage;
 
     return {

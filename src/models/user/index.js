@@ -79,6 +79,19 @@ const UserSchema = new mongoose.Schema({
   source: { type: String, required: false },
   welcomeEmailSent: { type: Boolean, required: false, default: false },
   initialPointGiven: { type: Boolean, required: false, default: false },
+  hasOrders: { type: Boolean, default: false, index: true },
+  disabledAt: { type: Date, required: false },
+  disabledBy: { type: String, required: false },
+  expiresAt: {
+    type: Date,
+    required: false,
+    index: true,
+    default: () => {
+      const now = new Date();
+      now.setDate(now.getDate() + 30);
+      return now;
+    },
+  },
 });
 
 UserSchema.plugin(timestamp);
