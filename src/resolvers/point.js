@@ -42,29 +42,23 @@ const getUserPoint = async (req, res) => {
 
 const addPointAfterSales = async (user_id, pointToAdd) => {
   try {
-    
-    const point = await PointModel.findOne({
-      user: user_id,
-    });
+    const updatedPoint = await PointModel.findOneAndUpdate(
+      { user: user_id },
+      {
+        $inc: {
+          availablePoints: pointToAdd,
+          totalPoints: pointToAdd,
+        },
+      },
+      { new: true, upsert: true, setDefaultsOnInsert: true }
+    );
 
-    if (!point) {
-      const newPoint = new PointModel({
-        user: user_id,
-        availablePoints: pointToAdd,
-        redeemedPoints: 0,
-        totalPoints: pointToAdd,
-      });
-      await newPoint.save();
-      return { data: newPoint };
-    }
-    point.availablePoints += pointToAdd;
-    point.totalPoints += pointToAdd;
-    await point.save();
-    return { data: point };
+    return { data: updatedPoint };
   } catch (error) {
     return { error };
   }
 };
+
 const convertPointToVoucher = async (req, res) => {
   try {
     const { user_id, pointToConvert } = req.body;

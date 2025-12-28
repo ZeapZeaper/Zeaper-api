@@ -106,6 +106,7 @@ const sendProductOrdershopEmail = async (productOrder) => {
 
   const sentEmail = await sendEmail(emailParam);
 };
+
 const buildProductOrders = async (
   order,
   basketItems,
@@ -116,94 +117,63 @@ const buildProductOrders = async (
   const productOrders = [];
   const orderId = order.orderId;
   let defaultImage = null;
-  const promises = basketItems.map(async (item, index) => {
-    const product = await ProductModel.findOne({
-      _id: item.product,
-    }).lean();
-    if (!product) {
-      return;
-    }
-    const shop = product.shop;
+  const workerTasks = [];
 
+  const promises = basketItems.map(async (item, index) => {
+    const product = await ProductModel.findOne({ _id: item.product }).lean();
+    if (!product) return;
+
+    const shop = product.shop;
     const itemNo = index + 1;
     const quantity = item.quantity;
     const sku = item.sku;
-    const orderedVariations = product?.variations.find(
-      (variation) => variation.sku === sku
-    );
+    const orderedVariations = product?.variations.find((v) => v.sku === sku);
     const size = orderedVariations?.size;
     const color = orderedVariations?.colorValue;
     const images =
       product?.colors
-        .find((col) => col.value == color)
-        ?.images.map((image) => {
-          return { link: image.link, name: image.name };
-        }) || [];
+        .find((c) => c.value == color)
+        ?.images.map((img) => ({
+          link: img.link,
+          name: img.name,
+        })) || [];
 
-    const bespokeColor = item.bespokeColor;
-    const bodyMeasurements = item.bodyMeasurements;
-    const bespokeInstruction = item.bespokeInstruction;
-    const status = {
-      name: "placed",
-      value: "order placed",
-    };
-    const promo = product.promo;
     const variation = product.variations.find((v) => v.sku === sku);
     const originalAmountDue = variation?.price * quantity;
     const amountDue = (variation?.discount || variation.price) * quantity;
-    const usdValue = await currencyConversion(amountDue, "USD");
-    const gbpValue = await currencyConversion(amountDue, "GBP");
-    const amount = [
-      {
-        currency: "NGN",
-        value: amountDue,
-      },
-    ];
+
+    // Multi-currency
+    const amount = [{ currency: "NGN", value: amountDue }];
     if (currency === "USD") {
-      amount.push({
-        currency: "USD",
-        value: usdValue,
-      });
+      const usdValue = await currencyConversion(amountDue, "USD");
+      amount.push({ currency: "USD", value: usdValue });
     }
     if (currency === "GBP") {
-      amount.push({
-        currency: "GBP",
-        value: gbpValue,
-      });
+      const gbpValue = await currencyConversion(amountDue, "GBP");
+      amount.push({ currency: "GBP", value: gbpValue });
     }
-    const productType = product.productType;
-    const adminControlledDiscount =
-      product?.promo?.adminControlledDiscount || false;
-    const shopRevenue = {
-      currency: "NGN",
-      status: "pending",
-      // value is 75% of the amount due
-      value: calcShopRevenueValue({
-        productType,
-        originalAmountDue,
-        amountDue,
-        adminControlledDiscount,
-      }),
-    };
-    let expectedDeliveryDate = null;
 
+    // Delivery & vendor dates
     const createdAt = new Date();
-
     const country = deliveryDetails?.country || "Nigeria";
+    const productType = product.productType;
+
     const expectedDeliveryDays =
       deliveryMethod === "express"
-        ? getExpectedStandardDeliveryDate(productType, country)
-        : getExpectedExpressDeliveryDate(productType, country);
-    expectedDeliveryDate = {
+        ? getExpectedExpressDeliveryDate(productType, country)
+        : getExpectedStandardDeliveryDate(productType, country);
+    const expectedDeliveryDate = {
       min: addWeekDays(createdAt, expectedDeliveryDays.min),
       max: addWeekDays(createdAt, expectedDeliveryDays.max),
     };
+
     const expectedVendorCompletionDays =
       getExpectedVendorCompletionDate(productType);
     const expectedVendorCompletionDate = {
       min: addWeekDays(createdAt, expectedVendorCompletionDays.min),
       max: addWeekDays(createdAt, expectedVendorCompletionDays.max),
     };
+
     const productOrder = new ProductOrderModel({
       order: order._id,
       orderId,
@@ -212,16 +182,26 @@ const buildProductOrders = async (
       product: item.product._id,
       quantity,
       sku,
-      bespokeColor,
-      bespokeInstruction,
-      bodyMeasurements,
-      status,
+      bespokeColor: item.bespokeColor,
+      bespokeInstruction: item.bespokeInstruction,
+      bodyMeasurements: item.bodyMeasurements,
+      status: { name: "placed", value: "order placed" },
       amount,
-      promo,
+      promo: product.promo,
       color,
       images,
       size,
-      shopRevenue,
+      shopRevenue: {
+        currency: "NGN",
+        status: "pending",
+        value: calcShopRevenueValue({
+          productType,
+          originalAmountDue,
+          amountDue,
+          adminControlledDiscount:
+            product?.promo?.adminControlledDiscount || false,
+        }),
+      },
       deliveryMethod,
       user: order.user,
       expectedDeliveryDate,
@@ -229,37 +209,142 @@ const buildProductOrders = async (
     });
 
     const savedProductOrder = await productOrder.save();
-    //handle shop notifications
-    if (savedProductOrder && shop) {
-      const title = "New Order";
-      const body = `You have a new order with order ID - ${orderId} and item number - ${itemNo}`;
-      const image = savedProductOrder?.images[0]?.link || null;
-      const notificationData = {
-        orderId,
-        itemNo,
-        productOrder_id: savedProductOrder._id.toString(),
-        notificationType: "order",
-        roleType: "vendor",
-      };
-      const notifyShopParam = {
+    if (!savedProductOrder) return;
+
+    productOrders.push(savedProductOrder._id);
+
+    if (shop) {
+      // Vendor notifications as worker tasks
+      workerTasks.push({
+        taskType: "notifyShop",
         shop_id: shop.toString(),
-        title,
-        body,
-        image,
-        data: notificationData,
-      };
-      const notify = await notifyShop(notifyShopParam);
-      const sendEmail = await sendProductOrdershopEmail(savedProductOrder);
-      if (defaultImage === null && savedProductOrder?.images[0]) {
+        title: "New Order",
+        body: `You have a new order with order ID - ${orderId} and item number - ${itemNo}`,
+        image: savedProductOrder?.images[0]?.link || null,
+        orderId,
+        itemNo: itemNo?.toString(),
+        productOrder_id: savedProductOrder._id.toString(),
+      });
+
+      // Send shop email
+      workerTasks.push({
+        taskType: "sendProductOrdershopEmail",
+        productOrder: savedProductOrder,
+      });
+
+      if (!defaultImage && savedProductOrder?.images[0]) {
         defaultImage = savedProductOrder?.images[0]?.link;
       }
     }
-    productOrders.push(savedProductOrder._id);
   });
 
   await Promise.all(promises);
-  return { productOrders, defaultImage };
+
+  return { productOrders, defaultImage, workerTasks };
 };
+
+const createOrder = async ({ payment, user, gainedPoints }) => {
+  try {
+    const basket = await BasketModel.findOne({ _id: payment.basket }).lean();
+    if (!basket) return { error: "Basket not found" };
+
+    const deliveryDetails = basket.deliveryDetails;
+    if (!deliveryDetails) return { error: "Delivery details not found" };
+
+    const basketItems = basket.basketItems;
+    const orderId = await generateUniqueOrderId();
+
+    const order = new OrderModel({
+      orderId,
+      user,
+      basket: basket._id,
+      deliveryDetails,
+      payment: payment._id,
+      gainedPoints, // handled by worker
+    });
+
+    const savedOrder = await order.save();
+    if (!savedOrder?._id) return { error: "Order not created" };
+
+    const currency = payment.currency;
+    const deliveryMethod = payment?.deliveryMethod;
+
+    const { productOrders, defaultImage, workerTasks } =
+      await buildProductOrders(
+        savedOrder,
+        basketItems,
+        currency,
+        deliveryMethod,
+        deliveryDetails
+      );
+
+    if (!productOrders.length) return { error: "Product orders not created" };
+
+    const updatedOrder = await OrderModel.findOneAndUpdate(
+      { _id: savedOrder._id },
+      { productOrders },
+      { new: true }
+    );
+
+    // update variation quantities
+    await updateVariationQuantity(basketItems, "subtract");
+
+    // delete basket
+    await BasketModel.findOneAndDelete({ _id: basket._id });
+
+    // ================= add order-level worker tasks =================
+    workerTasks.push({
+      taskType: "notifyAdmins",
+      orderId,
+      user_id: user,
+      title: "Order Placed",
+      body: `Your order with order ID ${orderId} has been placed successfully`,
+      image: defaultImage || null,
+    });
+
+    workerTasks.push({
+      taskType: "notifyUser",
+      orderId,
+      user_id: user,
+      title: "Order Placed",
+      body: `Your order with order ID ${orderId} has been placed successfully`,
+      image: defaultImage || null,
+    });
+
+    workerTasks.push({
+      taskType: "sendBuyerOrderEmail",
+      order: {
+        _id: updatedOrder._id,
+        orderId: updatedOrder.orderId,
+        orderPoints: updatedOrder.gainedPoints,
+      },
+      user_id: user,
+      orderId,
+    });
+
+    // add loyalty points as worker task
+    if (gainedPoints && gainedPoints > 0) {
+      workerTasks.push({
+        taskType: "addLoyaltyPoints",
+        user_id: user,
+        points: gainedPoints,
+        orderId,
+      });
+    }
+
+    updatedOrder.defaultImage = defaultImage;
+
+    return {
+      order: updatedOrder,
+      productOrders,
+      workerTasks,
+    };
+  } catch (err) {
+    console.error("createOrder failed", err);
+    return { error: "Failed to create order" };
+  }
+};
+
 const updateVariationQuantity = async (basketItems, action) => {
   return new Promise(async (resolve) => {
     basketItems.forEach(async (item) => {
@@ -302,106 +387,6 @@ const updateVariationQuantity = async (basketItems, action) => {
     });
     resolve(true);
   });
-};
-
-const createOrder = async (param) => {
-  const { payment, user, gainedPoints } = param;
-  const deliveryMethod = payment?.deliveryMethod;
-  const basket = await BasketModel.findOne({
-    _id: payment.basket,
-  }).lean();
-  if (!basket) {
-    return {
-      error: "Payment successful but basket not found. Please contact support",
-    };
-  }
-  const deliveryDetails = basket.deliveryDetails;
-  if (!deliveryDetails) {
-    return {
-      error:
-        "Payment successful but delivery details not found. Please contact support",
-    };
-  }
-  const basketItems = basket.basketItems;
-
-  const orderId = await generateUniqueOrderId();
-  const order = new OrderModel({
-    orderId,
-    user: user,
-    basket: basket?._id,
-    deliveryDetails,
-    payment: payment?._id,
-    gainedPoints,
-  });
-
-  const savedOrder = await order.save();
-  if (!savedOrder?._id) {
-    return {
-      error: "Payment successful but order not created. Please contact support",
-    };
-  }
-  const currency = payment.currency;
-
-  const buildOrder = await buildProductOrders(
-    savedOrder,
-    basketItems,
-    currency,
-    deliveryMethod,
-    deliveryDetails
-  );
-  const productOrders = buildOrder.productOrders;
-  const defaultImage = buildOrder.defaultImage;
-  if (!productOrders || productOrders.length === 0) {
-    return {
-      error:
-        "Payment successful but product orders not created. Please contact support",
-    };
-  }
-
-  const updateOrder = await OrderModel.findOneAndUpdate(
-    { _id: savedOrder._id },
-    { productOrders },
-    { new: true }
-  );
-
-  const updateVariation = await updateVariationQuantity(
-    basketItems,
-    "subtract"
-  );
-  if (updateOrder && updateVariation) {
-    // delete basket
-    await BasketModel.findOneAndDelete({ _id: basket._id });
-  }
-  const title = "Order Placed";
-  const body = `Your order with order ID ${orderId} has been placed successfully`;
-  const image = defaultImage || null;
-  const pushAllAdmins = await sendPushAllAdmins({
-    title,
-    body,
-    image,
-    data: { orderId, notificationType: "order", roleType: "admin" },
-  });
-  const userNotification = await notifyIndividualUser({
-    user_id: user,
-    title,
-    body,
-    image,
-    data: { orderId, notificationType: "order", roleType: "buyer" },
-  });
-
-  const addAdminNotification = await addNotification({
-    title,
-    body,
-    image,
-    data: { orderId, notificationType: "order", roleType: "buyer" },
-    isAdminPanel: true,
-    user_id: null,
-  });
-
-  return {
-    order: updateOrder,
-    productOrders,
-  };
 };
 
 const getProductOrderPercentage = (allocatedPercentage, productOrder) => {
@@ -993,8 +978,8 @@ const updateProductOrderStatus = async (req, res) => {
       body,
       image,
       data: {
-        orderId: productOrder.orderId,
-        itemNo: productOrder.itemNo,
+        orderId: productOrder.orderId.toString(),
+        itemNo: productOrder.itemNo.toString(),
         productOrder_id: productOrder._id.toString(),
         notificationType: "order",
         roleType: "buyer",
@@ -1090,6 +1075,7 @@ const cancelOrder = async (req, res) => {
     const authUser = req?.cachedUser || (await getAuthUser(req));
     if (
       productOrder.status.value !== "order placed" &&
+      productOrder.status.value !== "order confirmed" &&
       !authUser.superAdmin &&
       !authUser.isAdmin
     ) {
@@ -1108,15 +1094,6 @@ const cancelOrder = async (req, res) => {
         .send({ error: "You are not authorized to cancel this product order" });
     }
 
-    if (
-      productOrder.status.value !== "order confirmed" &&
-      productOrder.status.value !== "order placed"
-    ) {
-      return res.status(400).send({
-        error:
-          "You are not authorized to cancel this product order at the stage. Contact admin",
-      });
-    }
     const cancelledStatus = orderStatusEnums.find(
       (s) => s.value === "order cancelled"
     );
@@ -1150,8 +1127,8 @@ const cancelOrder = async (req, res) => {
       body,
       image,
       data: {
-        orderId: productOrder.orderId,
-        itemNo: productOrder.itemNo,
+        orderId: productOrder.orderId.toString(),
+        itemNo: productOrder.itemNo?.toString(),
         productOrder_id: productOrder._id.toString(),
         notificationType: "order",
         roleType: "buyer",
@@ -1272,8 +1249,8 @@ const rejectOrder = async (req, res) => {
       body,
       image,
       data: {
-        orderId: productOrder.orderId,
-        itemNo: productOrder.itemNo,
+        orderId: productOrder.orderId.toString(),
+        itemNo: productOrder.itemNo?.toString(),
         productOrder_id: productOrder._id.toString(),
         notificationType: "order",
         roleType: "buyer",

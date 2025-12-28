@@ -320,6 +320,7 @@ const getNotifications = async (req, res) => {
     const sortedNotifications = userNotification.notifications.sort((a, b) => {
       return new Date(b.createdAt) - new Date(a.createdAt);
     });
+
     userNotification.notifications = sortedNotifications || [];
     return res.status(200).send({ data: userNotification });
   } catch (err) {
@@ -405,6 +406,7 @@ const addNotification = async (param) => {
   try {
     const { title, body, image, isAdminPanel, user_id, data } = param;
 
+
     if (!title) {
       return { error: "required title" };
     }
@@ -415,33 +417,15 @@ const addNotification = async (param) => {
       return { error: "required user_id" };
     }
 
-    let userNotification;
+    const userNotification = await NotificationModel.findOneAndUpdate(
+      isAdminPanel ? { isAdminPanel: true } : { user: user_id },
+      {
+        $setOnInsert: isAdminPanel ? { isAdminPanel: true } : { user: user_id },
+        $push: { notifications: { title, body, image, data } },
+      },
+      { new: true, upsert: true }
+    );
 
-    if (isAdminPanel) {
-      userNotification = await NotificationModel.findOne({
-        isAdminPanel: true,
-      });
-      if (!userNotification) {
-        userNotification = new NotificationModel({
-          isAdminPanel: true,
-        });
-        await userNotification.save();
-      }
-    }
-    if (!isAdminPanel) {
-      userNotification = await NotificationModel.findOne({ user: user_id });
-    }
-    if (!userNotification && user_id) {
-      userNotification = new NotificationModel({
-        user: user_id,
-      });
-      await userNotification.save();
-    }
-
-    const notifications = userNotification.notifications;
-    notifications.push({ title, body, image, data });
-    userNotification.notifications = notifications;
-    await userNotification.save();
     return { data: userNotification };
   } catch (err) {
     return { error: err.message };
@@ -558,6 +542,7 @@ const notifyIndividualUser = async (param) => {
         ],
       });
       await newNotification.save();
+    
       return {
         data: newNotification,
         message: "User inbox updated but push not sent as no pushToken found",
@@ -680,12 +665,10 @@ const markNotificationsAsSeen = async (req, res) => {
     });
     userNotification.notifications = updatedNotifications;
     await userNotification.save();
-    return res
-      .status(200)
-      .send({
-        data: userNotification,
-        message: "Notifications marked as seen",
-      });
+    return res.status(200).send({
+      data: userNotification,
+      message: "Notifications marked as seen",
+    });
   } catch (err) {
     return res.status(500).send({ error: err.message });
   }
