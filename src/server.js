@@ -103,6 +103,10 @@ const start = async () => {
     if (process.env.RUN_WORKER === "true") {
       require("./workers/orderWorker");
     }
+    if (process.env.RUN_CRONS === "true") {
+      require("./crons")();
+    }
+
     const server = app.listen(process.env.PORT || 8080, () => {
       console.log(
         `Server is running.... on port ${

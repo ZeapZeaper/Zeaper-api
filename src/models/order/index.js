@@ -1,4 +1,3 @@
-const { isCancel } = require("axios");
 const mongoose = require("mongoose");
 const timestamp = require("mongoose-timestamp");
 const { deliveryDetailsSchema } = require("../deliveryDetails");

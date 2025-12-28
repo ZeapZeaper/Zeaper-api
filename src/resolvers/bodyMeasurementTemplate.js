@@ -7,6 +7,7 @@ const { getAuthUser } = require("../middleware/firebaseUserAuth");
 const BodyMeasurementTemplateModel = require("../models/bodyMeasurementTemplate");
 const BodyMeasurementGuideModel = require("../models/bodyMeasurementGuide");
 const BodyMeasurementGuideFieldModel = require("../models/BodyMeasurementGuideField");
+const UserModel = require("../models/user");
 
 const addBodyMeasurementTemplate = async (req, res) => {
   try {
@@ -33,7 +34,6 @@ const addBodyMeasurementTemplate = async (req, res) => {
 
     const bodyMeasurementGuideFields =
       await BodyMeasurementGuideFieldModel.find().lean();
-      
 
     // if measurement item is not object containing field and value
     // field must be in bodyMeasurementGuideFields
@@ -115,6 +115,12 @@ const addBodyMeasurementTemplate = async (req, res) => {
       return res
         .status(400)
         .send({ error: "Body Measurement Template not created" });
+    }
+    // if successful and user is guest, increase the usermodel expiresAt by 30 days
+    if (authUser.isGuest) {
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 30);
+      await UserModel.findByIdAndUpdate(authUser._id, { expiresAt });
     }
     return res.status(200).send({
       message: "Body Measurement Template created successfully",
