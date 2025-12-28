@@ -110,6 +110,12 @@ const createReview = async (req, res) => {
     if (!user) {
       return res.status(200).send({ message: "User not found", data: {} });
     }
+    // if user is guest, decline
+    if (user.isGuest) {
+      return res
+        .status(400)
+        .send({ error: "Guest users cannot create product reviews" });
+    }
     if (!orderId && !user.isAdmin && !user.isSuperAdmin) {
       return res.status(400).send({ error: "orderId is required" });
     }

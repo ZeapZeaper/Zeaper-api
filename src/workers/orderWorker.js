@@ -100,6 +100,11 @@ const worker = new Worker(
           case "addLoyaltyPoints":
             await addPointAfterSales(task.user_id, task.points);
             break;
+          case "updateBuyerHasOrders":
+            await UserModel.findByIdAndUpdate(task.user_id, {
+              hasOrders: true,
+            });
+            break;
 
           case "sendProductOrdershopEmail":
             await sendProductOrdershopEmail(task.productOrder);

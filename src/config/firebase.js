@@ -12,4 +12,12 @@ const bucket =
     ? process.env.STORAGE_BUCKET_PROD
     : process.env.STORAGE_BUCKET_DEV;
 const storageRef = firebase.storage().bucket(`${bucket}`);
-module.exports = { storageRef, firebase, messaging };
+const deleteUserFromFirebase = async (uid) => {
+  try {
+    const user = await firebase.auth().deleteUser(uid);
+    return user;
+  } catch (error) {
+    return error;
+  }
+};
+module.exports = { storageRef, firebase, messaging, deleteUserFromFirebase };

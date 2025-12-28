@@ -3,40 +3,28 @@ const BasketModel = require("../models/basket");
 const { ENV } = require("./../config");
 const {
   calculateTotalBasketPrice,
-  codeGenerator,
   currencyConversion,
-  replaceUserVariablesinTemplate,
-  replaceOrderVariablesinTemplate,
   covertToNaira,
   detectDeviceType,
 } = require("../helpers/utils");
 const request = require("request");
 const { getAuthUser } = require("../middleware/firebaseUserAuth");
-const DeliveryAddressModel = require("../models/deliveryAddresses");
 const { createOrder } = require("./order");
 const OrderModel = require("../models/order");
-const { addPointAfterSales } = require("./point");
 const ProductOrderModel = require("../models/productOrder");
 const { notifyShop } = require("./notification");
-const { sendEmail } = require("../helpers/emailer");
-const EmailTemplateModel = require("../models/emailTemplate");
-const UserModel = require("../models/user");
 const Stripe = require("stripe");
 const { allowedDeliveryCountries } = require("../helpers/constants");
-const { update } = require("lodash");
 const ShopModel = require("../models/shop");
 const { verifyStripePayment } = require("../helpers/stripe");
-const {
-  verifyPaystack,
-  verifyPaystackPayment,
-} = require("../helpers/paystack");
+const { verifyPaystackPayment } = require("../helpers/paystack");
 const orderQueue = require("../queue/orderQueue");
 
 const secretKey =
   ENV === "dev"
     ? process.env.PAYSTACK_SECRET_TEST_KEY
     : process.env.PAYSTACK_SECRET_LIVE_KEY;
-const environment = process.env.NODE_ENV;
+
 
 const stripeKey =
   ENV === "dev"

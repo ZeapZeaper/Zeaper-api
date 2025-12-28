@@ -884,6 +884,8 @@ const normalizeQuillLists = (html) => {
 
   return $.html();
 };
+
+
 module.exports = {
   deleteLocalFile,
   numberWithCommas,
