@@ -6,49 +6,51 @@ const ReviewModel = require("../models/review");
 const ShopModel = require("../models/shop");
 const { notifyShop } = require("./notification");
 
-const canUserReview = async (user, product_id) => {
+const canUserReview = async (user, product_id, sku) => {
   const result = {
-    canReview: true,
-    isadmin: user?.isAdmin || user?.isSuperAdmin,
+    canReview: false,
+    isadmin: user?.isAdmin || user?.superAdmin,
     orderId: null,
+    sku: sku || null,
+    denyReason: null,
   };
-  if (result.isadmin) {
-    return result;
-  }
+
   const review = await ReviewModel.findOne({
     user: user._id,
     product: product_id,
+    sku: sku,
   }).exec();
   if (review) {
     result.canReview = false;
     result.denyReason = "You have already reviewed this product";
     return result;
   }
-  const orders = await OrderModel.find({
-    user: user._id,
-    status: "delivered",
-  })
-    .populate("productOrders")
-    .lean();
-  const foundOrder = orders.find((order) =>
-    order.productOrders.some(
-      (productOrder) =>
-        productOrder.product.toString() === product_id.toString()
-    )
-  );
 
-  if (!foundOrder) {
-    result.canReview = false;
-    result.denyReason =
-      "You can only review products that you have purchased and received";
+  const foundDeliveredProductOrder = await ProductOrderModel.findOne({
+    user: user._id,
+    product: product_id,
+    sku: sku,
+    "status.name": "delivered",
+  }).exec();
+
+  if (foundDeliveredProductOrder) {
+    result.orderId = foundDeliveredProductOrder.orderId;
+    result.canReview = true;
     return result;
   }
-  result.orderId = foundOrder.orderId;
+  if (user?.isAdmin || user?.superAdmin) {
+    result.canReview = true;
+    return result;
+  }
+  result.canReview = false;
+  result.denyReason =
+    "You have not purchased and received this product yet to be able to review it";
+
   return result;
 };
 const getUserCanReview = async (req, res) => {
   try {
-    const { productId } = req.query;
+    const { productId, sku } = req.query;
     if (!productId) {
       return res.status(400).send({ error: "productId is required" });
     }
@@ -60,7 +62,7 @@ const getUserCanReview = async (req, res) => {
     if (!product) {
       return res.status(400).send({ error: "Product not found" });
     }
-    const canReview = await canUserReview(user, product._id);
+    const canReview = await canUserReview(user, product._id, sku);
 
     return res.status(200).send({
       data: canReview,
@@ -83,6 +85,8 @@ const createReview = async (req, res) => {
       displayName,
       imageMatch,
       orderId,
+      sku,
+      fromAdmin,
     } = req.body;
     if (!productId) {
       return res.status(400).send({ error: "productId is required" });
@@ -116,35 +120,47 @@ const createReview = async (req, res) => {
         .status(400)
         .send({ error: "Guest users cannot create product reviews" });
     }
-    if (!orderId && !user.isAdmin && !user.isSuperAdmin) {
+    if (!orderId && !fromAdmin) {
       return res.status(400).send({ error: "orderId is required" });
     }
+    if (!sku && !fromAdmin) {
+      return res.status(400).send({ error: "sku is required" });
+    }
+    if (fromAdmin && (!user.isAdmin || !user.superAdmin)) {
+      return res
+        .status(400)
+        .send({ error: "Only admins can create reviews from admin" });
+    }
+
     const product = await ProductModel.findOne({ productId }).exec();
     if (!product) {
       return res.status(400).send({ error: "Product not found" });
     }
-    let order = null;
+
     let images = [];
     let deliveryDate = null;
+    let color;
+    let size;
     if (orderId) {
-      order = await OrderModel.findOne({ orderId })
-        .populate("productOrders")
-        .exec();
-      if (!order) {
-        return res.status(400).send({ error: "Order not found" });
-      }
-      const productOrder = order.productOrders.find(
-        (productOrder) =>
-          productOrder.product.toString() === product._id.toString()
-      );
+      const productOrder = await ProductOrderModel.findOne({
+        orderId,
+        product: product._id,
+        sku,
+      }).exec();
       if (!productOrder) {
         return res.status(400).send({ error: "Product not found in order" });
       }
+      color = productOrder.color;
+      size = productOrder.size;
       images = productOrder.images;
       deliveryDate = productOrder.deliveryDate;
+      // if images is empty, get from product
+      if (!images || images.length === 0) {
+        images = product?.colors[0]?.images || [];
+      }
     }
 
-    const canReview = await canUserReview(user, product._id);
+    const canReview = await canUserReview(user, product._id, sku);
     if (!canReview.canReview) {
       return res.status(400).send({
         error:
@@ -155,12 +171,6 @@ const createReview = async (req, res) => {
     const shop = await ShopModel.findOne({ shopId: product.shopId }).exec();
     if (!shop) {
       return res.status(400).send({ error: "This product has no shop" });
-    }
-
-    if (shop?.user.toString() === user._id.toString()) {
-      return res
-        .status(400)
-        .send({ error: "You cannot review your own product" });
     }
 
     const reviewData = {
@@ -175,6 +185,10 @@ const createReview = async (req, res) => {
       imageMatch,
       images,
       deliveryDate,
+      color,
+      size,
+      sku,
+      fromAdmin: fromAdmin || false,
     };
     const reviewInstance = new ReviewModel(reviewData);
     await reviewInstance.save();
@@ -249,12 +263,14 @@ const getReviews = async (req, res) => {
 const getAuthUserReviews = async (req, res) => {
   try {
     const user = await getAuthUser(req);
-    const reviews = await ReviewModel.find({ user: user._id })
+    const givenReviews = await ReviewModel.find({
+      user: user._id,
+      fromAdmin: false,
+    })
       .populate("product", "productId title")
       .lean();
 
-    const product_ids = reviews.map((review) => review?.product._id) || [];
-
+    const product_ids = givenReviews.map((review) => review?.product._id) || [];
     const ordersWithoutReview =
       (await ProductOrderModel.find({
         user: user._id.toString(),
@@ -266,48 +282,22 @@ const getAuthUserReviews = async (req, res) => {
 
     const pendingReviews = ordersWithoutReview.map((order) => {
       return {
-        order: {
-          productId: order.product.productId,
-          title: order.product.title,
-          images: order.images,
-          orderId: order.orderId,
-          color: order.color,
-          size: order.size,
-          sku: order.sku,
-          quantity: order.quantity,
-          deliveryDate: order.deliveryDate,
-        },
+        productId: order.product.productId,
+        product: order.product,
+        images: order.images,
+        orderId: order.orderId,
+        color: order.color,
+        size: order.size,
+        sku: order.sku,
+        quantity: order.quantity,
+        deliveryDate: order.deliveryDate,
+        title: null,
+        review: null,
+        displayName: null,
+        imageMatch: null,
         rating: null,
       };
     });
-
-    const givenReviews = await Promise.all(
-      reviews.map(async (review) => {
-        const product = review.product;
-
-        const order = await ProductOrderModel.findOne({
-          user: user._id.toString(),
-          product: product._id,
-          orderId: review.orderId,
-        }).lean();
-        if (!order) {
-          return null;
-        }
-        return {
-          ...review,
-          order: {
-            productId: product.productId,
-            title: product.title,
-            color: order.color,
-            size: order?.size,
-            sku: order?.sku,
-            quantity: order?.quantity,
-            deliveryDate: order?.deliveryDate,
-            images: order?.images,
-          },
-        };
-      })
-    ).then((results) => results.filter((item) => item !== null));
 
     const data = {
       givenReviews,
