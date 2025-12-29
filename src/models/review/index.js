@@ -1,3 +1,4 @@
+const { size } = require("lodash");
 const mongoose = require("mongoose");
 const timestamp = require("mongoose-timestamp");
 
@@ -16,12 +17,16 @@ const ReviewSchema = new mongoose.Schema({
       name: { type: String, required: true },
     },
   ],
+  color: { type: String, required: false },
+  sku: { type: String, required: false },
+  size: { type: String, required: false },
   deliveryDate: { type: String, required: false },
   rating: { type: Number, required: true },
   title: { type: String, required: true },
   review: { type: String, required: true },
   displayName: { type: String, required: true },
   disabled: { type: Boolean, required: false, default: false },
+  fromAdmin: { type: Boolean, required: false, default: false },
   likes: {
     value: { type: Number, required: false, default: 0 },
     users: [{ type: mongoose.Schema.Types.ObjectId }],
