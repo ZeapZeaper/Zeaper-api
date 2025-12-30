@@ -1205,12 +1205,13 @@ const rejectOrder = async (req, res) => {
         .send({ error: "Product Order already cancelled or rejected" });
     }
     if (
+      productOrder.status.value === "order ready for delivery" ||
       productOrder.status.value === "dispatched" ||
       productOrder.status.value === "delivered"
     ) {
       return res.status(400).send({
         error:
-          "You cannot reject an order that has been dispatched or delivered. Contact support",
+          "You cannot reject an order at this stage. Contact support",
       });
     }
 
