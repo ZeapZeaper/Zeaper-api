@@ -896,6 +896,21 @@ const updateProductOrderStatus = async (req, res) => {
         .status(400)
         .send({ error: "You are not authorized to update this product order" });
     }
+    if (productOrder.status.value === "order delivered") {
+      return res
+        .status(400)
+        .send({ error: `You can't update delivered orders` });
+    }
+    if (productOrder.status.value === "order cancelled") {
+      return (
+        res
+          .status(400)
+       
+          .send({
+            error: `Oops this order has been cancelled already. Please refresh your page to get the latest status`,
+          })
+      );
+    }
 
     let confirmedAt = productOrder.confirmedAt;
     // if selected status is placed, update confirmedAt to null
@@ -1210,8 +1225,7 @@ const rejectOrder = async (req, res) => {
       productOrder.status.value === "delivered"
     ) {
       return res.status(400).send({
-        error:
-          "You cannot reject an order at this stage. Contact support",
+        error: "You cannot reject an order at this stage. Contact support",
       });
     }
 
