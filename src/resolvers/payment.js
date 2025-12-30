@@ -25,7 +25,6 @@ const secretKey =
     ? process.env.PAYSTACK_SECRET_TEST_KEY
     : process.env.PAYSTACK_SECRET_LIVE_KEY;
 
-
 const stripeKey =
   ENV === "dev"
     ? process.env.STRIPE_SECRET_KEY_TEST
@@ -39,13 +38,13 @@ const stripewebhookSecret =
     ? process.env.STRIPE_WEBHOOK_SECRET_TEST
     : process.env.STRIPE_WEBHOOK_SECRET_LIVE;
 
-const generateReference = (param) => {
-  const { firstName, lastName, basketId } = param;
-  const firstChar = firstName.charAt(0).toUpperCase();
-  const lastChar = lastName.charAt(0).toUpperCase();
-  const today = new Date();
-  const ref = `${firstChar}${lastChar}-${basketId}-${today.getTime()}`;
-  return ref;
+const generateReference = (param = {}) => {
+  const { firstName = "", lastName = "", basketId = "0" } = param;
+
+  const firstChar = firstName.trim().charAt(0).toUpperCase() || "X";
+  const lastChar = lastName.trim().charAt(0).toUpperCase() || "X";
+
+  return `${firstChar}${lastChar}-${basketId}-${Date.now()}`;
 };
 
 const getStripeClientSecret = async (

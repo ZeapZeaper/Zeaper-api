@@ -1267,9 +1267,15 @@ const orderStatusEnums = [
     percentage: 40,
   },
   {
+    name: "quality check",
+    value: "order quality check",
+    sellerAction: true,
+    percentage: 60,
+  },
+  {
     name: "ready for delivery",
     value: "order ready for delivery",
-    sellerAction: true,
+    sellerAction: false,
     percentage: 60,
   },
   {
