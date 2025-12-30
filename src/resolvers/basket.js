@@ -21,6 +21,7 @@ const BodyMeasurementTemplateModel = require("../models/bodyMeasurementTemplate"
 const ExchangeRateModel = require("../models/exchangeRate");
 const ProductOrderModel = require("../models/productOrder");
 const ProductModel = require("../models/products");
+const PaymentModel = require("../models/payment");
 
 function getRandomInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));
