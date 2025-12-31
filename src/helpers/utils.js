@@ -885,7 +885,9 @@ const normalizeQuillLists = (html) => {
   return $.html();
 };
 
-
+const capitalizeFirstLetter = (string) => {
+  return string?.charAt(0).toUpperCase() + string?.slice(1);
+};
 module.exports = {
   deleteLocalFile,
   numberWithCommas,
@@ -924,4 +926,5 @@ module.exports = {
   makeCacheKey,
   deleteRedisKeysByPrefix,
   normalizeQuillLists,
+  capitalizeFirstLetter,
 };

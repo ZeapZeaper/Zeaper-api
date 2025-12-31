@@ -14,6 +14,7 @@ const {
   replaceProductOrderVariablesinTemplate,
   replaceUserVariablesinTemplate,
   calcShopRevenueValue,
+  capitalizeFirstLetter,
 } = require("../helpers/utils");
 const { default: mongoose } = require("mongoose");
 const {
@@ -902,14 +903,15 @@ const updateProductOrderStatus = async (req, res) => {
         .send({ error: `You can't update delivered orders` });
     }
     if (productOrder.status.value === "order cancelled") {
-      return (
-        res
-          .status(400)
-       
-          .send({
-            error: `Oops this order has been cancelled already. Please refresh your page to get the latest status`,
-          })
-      );
+      const cancelledBy = productOrder.cancel?.cancelledBy || "buyer";
+      return res
+        .status(400)
+
+        .send({
+          error: `This order has been cancelled already by ${capitalizeFirstLetter(
+            cancelledBy
+          )}.`,
+        });
     }
 
     let confirmedAt = productOrder.confirmedAt;
