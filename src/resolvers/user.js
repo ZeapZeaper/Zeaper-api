@@ -76,7 +76,7 @@ const addImage = async (req, filename) => {
 const deleteImageFromFirebase = async (name) => {
   if (name) {
     storageRef
-      .file("/user/" + name)
+      .file("user/" + name)
       .delete()
       .then(() => {
         return true;

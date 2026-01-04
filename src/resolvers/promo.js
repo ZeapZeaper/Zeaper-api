@@ -34,6 +34,7 @@ const addVideo = async (filename) => {
     // Upload to Firebase storage
     const [uploadedFile] = await storageRef.upload(source, {
       destination,
+      public: true,
       metadata: {
         cacheControl: "public, max-age=31536000, immutable", // 1 year cache
         firebaseStorageDownloadTokens: token,
@@ -41,7 +42,8 @@ const addVideo = async (filename) => {
     });
 
     // ✅ Use egress-safe URL (avoid download/storage/v1)
-    const publicUrl = `https://storage.googleapis.com/${storageRef.name}/${destination}`;
+
+    const publicUrl = `https://storage.googleapis.com/${storageRef.name}/promo/${filename}`;
 
     // Clean up local file
     await deleteLocalFile(source);
@@ -100,7 +102,7 @@ const addImage = async (destination, filename) => {
 const deleteImageFromFirebase = async (name) => {
   if (name) {
     storageRef
-      .file("/user/" + name)
+      .file("promo/" + name)
       .delete()
       .then(() => {
         return true;
@@ -262,7 +264,8 @@ const createPromo = async (req, res) => {
       subTitle,
       discount,
       permittedProductTypes,
-      type,
+      smallScreenType,
+      largeScreenType,
     } = req.body;
 
     if (!req.files) {
@@ -305,7 +308,10 @@ const createPromo = async (req, res) => {
     let largeScreenImageUrl = {};
 
     if (req?.files?.smallScreenImageUrl) {
-      if (type === "video") {
+      if (!smallScreenType) {
+        return res.status(400).send({ error: "smallScreenType is required" });
+      }
+      if (smallScreenType === "video") {
         smallScreenImageUrl = await addVideo(
           req.files.smallScreenImageUrl[0].filename
         );
@@ -318,7 +324,10 @@ const createPromo = async (req, res) => {
     }
 
     if (req.files.largeScreenImageUrl) {
-      if (type === "video") {
+      if (!largeScreenType) {
+        return res.status(400).send({ error: "largeScreenType is required" });
+      }
+      if (largeScreenType === "video") {
         largeScreenImageUrl = await addVideo(
           req.files.largeScreenImageUrl[0].filename
         );
@@ -603,7 +612,8 @@ const updatePromo = async (req, res) => {
       subTitle,
       discount,
       permittedProductTypes,
-      type,
+      smallScreenType,
+      largeScreenType,
     } = req.body;
     if (!promoId) {
       if (req?.files) {
@@ -657,7 +667,7 @@ const updatePromo = async (req, res) => {
     let largeScreenImageUrl = promo.largeScreenImageUrl;
 
     if (req?.files?.smallScreenImageUrl) {
-      if (type === "video") {
+      if (smallScreenType === "video") {
         smallScreenImageUrl = await addVideo(
           req.files.smallScreenImageUrl[0].filename
         );
@@ -670,7 +680,7 @@ const updatePromo = async (req, res) => {
     }
 
     if (req.files.largeScreenImageUrl) {
-      if (type === "video") {
+      if (largeScreenType === "video") {
         largeScreenImageUrl = await addVideo(
           req.files.largeScreenImageUrl[0].filename
         );
@@ -683,14 +693,15 @@ const updatePromo = async (req, res) => {
     }
     if (
       promo.smallScreenImageUrl.name &&
-      req.file &&
+      req.files &&
       promo.smallScreenImageUrl.name !== smallScreenImageUrl.name
     ) {
       await deleteImageFromFirebase(promo.smallScreenImageUrl.name);
     }
+
     if (
       promo.largeScreenImageUrl.name &&
-      req.file &&
+      req.files &&
       promo.largeScreenImageUrl.name !== largeScreenImageUrl.name
     ) {
       await deleteImageFromFirebase(promo.largeScreenImageUrl.name);
