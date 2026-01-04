@@ -190,7 +190,7 @@ const sendPushMultipleDevice = async ({
       data,
     });
     if (sendPush) {
-      console.log("Push notification sent");
+    
       return { message: "Push notification sent", meesageId: sendPush };
     }
     console.log("Failed to send push notification", sendPush);
@@ -200,6 +200,7 @@ const sendPushMultipleDevice = async ({
   }
 };
 const sendPushAllAdmins = async ({ title, body, image, data }) => {
+
   try {
     const adminsNotifications = await NotificationModel.findOne({
       isAdminPanel: true,
@@ -230,6 +231,7 @@ const sendPushAllAdmins = async ({ title, body, image, data }) => {
 };
 
 const notifyAllAdmins = async ({ title, body, image, data }) => {
+  
   try {
     const adminsNotifications = await NotificationModel.findOne({
       isAdminPanel: true,
@@ -297,7 +299,7 @@ const testMultiplePushNotification = async (req, res) => {
     });
 
     if (sendPush) {
-      console.log("Push notification sent");
+
       return res
         .status(200)
         .send({ message: "Push notification sent", meesageId: sendPush });
@@ -434,6 +436,7 @@ const addNotification = async (param) => {
 const notifyShop = async (param) => {
   try {
     const { shop_id, title, body, image, data } = param;
+  
     const shop = await ShopModel.findById(shop_id).lean().select("user");
     const user = shop.user;
     if (!user) {
@@ -516,6 +519,8 @@ const notifyAllShops = async (param) => {
 const notifyIndividualUser = async (param) => {
   try {
     const { user_id, title, body, image, data } = param;
+   
+    
     if (!user_id) {
       return { error: "required user_id" };
     }
@@ -562,6 +567,7 @@ const notifyIndividualUser = async (param) => {
         });
         if (push) {
           messageids.push(push);
+         
         }
       });
       await Promise.all(promises);

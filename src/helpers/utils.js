@@ -361,7 +361,7 @@ const currencyConversion = async (amount, currency) => {
   if (!currencyRates) {
     currencyRates = await ExchangeRateModel.find().lean();
     cache.set("exchangeRates", currencyRates);
-    console.log("💾 Exchange rates loaded into cache");
+    
   }
 
   // find rate from cached list
@@ -405,7 +405,7 @@ const covertToNaira = async (amount, currency) => {
   if (!currencyRates) {
     currencyRates = await ExchangeRateModel.find().lean();
     cache.set("exchangeRates", currencyRates);
-    console.log("💾 Exchange rates loaded into cache");
+    
   }
   let rate;
   if (currency === "USD") {
@@ -888,6 +888,29 @@ const normalizeQuillLists = (html) => {
 const capitalizeFirstLetter = (string) => {
   return string?.charAt(0).toUpperCase() + string?.slice(1);
 };
+const adjustDate = (data) => {
+  if (data < 10) {
+    return `0${data}`;
+  }
+  return data;
+};
+const displayDate = (date, showTime = true) => {
+  // endure date is real date
+  if (!date || isNaN(new Date(date).getTime())) return "";
+  const parsedDate = new Date(date);
+  const month = new Intl.DateTimeFormat("en-US", {
+    month: "long",
+  }).format(parsedDate);
+  const parsedDateValue = adjustDate(parsedDate.getFullYear());
+  const parsedDateDay = adjustDate(parsedDate.getDate());
+  const parsedDateHours = adjustDate(parsedDate.getHours());
+  const parsedDateMinutes = adjustDate(parsedDate.getMinutes());
+  const parsedDateSeconds = adjustDate(parsedDate.getSeconds());
+  if (showTime) {
+    return `${parsedDateDay} ${month} ${parsedDateValue} ${parsedDateHours}:${parsedDateMinutes}:${parsedDateSeconds}`;
+  }
+  return `${parsedDateDay} ${month} ${parsedDateValue}`;
+};
 module.exports = {
   deleteLocalFile,
   numberWithCommas,
@@ -927,4 +950,5 @@ module.exports = {
   deleteRedisKeysByPrefix,
   normalizeQuillLists,
   capitalizeFirstLetter,
+  displayDate,
 };
