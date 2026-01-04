@@ -844,51 +844,49 @@ const updateProductOrderStatus = async (req, res) => {
   try {
     const { productOrder_id, status } = req.body;
 
-    let deliveryDate = null;
-    let deliveryCompany = null;
-    let deliveryTrackingNumber = null;
-    let deliveryTrackingLink = null;
-
     if (!productOrder_id) {
       return res.status(400).send({ error: "required productOrder_id" });
     }
     if (!status) {
       return res.status(400).send({ error: "required status" });
     }
+
     const selectedStatus = orderStatusEnums.find((s) => s.value === status);
     if (!selectedStatus) {
       return res.status(400).send({ error: "Invalid status" });
     }
+
     if (selectedStatus.value === "order cancelled") {
       return res
         .status(400)
         .send({ error: "You can't cancel an order using this endpoint" });
     }
-    const authUser = req?.cachedUser || (await getAuthUser(req));
+
+    const authUser = req.cachedUser || (await getAuthUser(req));
     if (!authUser) {
-      return res.status(400).send({ error: "User not found" });
+      return res.status(401).send({ error: "User not found" });
     }
+
     if (
-      !selectedStatus?.sellerAction &&
+      !selectedStatus.sellerAction &&
       !authUser.superAdmin &&
-      !authUser?.isAdmin
+      !authUser.isAdmin
     ) {
-      return res.status(400).send({
-        error: `You are not authorized to update this order status to ${selectedStatus.name}`,
+      return res.status(403).send({
+        error: `You are not authorized to update status to ${selectedStatus.name}`,
       });
     }
-    const productOrder = await ProductOrderModel.findOne({
-      _id: productOrder_id,
-    })
+
+    const productOrder = await ProductOrderModel.findById(productOrder_id)
       .populate("product")
       .populate("shop")
       .lean();
 
     if (!productOrder) {
-      return res.status(400).send({ error: "Product Order not found" });
+      return res.status(404).send({ error: "Product order not found" });
     }
 
-    const shop = productOrder.shop;
+    const { shop, status: currentStatus, shopRevenue } = productOrder;
     const shopId = shop?.shopId;
     const shop_id = shop?._id;
 
@@ -898,85 +896,85 @@ const updateProductOrderStatus = async (req, res) => {
       !authUser.isAdmin
     ) {
       return res
-        .status(400)
+        .status(403)
         .send({ error: "You are not authorized to update this product order" });
     }
-    if (productOrder.status.value === "order delivered") {
-      return res
-        .status(400)
-        .send({ error: `You can't update delivered orders` });
-    }
-    if (productOrder.status.value === "order cancelled") {
-      const cancelledBy = productOrder.cancel?.cancelledBy || "buyer";
-      return res
-        .status(400)
 
-        .send({
-          error: `This order has been cancelled already by ${capitalizeFirstLetter(
-            cancelledBy
-          )}.`,
-        });
+    if (currentStatus.value === "order delivered") {
+      return res
+        .status(400)
+        .send({ error: "Delivered orders cannot be updated" });
     }
+
+    if (currentStatus.value === "order cancelled") {
+      const cancelledBy = productOrder.cancel?.cancelledBy || "buyer";
+      return res.status(400).send({
+        error: `This order was already cancelled by ${capitalizeFirstLetter(
+          cancelledBy
+        )}`,
+      });
+    }
+
+    /* ---------------- Status-based updates ---------------- */
 
     let confirmedAt = productOrder.confirmedAt;
-    // if selected status is placed, update confirmedAt to null
+    let deliveryCompany = null;
+    let deliveryTrackingNumber = null;
+    let deliveryTrackingLink = null;
+    let deliveryDate = null;
+    let cancel = productOrder.cancel;
 
     if (selectedStatus.value === "order confirmed") {
       confirmedAt = new Date();
-      // const createdAt = productOrder.createdAt;
-      // const productType = productOrder.product.productType;
-      // const bespokes = ["bespokeCloth", "bespokeShoe"];
     }
+
     if (selectedStatus.value === "order placed") {
       confirmedAt = null;
     }
+
     if (selectedStatus.value === "order dispatched") {
-      if (!req.body.deliveryCompany) {
+      const {
+        deliveryCompany: dc,
+        deliveryTrackingNumber: dtn,
+        deliveryTrackingLink: dtl,
+      } = req.body;
+
+      if (!dc) {
         return res.status(400).send({ error: "required deliveryCompany" });
       }
-      deliveryCompany = req.body.deliveryCompany;
-      deliveryTrackingNumber = req.body.deliveryTrackingNumber;
-      deliveryTrackingLink = req.body.deliveryTrackingLink;
+
+      deliveryCompany = dc;
+      deliveryTrackingNumber = dtn || null;
+      deliveryTrackingLink = dtl || null;
     }
-    // nullify delivery company, tracking number and tracking link if status comes before order dispatched
-    // check if status comes before order dispatched
-    const dispatchedStatus = orderStatusEnums.find(
+
+    const dispatchedIndex = orderStatusEnums.findIndex(
       (s) => s.value === "order dispatched"
     );
-    const dispatchedStatusIndex = orderStatusEnums.findIndex(
-      (s) => s.value === dispatchedStatus.value
-    );
-    const selectedStatusIndex = orderStatusEnums.findIndex(
+    const selectedIndex = orderStatusEnums.findIndex(
       (s) => s.value === selectedStatus.value
     );
-    if (selectedStatusIndex < dispatchedStatusIndex) {
+
+    if (selectedIndex < dispatchedIndex) {
       deliveryCompany = null;
       deliveryTrackingNumber = null;
       deliveryTrackingLink = null;
     }
-    const shopRevenue = productOrder.shopRevenue;
+
     if (selectedStatus.value === "order delivered") {
       if (!req.body.deliveryDate) {
         return res.status(400).send({ error: "required deliveryDate" });
       }
       deliveryDate = new Date(req.body.deliveryDate);
-    }
-    // nullify delivery date if status is not order delivered
-    if (selectedStatus.value !== "order delivered") {
+      shopRevenue.status = "completed";
+    } else {
       deliveryDate = null;
       shopRevenue.status = "pending";
     }
-    let cancel = productOrder.cancel;
 
-    if (productOrder.status.value === "order cancelled") {
-      cancel = null;
-      shopRevenue.status = "cancelled";
-    }
+    /* ---------------- Update DB ---------------- */
 
-    if (shopRevenue.status === "cancelled") {
-      shopRevenue.status = "pending";
-    }
-    const UpdatedProductOrder = await ProductOrderModel.findByIdAndUpdate(
+    const updatedProductOrder = await ProductOrderModel.findByIdAndUpdate(
       productOrder_id,
       {
         status: selectedStatus,
@@ -991,15 +989,17 @@ const updateProductOrderStatus = async (req, res) => {
       { new: true }
     );
 
-    const user = productOrder.user;
-    let title = "Order Status Update";
-    let body = `Item no ${productOrder?.itemNo} in your order with order ID - ${productOrder.orderId} has been updated to ${selectedStatus.name}`;
-    const image = productOrder.images[0].link;
+    /* ---------------- Notifications ---------------- */
 
-    const userNotification = await notifyIndividualUser({
+    const user = productOrder.user;
+    const image = productOrder.images?.[0]?.link;
+
+    const buyerBody = `Item no ${productOrder.itemNo} in your order ${productOrder.orderId} has been updated to ${selectedStatus.name}`;
+
+    await notifyIndividualUser({
       user_id: user,
-      title,
-      body,
+      title: "Order Status Update",
+      body: buyerBody,
       image,
       data: {
         orderId: productOrder.orderId.toString(),
@@ -1010,37 +1010,23 @@ const updateProductOrderStatus = async (req, res) => {
       },
     });
 
-    const notificationParam = {
-      title,
-      body,
-      image,
-      isAdminPanel: false,
-      user_id: user,
-    };
-
-    // for shop
-
     if (shop_id) {
-      title = "Order Status Update";
+      let vendorBody = `Order ${productOrder.orderId}, item ${productOrder.itemNo} updated to ${selectedStatus.name}`;
+
       if (selectedStatus.value === "order confirmed") {
-        const expectedVendorCompletionDate =
-            UpdatedProductOrder.expectedVendorCompletionDate,
-          body = `You have successfully confirmed an order with order ID - ${
-            productOrder.orderId
-          } and item number - ${
-            productOrder.itemNo
-          }. This order is expected to be completed between ${displayDate(
-            expectedVendorCompletionDate.min,
-            false
-          )} and ${displayDate(expectedVendorCompletionDate.max, false)}`;
-      } else {
-        body = `Order with order ID - ${productOrder.orderId} and item number - ${productOrder.itemNo} has been updated to ${selectedStatus.name}`;
+        const { min, max } = updatedProductOrder.expectedVendorCompletionDate;
+        vendorBody = `Order ${
+          productOrder.orderId
+        } confirmed. Expected completion between ${displayDate(
+          min,
+          false
+        )} and ${displayDate(max, false)}`;
       }
 
-      const notifyShopParam = {
+      await notifyShop({
         shop_id,
-        title,
-        body,
+        title: "Order Status Update",
+        body: vendorBody,
         image,
         data: {
           orderId: productOrder.orderId,
@@ -1049,32 +1035,39 @@ const updateProductOrderStatus = async (req, res) => {
           notificationType: "order",
           roleType: "vendor",
         },
-      };
-
-      const notify = await notifyShop(notifyShopParam);
+      });
     }
-    notificationParam.isAdminPanel = true;
-    notificationParam.user_id = null;
-    notificationParam.data = {
-      orderId: productOrder.orderId,
-      itemNo: productOrder.itemNo.toString(),
-      productOrder_id: productOrder._id.toString(),
-      notificationType: "order",
-      roleType: "admin",
+
+    const adminBody = `Item ${productOrder.itemNo} in order ${
+      productOrder.orderId
+    } updated to ${selectedStatus.name} by ${
+      authUser.shopId === shopId ? "Vendor" : "Admin"
+    }`;
+
+    const adminNotification = {
+      title: "Order Status Update",
+      body: adminBody,
+      image,
+      isAdminPanel: true,
+      user_id: null,
+      data: {
+        orderId: productOrder.orderId,
+        itemNo: productOrder.itemNo.toString(),
+        productOrder_id: productOrder._id.toString(),
+        notificationType: "order",
+        roleType: "admin",
+      },
     };
-    // change body for admin notification
-    //
-    notificationParam.body = `Item no ${productOrder?.itemNo}  in order with order ID - ${productOrder.orderId} has been updated to ${selectedStatus.name}`;
 
-    const addAdminNotification = await addNotification(notificationParam);
+    await addNotification(adminNotification);
+    await sendPushAllAdmins(adminNotification);
 
-    const pushAllAdmins = await sendPushAllAdmins(notificationParam);
-
-    return res.status(200).send({ data: UpdatedProductOrder });
+    return res.status(200).send({ data: updatedProductOrder });
   } catch (error) {
-    res.status(400).send({ error: error.message });
+    return res.status(500).send({ error: error.message });
   }
 };
+
 const cancelOrder = async (req, res) => {
   try {
     const { productOrder_id, reason, cancelledBy } = req.body;

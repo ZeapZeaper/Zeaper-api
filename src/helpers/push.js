@@ -24,38 +24,33 @@ const sendOneDevicePushNotification = async ({
     token,
   };
 
-  return messaging
-    .send(message)
-    .then((response) => {
-      // Response is a message ID string.
-      return response;
-    })
-    .catch((error) => {
-      console.log("Error sending message:", token, error);
-      if (
-        error.code === "messaging/invalid-argument" ||
-        error.code === "messaging/registration-token-not-registered"
-      ) {
-        removeToken(token);
-      }
-    });
+  try {
+    return await messaging.send(message);
+  } catch (error) {
+    const errorCode = error?.errorInfo?.code || error?.code || error?.message;
+
+    console.error("Error sending message:", token, errorCode);
+
+    const removableTokenErrors = [
+      "messaging/registration-token-not-registered",
+      "messaging/invalid-registration-token",
+      "messaging/invalid-argument",
+    ];
+
+    if (removableTokenErrors.includes(errorCode)) {
+      await removeToken(token);
+    }
+
+    return null;
+  }
 };
 
 const removeToken = async (token) => {
-  const userNotifications = await NotificationModel.findOne({
-    pushToken: token,
-  })
-    .select("pushToken")
-    .lean();
-  if (userNotifications) {
-    const pushToken = userNotifications.pushToken;
-    const modifiedToken = pushToken.filter((item) => item !== token);
-    await NotificationModel.findOneAndUpdate(
-      { pushToken: token },
-      { $set: { pushToken: modifiedToken } },
-      { new: true }
-    );
-  }
+  await NotificationModel.updateOne(
+    { pushToken: token },
+    { $pull: { pushToken: token } }
+  );
+
   return { success: true };
 };
 

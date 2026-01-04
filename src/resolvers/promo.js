@@ -433,7 +433,7 @@ const getLivePromos = async (req, res) => {
     }));
 
     // 4️⃣ Cache result in Redis
-    await redis.set(redisKey, JSON.stringify(promosWithCounts));
+    await redis.set(redisKey, JSON.stringify(promosWithCounts), { EX: 3600 }); // expires in 1 hour
 
     return res.status(200).send({
       // sort by createdAt descending
