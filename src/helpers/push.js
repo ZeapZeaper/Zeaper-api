@@ -16,10 +16,10 @@ const sendOneDevicePushNotification = async ({
         image ||
         "https://admin.zeaper.com/static/media/Iconmark_green.129d5bdb389ec6130623.png",
     },
-    data:{
-      notificationType: data?.notificationType || 'general',
-      roleType: data?.roleType || 'buyer',
-      ...data
+    data: {
+      notificationType: data?.notificationType || "general",
+      roleType: data?.roleType || "buyer",
+      ...data,
     },
     token,
   };
@@ -28,7 +28,6 @@ const sendOneDevicePushNotification = async ({
     .send(message)
     .then((response) => {
       // Response is a message ID string.
-
       return response;
     })
     .catch((error) => {
@@ -75,10 +74,10 @@ const sendMultipleDevicePushNotification = async ({
         image ||
         "https://admin.zeaper.com/static/media/Iconmark_green.129d5bdb389ec6130623.png",
     },
-    data:{
-      notificationType: data?.notificationType || 'general',
-      roleType: data?.roleType || 'buyer',
-      ...data
+    data: {
+      notificationType: data?.notificationType || "general",
+      roleType: data?.roleType || "buyer",
+      ...data,
     },
     tokens,
   };

@@ -1084,28 +1084,7 @@ let routes = (app) => {
     authMiddleware,
     onboadingDocumentsResolver.getShopOnboardingDocuments
   );
-  router.get("/test-queue", async (req, res) => {
-    const fakeWorkerTasks = [
-      {
-        taskType: "notifyUser",
-        user_id: "64f…", // some test user id
-        title: "Test order",
-        body: "Your order is successful",
-        image: null,
-        orderId: "TEST123",
-      },
-      {
-        taskType: "addLoyaltyPoints",
-        user_id: "64f…",
-        points: 5,
-      },
-    ];
 
-    const job = await orderQueue.add("testOrderJob", {
-      workerTasks: fakeWorkerTasks,
-    });
-    console.log("Job queued:", job.id);
-  });
   return app.use("/", router);
 };
 

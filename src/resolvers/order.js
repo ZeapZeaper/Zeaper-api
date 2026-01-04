@@ -15,6 +15,7 @@ const {
   replaceUserVariablesinTemplate,
   calcShopRevenueValue,
   capitalizeFirstLetter,
+  displayDate,
 } = require("../helpers/utils");
 const { default: mongoose } = require("mongoose");
 const {
@@ -746,7 +747,7 @@ const getProductOrder = async (req, res) => {
         error: "You are not authorized to view this product order",
       });
     }
-    console.log("permitted");
+
     const order = await OrderModel.findOne({
       _id: productOrder.order,
     }).lean();
@@ -879,17 +880,20 @@ const updateProductOrderStatus = async (req, res) => {
     const productOrder = await ProductOrderModel.findOne({
       _id: productOrder_id,
     })
-      .populate("shop")
       .populate("product")
+      .populate("shop")
       .lean();
 
     if (!productOrder) {
       return res.status(400).send({ error: "Product Order not found" });
     }
-    const shopid = productOrder.shop.shopId;
+
+    const shop = productOrder.shop;
+    const shopId = shop?.shopId;
+    const shop_id = shop?._id;
 
     if (
-      authUser.shopId !== shopid &&
+      authUser.shopId !== shopId &&
       !authUser.superAdmin &&
       !authUser.isAdmin
     ) {
@@ -988,7 +992,7 @@ const updateProductOrderStatus = async (req, res) => {
     );
 
     const user = productOrder.user;
-    const title = "Order Status Update";
+    let title = "Order Status Update";
     let body = `Item no ${productOrder?.itemNo} in your order with order ID - ${productOrder.orderId} has been updated to ${selectedStatus.name}`;
     const image = productOrder.images[0].link;
 
@@ -1015,12 +1019,20 @@ const updateProductOrderStatus = async (req, res) => {
     };
 
     // for shop
-    const shop_id = productOrder.shop.toString();
+
     if (shop_id) {
+      title = "Order Status Update";
       if (selectedStatus.value === "order confirmed") {
         const expectedVendorCompletionDate =
-          UpdatedProductOrder.expectedVendorCompletionDate;
-        body = `You have successfully confirmed an order with order ID - ${productOrder.orderId} and item number - ${productOrder.itemNo}. This order is expected to be completed between ${expectedVendorCompletionDate.min} and ${expectedVendorCompletionDate.max}`;
+            UpdatedProductOrder.expectedVendorCompletionDate,
+          body = `You have successfully confirmed an order with order ID - ${
+            productOrder.orderId
+          } and item number - ${
+            productOrder.itemNo
+          }. This order is expected to be completed between ${displayDate(
+            expectedVendorCompletionDate.min,
+            false
+          )} and ${displayDate(expectedVendorCompletionDate.max, false)}`;
       } else {
         body = `Order with order ID - ${productOrder.orderId} and item number - ${productOrder.itemNo} has been updated to ${selectedStatus.name}`;
       }
@@ -1032,19 +1044,20 @@ const updateProductOrderStatus = async (req, res) => {
         image,
         data: {
           orderId: productOrder.orderId,
-          itemNo: productOrder.itemNo,
+          itemNo: productOrder.itemNo.toString(),
           productOrder_id: productOrder._id.toString(),
           notificationType: "order",
           roleType: "vendor",
         },
       };
+
       const notify = await notifyShop(notifyShopParam);
     }
     notificationParam.isAdminPanel = true;
     notificationParam.user_id = null;
     notificationParam.data = {
       orderId: productOrder.orderId,
-      itemNo: productOrder.itemNo,
+      itemNo: productOrder.itemNo.toString(),
       productOrder_id: productOrder._id.toString(),
       notificationType: "order",
       roleType: "admin",
@@ -1052,10 +1065,10 @@ const updateProductOrderStatus = async (req, res) => {
     // change body for admin notification
     //
     notificationParam.body = `Item no ${productOrder?.itemNo}  in order with order ID - ${productOrder.orderId} has been updated to ${selectedStatus.name}`;
-    body = `Item no ${productOrder?.itemNo}  in order with order ID - ${productOrder.orderId} has been updated to ${selectedStatus.name}`;
 
     const addAdminNotification = await addNotification(notificationParam);
-    const pushAllAdmins = await sendPushAllAdmins(title, body, image);
+
+    const pushAllAdmins = await sendPushAllAdmins(notificationParam);
 
     return res.status(200).send({ data: UpdatedProductOrder });
   } catch (error) {
