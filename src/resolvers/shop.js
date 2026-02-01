@@ -256,7 +256,7 @@ const createShop = async (req, res) => {
 const getShops = async (req, res) => {
   try {
     const skip = parseInt(req.query.skip) || 0;
-    const limit = parseInt(req.query.limit) || 10;
+    const limit = parseInt(req.query.limit);
     const sort = req.query.sort || "desc";
     const search = req.query.search || "";
     const match = {
