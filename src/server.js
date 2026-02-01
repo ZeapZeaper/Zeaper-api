@@ -76,7 +76,7 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
-app.disable("etag");
+
 //adding version to response body
 app.use(function (req, res, next) {
   // res.set({ "x-version": process.env.npm_package_version });
