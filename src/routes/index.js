@@ -128,10 +128,9 @@ let routes = (app) => {
     userResolver.uploadProfilePic
   );
   router.put("/user/delete", authMiddleware, userResolver.deleteUsers);
+  //ToDo:  add authMiddleware and authUserAdminMiddleware
   router.delete(
     "/user/delete/absolute",
-    authMiddleware,
-    authUserAdminMiddleware,
     userResolver.absoluteDeleteUser
   );
   router.put(
