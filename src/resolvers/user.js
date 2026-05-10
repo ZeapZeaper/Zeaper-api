@@ -57,7 +57,7 @@ const addImage = async (req, filename) => {
           cacheControl: "public, max-age=31536000, immutable", // 1 year caching
           firebaseStorageDownloadTokens: uuidv4(),
         },
-      }
+      },
     );
     url = {
       link: `https://storage.googleapis.com/${storageRef.name}/user/${filename}`,
@@ -65,7 +65,7 @@ const addImage = async (req, filename) => {
     };
     const deleteSourceFile = await deleteLocalFile(source);
     const deleteResizedFile = await deleteLocalFile(
-      path.resolve(req.file.destination, "resized", filename)
+      path.resolve(req.file.destination, "resized", filename),
     );
     await Promise.all([deleteSourceFile, deleteResizedFile]);
     return url;
@@ -102,7 +102,7 @@ const generateUniqueUserId = async () => {
       {
         userId,
       },
-      { lean: true }
+      { lean: true },
     );
 
     if (exist) {
@@ -127,7 +127,6 @@ const addUserToFirebase = async (params) => {
     return error;
   }
 };
-
 
 const creatGuestUser = async (req, res) => {
   try {
@@ -157,7 +156,7 @@ const creatGuestUser = async (req, res) => {
     const geo = geoip.lookup(ip);
     const countryCode = geo?.country || "NG";
     const location = allowedLocations.find(
-      (location) => location.countryCode === countryCode
+      (location) => location.countryCode === countryCode,
     );
     if (location) {
       prefferedCurrency = location.currency;
@@ -207,7 +206,7 @@ const getRecommendedCurrency = async (req, res) => {
     const countryCode = geo?.country || "NG";
     let prefferedCurrency = "NGN";
     let location = allowedLocations.find(
-      (location) => location.countryCode === countryCode
+      (location) => location.countryCode === countryCode,
     );
     if (location) {
       prefferedCurrency = location.currency;
@@ -218,7 +217,7 @@ const getRecommendedCurrency = async (req, res) => {
     }
     const timezoneContinent = geo?.timezone.split("/")[0] || "Africa";
     const foundLocation = allowedLocations.find(
-      (location) => location.timezone.split("/")[0] === timezoneContinent
+      (location) => location.timezone.split("/")[0] === timezoneContinent,
     );
     if (foundLocation) {
       prefferedCurrency = foundLocation.currency;
@@ -267,7 +266,7 @@ const convertGuestUserWithEmailPasswordProvider = async (req, res) => {
       updatedUser = await UserModel.findByIdAndUpdate(
         authUser._id,
         { email, uid: firebaseUser.uid, ...body, isGuest: false },
-        { new: true }
+        { new: true },
       );
     } else {
       const userId = await generateUniqueUserId();
@@ -296,12 +295,12 @@ const convertGuestUserWithEmailPasswordProvider = async (req, res) => {
     }).lean();
     const formattedUserTemplateBody = replaceUserVariablesinTemplate(
       welcomeUserEmailTemplate?.body,
-      updatedUser
+      updatedUser,
     );
 
     const formattedUserTemplateSubject = replaceUserVariablesinTemplate(
       welcomeUserEmailTemplate?.subject,
-      updatedUser
+      updatedUser,
     );
 
     const param = {
@@ -317,7 +316,7 @@ const convertGuestUserWithEmailPasswordProvider = async (req, res) => {
       updatedUser = await UserModel.findByIdAndUpdate(
         updatedUser._id,
         { welcomeEmailSent, initialPointGiven },
-        { new: true }
+        { new: true },
       );
     }
     if (authUser && authUser.uid) {
@@ -352,12 +351,12 @@ const sendWelcomeEmailToUser = async ({ user }) => {
   }).lean();
   const formattedUserTemplateBody = replaceUserVariablesinTemplate(
     welcomeUserEmailTemplate?.body,
-    user
+    user,
   );
 
   const formattedUserTemplateSubject = replaceUserVariablesinTemplate(
     welcomeUserEmailTemplate?.subject,
-    user
+    user,
   );
 
   const param = {
@@ -373,7 +372,7 @@ const sendWelcomeEmailToUser = async ({ user }) => {
     const user = await UserModel.findOneAndUpdate(
       { email },
       { welcomeEmailSent },
-      { new: true }
+      { new: true },
     );
     return user;
   }
@@ -478,12 +477,12 @@ const createUser = async (req, res) => {
     }).lean();
     const formattedUserTemplateBody = replaceUserVariablesinTemplate(
       welcomeUserEmailTemplate?.body,
-      user
+      user,
     );
 
     const formattedUserTemplateSubject = replaceUserVariablesinTemplate(
       welcomeUserEmailTemplate?.subject,
-      user
+      user,
     );
 
     const param = {
@@ -501,7 +500,7 @@ const createUser = async (req, res) => {
       newUser = await UserModel.findByIdAndUpdate(
         newUser_id,
         { welcomeEmailSent, initialPointGiven },
-        { new: true }
+        { new: true },
       );
     }
     // create Notification record for user
@@ -593,12 +592,12 @@ const createUserWithGoogleOrApple = async (req, res) => {
     }).lean();
     const formattedUserTemplateBody = replaceUserVariablesinTemplate(
       welcomeUserEmailTemplate?.body,
-      user
+      user,
     );
 
     const formattedUserTemplateSubject = replaceUserVariablesinTemplate(
       welcomeUserEmailTemplate?.subject,
-      user
+      user,
     );
 
     const param = {
@@ -615,7 +614,7 @@ const createUserWithGoogleOrApple = async (req, res) => {
       newUser = await UserModel.findByIdAndUpdate(
         newUser_id,
         { welcomeEmailSent, initialPointGiven },
-        { new: true }
+        { new: true },
       );
     }
     // create Notification record for user
@@ -658,29 +657,29 @@ const mergePasswordLoginGuestUser = async (req, res) => {
     }
     const updateGuestOrders = await OrderModel.updateMany(
       { user: guestUser._id },
-      { user: authUser._id }
+      { user: authUser._id },
     );
     const updateGuestProductOrders = await ProductOrderModel.updateMany(
       { user: guestUser._id },
-      { user: authUser._id }
+      { user: authUser._id },
     );
     const updateGuestPayments = await PaymentModel.updateMany(
       { user: guestUser._id },
-      { user: authUser._id }
+      { user: authUser._id },
     );
     const updateGuestVouchers = await VoucherModel.updateMany(
       { user: guestUser._id },
-      { user: authUser._id }
+      { user: authUser._id },
     );
 
     const updateGuestDeliveryAddresses = await DeliveryAddressModel.updateMany(
       { user: guestUser._id },
-      { user: authUser._id }
+      { user: authUser._id },
     );
     const updatedNotification = await NotificationModel.findOneAndUpdate(
       { user: guestUser._id },
       { user: authUser._id },
-      { new: true }
+      { new: true },
     );
     if (!updatedNotification) {
       const newNotification = new NotificationModel({
@@ -693,12 +692,12 @@ const mergePasswordLoginGuestUser = async (req, res) => {
     }
     const updateGuestWishes = await WishModel.updateMany(
       { user: guestUser._id },
-      { user: authUser._id }
+      { user: authUser._id },
     );
     const updateGuestBodyMeasurementTemplates =
       await BodyMeasurementTemplateModel.updateMany(
         { user: guestUser._id },
-        { user: authUser._id }
+        { user: authUser._id },
       );
     const guestBasket = await BasketModel.findOne({
       user: guestUser._id,
@@ -714,7 +713,7 @@ const mergePasswordLoginGuestUser = async (req, res) => {
         await BasketModel.findByIdAndUpdate(
           alreadyExistingBasket._id,
           { basketItems: newBasketItems },
-          { new: true }
+          { new: true },
         );
       } else {
         const basketId = await generateUniqueBasketId();
@@ -797,7 +796,7 @@ const mergeGoogleAppleLoginGuestUser = async (req, res) => {
       updatedUser = await UserModel.findByIdAndUpdate(
         alreadyExisting._id,
         { isGuest: false, firstName, lastName, email },
-        { new: true }
+        { new: true },
       );
 
       const guestBasket = await BasketModel.findOne({
@@ -814,7 +813,7 @@ const mergeGoogleAppleLoginGuestUser = async (req, res) => {
           await BasketModel.findByIdAndUpdate(
             alreadyExistingBasket._id,
             { basketItems: newBasketItems },
-            { new: true }
+            { new: true },
           );
         } else {
           const basketId = await generateUniqueBasketId();
@@ -828,24 +827,24 @@ const mergeGoogleAppleLoginGuestUser = async (req, res) => {
       }
       const updateGuestOrders = await OrderModel.updateMany(
         { user: guestUser._id },
-        { user: alreadyExisting._id }
+        { user: alreadyExisting._id },
       );
       const updateGuestProductOrders = await ProductOrderModel.updateMany(
         { user: guestUser._id },
-        { user: alreadyExisting._id }
+        { user: alreadyExisting._id },
       );
       const updateGuestPayments = await PaymentModel.updateMany(
         { user: guestUser._id },
-        { user: alreadyExisting._id }
+        { user: alreadyExisting._id },
       );
       const updateGuestVouchers = await VoucherModel.updateMany(
         { user: guestUser._id },
-        { user: alreadyExisting._id }
+        { user: alreadyExisting._id },
       );
       const updatedNotification = await NotificationModel.findOneAndUpdate(
         { user: guestUser._id },
         { user: alreadyExisting._id },
-        { new: true }
+        { new: true },
       );
       if (!updatedNotification) {
         const newNotification = new NotificationModel({
@@ -858,17 +857,17 @@ const mergeGoogleAppleLoginGuestUser = async (req, res) => {
       }
       const updateGuestWishes = await WishModel.updateMany(
         { user: guestUser._id },
-        { user: alreadyExisting._id }
+        { user: alreadyExisting._id },
       );
       const updateGuestBodyMeasurementTemplates =
         await BodyMeasurementTemplateModel.updateMany(
           { user: guestUser._id },
-          { user: alreadyExisting._id }
+          { user: alreadyExisting._id },
         );
       const updateGuestDeliveryAddresses =
         await DeliveryAddressModel.updateMany(
           { user: guestUser._id },
-          { user: alreadyExisting._id }
+          { user: alreadyExisting._id },
         );
       if (guestUser.uid && guestUser.uid !== alreadyExisting.uid) {
         await deleteUserFromFirebase(guestUser.uid);
@@ -885,7 +884,7 @@ const mergeGoogleAppleLoginGuestUser = async (req, res) => {
           isGuest: false,
           expiresAt: null,
         },
-        { new: true }
+        { new: true },
       );
 
       if (!updatedGuestUser) {
@@ -917,12 +916,12 @@ const mergeGoogleAppleLoginGuestUser = async (req, res) => {
       }).lean();
       const formattedUserTemplateBody = replaceUserVariablesinTemplate(
         welcomeUserEmailTemplate?.body,
-        updatedUser
+        updatedUser,
       );
 
       const formattedUserTemplateSubject = replaceUserVariablesinTemplate(
         welcomeUserEmailTemplate?.subject,
-        updatedUser
+        updatedUser,
       );
 
       const param = {
@@ -943,7 +942,7 @@ const mergeGoogleAppleLoginGuestUser = async (req, res) => {
       updatedUser = await UserModel.findByIdAndUpdate(
         updatedUser._id,
         { welcomeEmailSent, initialPointGiven },
-        { new: true }
+        { new: true },
       );
     }
 
@@ -1157,7 +1156,7 @@ const deleteUser = async (contacts) => {
     const disabled = await UserModel.findByIdAndUpdate(
       _id,
       { disabled: true },
-      { new: true }
+      { new: true },
     );
     if (!disabled) {
       result.push(_id);
@@ -1195,7 +1194,7 @@ const restoreUserIds = async (ids) => {
     const restored = await UserModel.findByIdAndUpdate(
       _id,
       { disabled: false },
-      { new: true }
+      { new: true },
     );
     if (!restored) {
       result.push(_id);
@@ -1234,16 +1233,24 @@ const absoluteDeleteUser = async (req, res) => {
     if (!user) {
       return res.status(404).send({ error: "User not found" });
     }
-    const deletedUser = await UserModel.findByIdAndDelete(_id);
-    if (!deletedUser) {
-      return res.status(500).send({ error: "Error deleting user" });
+    if (!user?.uid) {
+      return res
+        .status(400)
+        .send({ error: "User has no uid, cannot be deleted from firebase" });
     }
     const deleteFirebaseUser = await deleteUserFromFirebase(user.uid);
+
     if (!deleteFirebaseUser) {
       return res
         .status(500)
         .send({ error: "Error deleting user from firebase" });
     }
+
+    const deletedUser = await UserModel.findByIdAndDelete(_id);
+    if (!deletedUser) {
+      return res.status(500).send({ error: "Error deleting user" });
+    }
+
     if (user.imageUrl?.name) {
       const deleteImage = await deleteImageFromFirebase(user.imageUrl.name);
       if (!deleteImage) {
@@ -1256,6 +1263,10 @@ const absoluteDeleteUser = async (req, res) => {
     if (!deleteShop) {
       return res.status(500).send({ error: "Error deleting shop" });
     }
+
+    await PointModel.findOneAndDelete({ user: _id }).lean();
+
+    await NotificationModel.findOneAndDelete({ user: _id }).lean();
 
     return res.status(200).send({ message: "User deleted successfully" });
   } catch (error) {
@@ -1336,7 +1347,7 @@ const uploadProfilePic = async (req, res) => {
     const update = await UserModel.findByIdAndUpdate(
       _id,
       { imageUrl },
-      { new: true }
+      { new: true },
     );
 
     if (!update) return res.status(400).send({ error: "User not found" });
@@ -1407,7 +1418,7 @@ const verifyUserOTP = async (req, res) => {
       const updatedUser = await UserModel.findByIdAndUpdate(
         user?._id,
         { phoneNumberVerified: true },
-        { new: true }
+        { new: true },
       );
       return res.status(200).send({
         data: updatedUser,

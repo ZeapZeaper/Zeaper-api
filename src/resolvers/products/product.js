@@ -112,7 +112,7 @@ const addImage = async (destination, filename) => {
           firebaseStorageDownloadTokens: uuidv4(),
           cacheControl: "public, max-age=31536000", // 1 year
         },
-      }
+      },
     );
     // get the public url that avoids egress charges
     url = {
@@ -121,7 +121,7 @@ const addImage = async (destination, filename) => {
     };
     const deleteSourceFile = await deleteLocalFile(source);
     const deleteResizedFile = await deleteLocalFile(
-      path.resolve(destination, "resized", filename)
+      path.resolve(destination, "resized", filename),
     );
     await Promise.all([deleteSourceFile, deleteResizedFile]);
     return url;
@@ -284,7 +284,7 @@ const addProductColorAndImages = async (req, res) => {
         currentStep: currentStep || product.currentStep,
       },
 
-      { new: true }
+      { new: true },
     ).exec();
 
     if (!updatedProduct) {
@@ -388,7 +388,7 @@ const addImagesToProductColor = async (req, res) => {
     const updatedProduct = await ProductModel.findOneAndUpdate(
       { productId, "colors.value": color },
       { $push: { "colors.$.images": images } },
-      { new: true }
+      { new: true },
     ).exec();
 
     if (!updatedProduct) {
@@ -438,7 +438,7 @@ const deleteProductColor = async (req, res) => {
     const updatedProduct = await ProductModel.findOneAndUpdate(
       { productId },
       { $pull: { colors: { value: color } } },
-      { new: true }
+      { new: true },
     ).exec();
 
     if (!updatedProduct) {
@@ -496,7 +496,7 @@ const deleteProductImage = async (req, res) => {
     const updatedProduct = await ProductModel.findOneAndUpdate(
       { productId, "colors.value": color },
       { $pull: { "colors.$.images": { name: imageName } } },
-      { new: true }
+      { new: true },
     ).exec();
 
     if (!updatedProduct) {
@@ -566,7 +566,7 @@ const setProductImageAsDefault = async (req, res) => {
     const updatedProduct = await ProductModel.findOneAndUpdate(
       { productId },
       { colors: newColors },
-      { new: true }
+      { new: true },
     ).exec();
 
     if (!updatedProduct) {
@@ -708,7 +708,7 @@ const absoluteDeleteProducts = async (req, res) => {
       }).exec();
       if (productOrder) {
         deleteProductIds = deleteProductIds.filter(
-          (productId) => productId !== product.productId
+          (productId) => productId !== product.productId,
         );
         disableProductIds.push(product.productId);
       }
@@ -717,7 +717,7 @@ const absoluteDeleteProducts = async (req, res) => {
     const productImages = products
       .filter((product) => deleteProductIds.includes(product.productId))
       .map((product) =>
-        product.colors.map((color) => color.images.map((image) => image))
+        product.colors.map((color) => color.images.map((image) => image)),
       )
       .flat(2);
 
@@ -744,8 +744,8 @@ const absoluteDeleteProducts = async (req, res) => {
             disabled: true,
             $push: { timeLine: newTimeline },
           },
-          { new: true }
-        )
+          { new: true },
+        ),
       );
     });
     await Promise.all(disablePromises);
@@ -806,8 +806,8 @@ const deleteProducts = async (req, res) => {
             disabled: true,
             $push: { timeLine: newTimeline },
           },
-          { new: true }
-        )
+          { new: true },
+        ),
       );
     });
     await Promise.all(promises);
@@ -863,8 +863,8 @@ const restoreProducts = async (req, res) => {
             disabled: false,
             $push: { timeLine: newTimeline },
           },
-          { new: true }
-        )
+          { new: true },
+        ),
       );
     });
     await Promise.all(promises);
@@ -901,7 +901,7 @@ const generateProductId = async (shopId, productType) => {
   do {
     productId = `${shopId}/${getProuctTypePrefix(productType)}/${getRandomInt(
       1000000,
-      9999999
+      9999999,
     )}`;
     const exist = await ProductModel.findOne({ productId }, { lean: true });
     if (exist) {
@@ -959,7 +959,7 @@ const createProduct = async (req, res) => {
 
     const productId = await generateProductId(
       shopId || user.shopId,
-      productType
+      productType,
     );
     const timeLine = [
       {
@@ -1091,7 +1091,7 @@ const setProductStatus = async (req, res) => {
         rejectionReasons: status === "rejected" ? updatedRejectedReasons : [],
         $push: { timeLine: newTimeLine },
       },
-      { new: true }
+      { new: true },
     ).exec();
     // notify shop if status is live or rejected
 
@@ -1188,7 +1188,7 @@ const submitProduct = async (req, res) => {
     const updatedProduct = await ProductModel.findOneAndUpdate(
       { productId },
       { status: "under review", $push: { timeLine: newTimeLine } },
-      { new: true }
+      { new: true },
     ).exec();
     if (!updatedProduct) {
       return res.status(400).send({ error: "product not found" });
@@ -1427,7 +1427,7 @@ const getProducts = async (req, res) => {
     }
     const productsWithCurrency = addPreferredAmountAndCurrency(
       products,
-      currency
+      currency,
     );
     const data = {
       products: productsWithCurrency,
@@ -1591,7 +1591,7 @@ const getLiveProducts = async (req, res) => {
         product.categories.style = style;
         await product.save();
         console.log(
-          `Updated product ${product.productId} style to ${standardizedStyle}`
+          `Updated product ${product.productId} style to ${standardizedStyle}`,
         );
       }
     }
@@ -1932,7 +1932,7 @@ const getMostPopular = async (req, res) => {
         const productIdSet = new Set(productIds.map((id) => id.toString()));
 
         const notPopularProducts = allProducts.filter(
-          (p) => !productIdSet.has(p._id.toString())
+          (p) => !productIdSet.has(p._id.toString()),
         );
 
         const remainingProducts = notPopularProducts.slice(0, remainingLimit);
@@ -2407,7 +2407,7 @@ const getAuthUserRecommendedProducts = async (req, res) => {
     if (cached) {
       const productsData = addPreferredAmountAndCurrency(
         JSON.parse(cached),
-        currency
+        currency,
       );
       return res.status(200).send({
         data: productsData,
@@ -2458,9 +2458,8 @@ const getAuthUserRecommendedProducts = async (req, res) => {
     if (recommendedList.length < MAX_PRODUCTS) {
       const lastOrderProduct = userOrders[0]?.product;
       if (lastOrderProduct) {
-        const similarProducts = await searchSimilarProductsForProduct(
-          lastOrderProduct
-        );
+        const similarProducts =
+          await searchSimilarProductsForProduct(lastOrderProduct);
         recommendedList.push(...similarProducts);
       }
     }
@@ -2472,7 +2471,8 @@ const getAuthUserRecommendedProducts = async (req, res) => {
         .lean();
 
       const recentProducts = recentViews?.products?.filter(
-        (p) => p.status === "live" && !userProductIds.includes(p._id.toString())
+        (p) =>
+          p.status === "live" && !userProductIds.includes(p._id.toString()),
       );
 
       if (recentProducts) recommendedList.push(...recentProducts);
@@ -2489,7 +2489,7 @@ const getAuthUserRecommendedProducts = async (req, res) => {
 
     // Step 6: Sort by most recent, limit
     const sortedProducts = uniqueProducts.sort(
-      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+      (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
     );
     const finalProducts = sortedProducts.slice(0, MAX_PRODUCTS);
 
@@ -2620,10 +2620,10 @@ const getProductOptions = async (req, res) => {
       accessoryTypeEnums: accessoryTypeEnums.sort(),
       accessoryStyleEnums: accessoryStyleEnums.sort(),
       femaleAccessoryStyleEnums: accessoryStyleEnums.filter(
-        (s) => !onlyMaleAccessoryStyleEnums.includes(s)
+        (s) => !onlyMaleAccessoryStyleEnums.includes(s),
       ),
       maleAccessoryStyleEnums: accessoryStyleEnums.filter(
-        (s) => !onlyFemaleAccessoryStyleEnums.includes(s)
+        (s) => !onlyFemaleAccessoryStyleEnums.includes(s),
       ),
       accessorySizeEnums: accessorySizeEnums.sort(),
       designEnums: designEnums.sort(),
@@ -2680,35 +2680,35 @@ const addProductVariation = async (req, res) => {
       updatedVariation = await addVariationToReadyMadeClothes(
         product,
         variation,
-        user
+        user,
       );
     }
     if (productType === "readyMadeShoe") {
       updatedVariation = await addVariationToReadyMadeShoes(
         product,
         variation,
-        user
+        user,
       );
     }
     if (productType === "accessory") {
       updatedVariation = await addVariationToAccesories(
         product,
         variation,
-        user
+        user,
       );
     }
     if (productType === "bespokeCloth") {
       updatedVariation = await addVariationToBespokeCloth(
         product,
         variation,
-        user
+        user,
       );
     }
     if (productType === "bespokeShoe") {
       updatedVariation = await addVariationToBespokeShoe(
         product,
         variation,
-        user
+        user,
       );
     }
     if (!updatedVariation) {
@@ -2728,7 +2728,7 @@ const addProductVariation = async (req, res) => {
     await ProductModel.findOneAndUpdate(
       { productId },
       { $push: { timeLine } },
-      { new: true }
+      { new: true },
     ).exec();
 
     return res.status(200).send({
@@ -2762,7 +2762,7 @@ const editProductVariation = async (req, res) => {
       return res.status(400).send({ error: "sku is required" });
     }
     const originalVariation = product.variations.find(
-      (v) => v.sku === variation.sku
+      (v) => v.sku === variation.sku,
     );
     if (!originalVariation) {
       return res.status(400).send({ error: "variation not found" });
@@ -2842,7 +2842,7 @@ const editProductVariation = async (req, res) => {
     await ProductModel.findOneAndUpdate(
       { productId },
       { $push: { timeLine: newTimeLine } },
-      { new: true }
+      { new: true },
     ).exec();
 
     return res
@@ -2889,7 +2889,7 @@ const deleteProductVariation = async (req, res) => {
     const updatedProduct = await ProductModel.findOneAndUpdate(
       { productId },
       { variations: updatedVariations, timeLine: timeLines },
-      { new: true }
+      { new: true },
     ).exec();
 
     if (!updatedProduct) {
@@ -2952,7 +2952,7 @@ const updateAutoPriceAdjustment = async (req, res) => {
         currentStep: currentStep ? currentStep : product.currentStep,
       },
 
-      { new: true }
+      { new: true },
     ).exec();
     if (!updatedProduct) {
       return res.status(400).send({ error: "product not found" });
@@ -2997,6 +2997,257 @@ const getAllLiveBrandsAndProductCount = async (req, res) => {
     return res.status(500).send({ error: err.message });
   }
 };
+
+const generateBarcode = (productId) => {
+  const pid = productId.slice(-4);
+  const timestamp = Date.now().toString().slice(-6);
+  const random = Math.floor(100 + Math.random() * 900);
+  const newBarcode = `${pid}${timestamp}${random}`;
+  return newBarcode;
+};
+const getNewBarcodeForVariation = async (productId) => {
+  let barcode;
+  let exists = true;
+
+  while (exists) {
+    barcode = generateBarcode(productId);
+    exists = await ProductModel.exists({ "variations.barcode": barcode });
+  }
+  return barcode;
+};
+
+const updateInstorePricesBulk = async (req, res) => {
+  try {
+    const { productId, updates } = req.body;
+
+    if (!productId || !Array.isArray(updates) || updates.length === 0) {
+      return res.status(400).send({
+        error: "productId and updates array are required",
+      });
+    }
+
+    const authUser = req?.cachedUser || (await getAuthUser(req));
+
+    if (!authUser) {
+      return res.status(401).send({ error: "Unauthorized" });
+    }
+
+    if (!authUser.superAdmin && !authUser.isAdmin) {
+      return res.status(403).send({
+        error: "Not allowed to update in-store pricing",
+      });
+    }
+
+    const product = await ProductModel.findOne({ productId });
+
+    if (!product) {
+      return res.status(404).send({ error: "Product not found" });
+    }
+
+    const results = [];
+    const errors = [];
+    for (const update of updates) {
+      const { sku, instorePrice } = update;
+
+      if (!sku) {
+        errors.push({ sku: null, error: "SKU is required" });
+        continue;
+      }
+
+      if (
+        instorePrice !== null &&
+        (typeof instorePrice !== "number" || instorePrice < 0)
+      ) {
+        errors.push({
+          sku,
+          error: "instorePrice must be a positive number or null",
+        });
+        continue;
+      }
+
+      const variation = product.variations.find((v) => v.sku === sku);
+     
+      if (!variation) {
+        errors.push({ sku, error: "Variation not found" });
+        continue;
+      }
+
+      if (variation?.bespoke?.isBespoke) {
+        errors.push({
+          sku,
+          error: "Bespoke products cannot have in-store pricing",
+        });
+        continue;
+      }
+      console.log(`Updating SKU: ${sku} with in-store price: ${instorePrice}`);
+
+      // ✅ Apply update
+      if (instorePrice === null) {
+        variation.instorePrice = undefined;
+      } else {
+        variation.instorePrice = instorePrice;
+      }
+      if (!variation.barcode && variation.instorePrice) {
+        variation.barcode = await getNewBarcodeForVariation(productId, variation.sku);
+      }
+
+      product.timeLine.push({
+        date: new Date().toISOString(),
+        description: `Updated in-store price for SKU ${sku} to ${instorePrice}`,
+        actionBy: authUser._id,
+      });
+
+      results.push({
+        sku,
+        instorePrice: variation.instorePrice || null,
+      });
+    }
+    console.log("product variations after updates:", product.variations);
+
+    // 💾 Save once (important)
+    await product.save();
+
+    return res.status(200).send({
+      message: "Bulk in-store price update completed",
+      data: {
+        updated: results,
+        failed: errors,
+      },
+    });
+  } catch (error) {
+    console.error("updateInstorePricesBulk error:", error);
+    return res.status(500).send({ error: error.message });
+  }
+};
+const getInstoreProducts = async (req, res) => {
+  try {
+    const authUser = req?.cachedUser || (await getAuthUser(req));
+
+    if (!authUser) {
+      return res.status(401).send({ error: "Unauthorized" });
+    }
+
+    // restrict access
+    if (
+      !authUser.superAdmin &&
+      !authUser.isAdmin &&
+      authUser.role !== "sales_agent"
+    ) {
+      return res
+        .status(403)
+        .send({ error: "Not allowed to access POS products" });
+    }
+
+    const data = await ProductModel.aggregate([
+      {
+        $match: {
+          disabled: false,
+          status: "live",
+          "variations.instorePrice": { $exists: true, $ne: null },
+        },
+      },
+
+      // flatten variations
+      { $unwind: "$variations" },
+
+      // keep only instore-enabled variations
+      {
+        $match: {
+          "variations.instorePrice": { $exists: true, $ne: null },
+        },
+      },
+
+      // find matching color for this variation
+      {
+        $addFields: {
+          matchedColor: {
+            $first: {
+              $filter: {
+                input: "$colors",
+                as: "color",
+                cond: {
+                  $eq: ["$$color.value", "$variations.colorValue"],
+                },
+              },
+            },
+          },
+        },
+      },
+
+      // get first image from matched color
+      {
+        $addFields: {
+          skuImage: {
+            $first: "$matchedColor.images",
+          },
+        },
+      },
+
+      // flatten all images across colors → find default
+      {
+        $addFields: {
+          fallbackImage: {
+            $first: {
+              $filter: {
+                input: {
+                  $reduce: {
+                    input: "$colors",
+                    initialValue: [],
+                    in: {
+                      $concatArrays: ["$$value", "$$this.images"],
+                    },
+                  },
+                },
+                as: "img",
+                cond: { $eq: ["$$img.isDefault", true] },
+              },
+            },
+          },
+        },
+      },
+
+      // final image selection
+      {
+        $addFields: {
+          finalImage: {
+            $ifNull: ["$skuImage", "$fallbackImage"],
+          },
+        },
+      },
+
+      // final shape (POS index)
+      {
+        $project: {
+          _id: 0,
+          productId: 1,
+          title: 1,
+          shopId: 1,
+
+          sku: "$variations.sku",
+          barcode: "$variations.barcode",
+          color: "$variations.colorValue",
+          size: "$variations.size",
+
+          instorePrice: "$variations.instorePrice",
+          quantity: "$variations.quantity",
+
+          image: {
+            link: "$finalImage.link",
+            name: "$finalImage.name",
+          },
+        },
+      },
+    ]);
+
+    return res.status(200).send({
+      message: "In-store products fetched successfully",
+      data,
+    });
+  } catch (error) {
+    console.error("getInstoreProducts error:", error);
+    return res.status(500).send({ error: error.message });
+  }
+};
 module.exports = {
   editProduct,
   absoluteDeleteProducts,
@@ -3036,4 +3287,6 @@ module.exports = {
   searchSimilarProducts,
   getBuyAgainList,
   getAuthUserRecommendedProducts,
+  updateInstorePricesBulk,
+  getInstoreProducts,
 };

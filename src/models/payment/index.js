@@ -5,15 +5,29 @@ const PaymentSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Users",
-    required: true,
+    required: function () {
+      return this.orderSource === "online";
+    },
+  },
+  orderSource: {
+    type: String,
+    required: false,
+    enum: ["online", "in-store"],
+    default: "online",
+  },
+  salesAgent: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Users",
+    required: false,
   },
   fullName: { type: String, required: true },
   email: { type: String, required: true },
   basket: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Baskets",
-    required: true,
-    
+    required: function () {
+      return this.orderSource === "online";
+    },
   },
   status: {
     type: String,
@@ -24,12 +38,12 @@ const PaymentSchema = new mongoose.Schema({
   deviceType: { type: String, required: false },
   amount: { type: Number, required: true },
   itemsTotal: { type: Number, required: true },
-  deliveryFee: { type: Number, required: true },
+  deliveryFee: { type: Number, required: false, default: 0 },
   currency: { type: String, required: true },
   reference: { type: String, required: true, unique: true },
   stripeClientSecret: { type: String, required: false },
   stripePaymentIntentId: { type: String, required: false },
-  appliedVoucherAmount: { type: Number, required: true },
+  appliedVoucherAmount: { type: Number, required: false, default: 0 },
   total: { type: Number, required: true },
   paidAt: { type: String, required: false },
   deliveryMethod: {
@@ -49,6 +63,9 @@ const PaymentSchema = new mongoose.Schema({
 });
 
 PaymentSchema.plugin(timestamp);
+// add indexes to optimize queries
+PaymentSchema.index({ user: 1 });
+PaymentSchema.index({ reference: 1 });
 
 const PaymentModel = mongoose.model("Payments", PaymentSchema, "Payments");
 

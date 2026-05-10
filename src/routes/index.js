@@ -63,59 +63,59 @@ let routes = (app) => {
     "/user/guest/create",
     authMiddleware,
     upload,
-    userResolver.creatGuestUser
+    userResolver.creatGuestUser,
   );
   router.put(
     "/user/guest/convert/emailPassword",
     authMiddleware,
-    userResolver.convertGuestUserWithEmailPasswordProvider
+    userResolver.convertGuestUserWithEmailPasswordProvider,
   );
   router.put(
     "/user/guest/login/googleApple/merge",
     authMiddleware,
-    userResolver.mergeGoogleAppleLoginGuestUser
+    userResolver.mergeGoogleAppleLoginGuestUser,
   );
   router.put(
     "/user/guest/login/password/merge",
     authMiddleware,
-    userResolver.mergePasswordLoginGuestUser
+    userResolver.mergePasswordLoginGuestUser,
   );
   router.post(
     "/user/create/googleApple",
     authMiddleware,
     upload,
     validateFileSizes,
-    userResolver.createUserWithGoogleOrApple
+    userResolver.createUserWithGoogleOrApple,
   );
   router.get(
     "/users",
     authMiddleware,
     authUserAdminMiddleware,
-    userResolver.getUsers
+    userResolver.getUsers,
   );
   router.get("/user", authMiddleware, userResolver.getUser);
   router.get(
     "/user/currency/recommended",
     authMiddleware,
-    userResolver.getRecommendedCurrency
+    userResolver.getRecommendedCurrency,
   );
   router.get("/userByUid", authMiddleware, userResolver.getUserByUid);
   router.get(
     "/userById",
     authMiddleware,
     authUserAdminMiddleware,
-    userResolver.getUserById
+    userResolver.getUserById,
   );
   router.get(
     "/user/checkEmail",
     authMiddleware,
-    userResolver.getUserInfoByEmail
+    userResolver.getUserInfoByEmail,
   );
   router.get(
     "/admin/users",
     authMiddleware,
     authUserAdminMiddleware,
-    userResolver.getAdminUsers
+    userResolver.getAdminUsers,
   );
   router.put("/user/verifyUserOTP", authMiddleware, userResolver.verifyUserOTP);
   router.put("/user/sendOTPToUser", authMiddleware, userResolver.sendOTPToUser);
@@ -125,19 +125,16 @@ let routes = (app) => {
     authMiddleware,
     upload,
     validateFileSizes,
-    userResolver.uploadProfilePic
+    userResolver.uploadProfilePic,
   );
   router.put("/user/delete", authMiddleware, userResolver.deleteUsers);
   //ToDo:  add authMiddleware and authUserAdminMiddleware
-  router.delete(
-    "/user/delete/absolute",
-    userResolver.absoluteDeleteUser
-  );
+  router.delete("/user/delete/absolute", userResolver.absoluteDeleteUser);
   router.put(
     "/user/restore",
     authMiddleware,
     authUserAdminMiddleware,
-    userResolver.restoreUser
+    userResolver.restoreUser,
   );
 
   //Shop routes
@@ -146,20 +143,20 @@ let routes = (app) => {
     "/shops",
     authMiddleware,
     authUserAdminMiddleware,
-    shopResolver.getShops
+    shopResolver.getShops,
   );
   router.get(
     "/shops/new",
     authMiddleware,
     authUserAdminMiddleware,
-    shopResolver.getNewShops
+    shopResolver.getNewShops,
   );
   router.get("/shop/auth", authMiddleware, shopResolver.getAuthUserShop);
   router.get("/shop", authMiddleware, shopResolver.getShop);
   router.get(
     "/shop/auth/revenues",
     authMiddleware,
-    shopResolver.getAuthShopRevenues
+    shopResolver.getAuthShopRevenues,
   );
   router.get("/shop/revenues", authMiddleware, shopResolver.getShopRevenues);
 
@@ -167,20 +164,20 @@ let routes = (app) => {
   router.put(
     "/shop/update/status",
     authMiddleware,
-    shopResolver.changeShopStatus
+    shopResolver.changeShopStatus,
   );
   router.put("/shop/delete", authMiddleware, shopResolver.deleteShop);
   router.delete(
     "/shop/delete/absolute",
     authMiddleware,
     authUserAdminMiddleware,
-    shopResolver.absoluteDeleteShop
+    shopResolver.absoluteDeleteShop,
   );
   router.put(
     "/shop/restore",
     authMiddleware,
     authUserAdminMiddleware,
-    shopResolver.restoreShop
+    shopResolver.restoreShop,
   );
 
   //Product routes
@@ -189,166 +186,166 @@ let routes = (app) => {
     "/products",
     authMiddleware,
     authUserAdminMiddleware,
-    productResolver.getProducts
+    productResolver.getProducts,
   );
   router.get(
     "/products/auth/shop",
     authMiddleware,
-    productResolver.getAuthShopProducts
+    productResolver.getAuthShopProducts,
   );
   router.get(
     "/products/getCategoryProducts",
     authMiddleware,
-    productResolver.getCategoryProducts
+    productResolver.getCategoryProducts,
   );
   router.get("/products/live", authMiddleware, productResolver.getLiveProducts);
   router.get(
     "/products/live/leastPrice",
     authMiddleware,
-    productResolver.getLiveProductsLeastPrice
+    productResolver.getLiveProductsLeastPrice,
   );
   router.get(
     "/products/live/brand",
     authMiddleware,
-    productResolver.getAllLiveBrandsAndProductCount
+    productResolver.getAllLiveBrandsAndProductCount,
   );
   router.get(
     "/products/live/promo",
     authMiddleware,
-    productResolver.getPromoWithLiveProducts
+    productResolver.getPromoWithLiveProducts,
   );
   router.get(
     "/products/live/newest",
     authMiddleware,
-    productResolver.getNewestArrivals
+    productResolver.getNewestArrivals,
   );
   router.get(
     "/products/live/bespoke",
     authMiddleware,
-    productResolver.getBespoke
+    productResolver.getBespoke,
   );
   router.get(
     "/products/live/mostPopular",
     authMiddleware,
-    productResolver.getMostPopular
+    productResolver.getMostPopular,
   );
   router.get(
     "/products/live/buyAgain",
     authMiddleware,
-    productResolver.getBuyAgainList
+    productResolver.getBuyAgainList,
   );
   router.get(
     "/products/live/recommended",
     authMiddleware,
-    productResolver.getAuthUserRecommendedProducts
+    productResolver.getAuthUserRecommendedProducts,
   );
   router.get(
     "/products/searchProducts",
     authMiddleware,
     authUserAdminMiddleware,
-    productResolver.searchProducts
+    productResolver.searchProducts,
   );
   router.get(
     "/products/live/searchProducts",
     authMiddleware,
-    productResolver.searchLiveProducts
+    productResolver.searchLiveProducts,
   );
   router.get(
     "/products/live/similar",
     authMiddleware,
-    productResolver.searchSimilarProducts
+    productResolver.searchSimilarProducts,
   );
   router.get(
     "/products/options",
     authMiddleware,
-    productResolver.getProductOptions
+    productResolver.getProductOptions,
   );
   router.get(
     "/products/dynamicFilters",
     authMiddleware,
-    productResolver.getQueryProductsDynamicFilters
+    productResolver.getQueryProductsDynamicFilters,
   );
   router.get(
     "/products/list/dynamicFilters",
     authMiddleware,
-    productResolver.getProductListDynamicFilters
+    productResolver.getProductListDynamicFilters,
   );
   router.get(
     "/products/shop/draft",
     authMiddleware,
-    productResolver.getShopDraftProducts
+    productResolver.getShopDraftProducts,
   );
   router.get("/product", authMiddleware, productResolver.getProduct);
   router.get(
     "/product/id",
     authMiddleware,
     authUserAdminMiddleware,
-    productResolver.getProductById
+    productResolver.getProductById,
   );
   router.put("/product/update", authMiddleware, productResolver.editProduct);
   router.put(
     "/product/update/status",
     authUserAdminMiddleware,
-    productResolver.setProductStatus
+    productResolver.setProductStatus,
   );
   router.put(
     "/product/update/addProductVariation",
     authMiddleware,
-    productResolver.addProductVariation
+    productResolver.addProductVariation,
   );
   router.put(
     "/product/update/deleteProductColor",
     authMiddleware,
-    productResolver.deleteProductColor
+    productResolver.deleteProductColor,
   );
   router.put(
     "/product/update/deleteProductImage",
     authMiddleware,
-    productResolver.deleteProductImage
+    productResolver.deleteProductImage,
   );
   router.put(
     "/product/update/setProductImageAsDefault",
     authMiddleware,
-    productResolver.setProductImageAsDefault
+    productResolver.setProductImageAsDefault,
   );
   router.put(
     "/product/update/addImagesToProductColor",
     authMiddleware,
     handleMoreFieldsUploads,
     validateFileSizes,
-    productResolver.addImagesToProductColor
+    productResolver.addImagesToProductColor,
   );
   router.put(
     "/product/update/editProductVariation",
     authMiddleware,
 
-    productResolver.editProductVariation
+    productResolver.editProductVariation,
   );
   router.put(
     "/product/update/deleteProductVariation",
     authMiddleware,
-    productResolver.deleteProductVariation
+    productResolver.deleteProductVariation,
   );
   router.put(
     "/product/update/autoPriceAdjustment",
     authMiddleware,
-    productResolver.updateAutoPriceAdjustment
+    productResolver.updateAutoPriceAdjustment,
   );
   router.put(
     "/product/update/submitProduct",
     authMiddleware,
-    productResolver.submitProduct
+    productResolver.submitProduct,
   );
   router.put("/product/delete", authMiddleware, productResolver.deleteProducts);
   router.put(
     "/product/delete/absolute",
     authMiddleware,
-    productResolver.absoluteDeleteProducts
+    productResolver.absoluteDeleteProducts,
   );
   router.put(
     "/product/restore",
     authMiddleware,
-    productResolver.restoreProducts
+    productResolver.restoreProducts,
   );
 
   router.put(
@@ -356,7 +353,17 @@ let routes = (app) => {
     authMiddleware,
     handleMoreFieldsUploads,
     validateFileSizes,
-    productResolver.addProductColorAndImages
+    productResolver.addProductColorAndImages,
+  );
+  router.put(
+    "/product/update/instorePrice",
+    authMiddleware,
+    productResolver.updateInstorePricesBulk,
+  );
+  router.get(
+    "/products/instore",
+    authMiddleware,
+    productResolver.getInstoreProducts,
   );
 
   //Review routes
@@ -365,29 +372,29 @@ let routes = (app) => {
   router.get(
     "/review/permission",
     authMiddleware,
-    reviewResolver.getUserCanReview
+    reviewResolver.getUserCanReview,
   );
   router.get(
     "/reviews/user",
     authMiddleware,
-    reviewResolver.getAuthUserReviews
+    reviewResolver.getAuthUserReviews,
   );
   router.get(
     "/reviews/shop",
     authMiddleware,
-    reviewResolver.getReviewsForShopProducts
+    reviewResolver.getReviewsForShopProducts,
   );
   router.get("/review", authMiddleware, reviewResolver.getReview);
   router.put("/review/update", authMiddleware, reviewResolver.updateReview);
   router.put(
     "/review/update/likeReview",
     authMiddleware,
-    reviewResolver.likeReview
+    reviewResolver.likeReview,
   );
   router.put(
     "/review/update/dislikeReview",
     authMiddleware,
-    reviewResolver.dislikeReview
+    reviewResolver.dislikeReview,
   );
   router.delete("/review/delete", authMiddleware, reviewResolver.deleteReview);
 
@@ -400,30 +407,30 @@ let routes = (app) => {
       { name: "smallScreenImageUrl", maxCount: 1 },
       { name: "largeScreenImageUrl", maxCount: 1 },
     ]),
-    promoResolver.createPromo
+    promoResolver.createPromo,
   );
   router.get(
     "/promos",
     authMiddleware,
     authUserAdminMiddleware,
-    promoResolver.getPromos
+    promoResolver.getPromos,
   );
   router.get(
     "/promos/available",
     authMiddleware,
-    promoResolver.getAvailablePromos
+    promoResolver.getAvailablePromos,
   );
   router.get("/promos/live", promoResolver.getLivePromos);
   router.get("/promos/draft", authMiddleware, promoResolver.getDraftPromos);
   router.get(
     "/promos/scheduled",
     authMiddleware,
-    promoResolver.getScheduledPromos
+    promoResolver.getScheduledPromos,
   );
   router.get(
     "/promos/finished",
     authMiddleware,
-    promoResolver.getFinishedPromos
+    promoResolver.getFinishedPromos,
   );
   router.get("/promo/products", productResolver.getPromoWithLiveProducts);
   router.get("/promo", promoResolver.getPromo);
@@ -436,7 +443,7 @@ let routes = (app) => {
       { name: "smallScreenImageUrl", maxCount: 1 },
       { name: "largeScreenImageUrl", maxCount: 1 },
     ]),
-    promoResolver.updatePromo
+    promoResolver.updatePromo,
   );
   router.put(
     "/promo/update/image",
@@ -444,13 +451,13 @@ let routes = (app) => {
     authUserAdminMiddleware,
     upload,
     validateFileSizes,
-    promoResolver.updatePromoImage
+    promoResolver.updatePromoImage,
   );
   router.delete(
     "/promo/delete",
     authMiddleware,
     authUserAdminMiddleware,
-    promoResolver.deletePromo
+    promoResolver.deletePromo,
   );
   router.put("/promo/join", authMiddleware, promoResolver.joinPromo);
   router.put("/promo/leave", authMiddleware, promoResolver.leavePromo);
@@ -463,77 +470,77 @@ let routes = (app) => {
     "/comment/create",
     authMiddleware,
     authUserAdminMiddleware,
-    commentResolver.createComment
+    commentResolver.createComment,
   );
   router.get(
     "/comment/user",
     authMiddleware,
     authUserAdminMiddleware,
-    commentResolver.getUserComments
+    commentResolver.getUserComments,
   );
   router.get(
     "/comment/shop",
     authMiddleware,
     authUserAdminMiddleware,
-    commentResolver.getShopComments
+    commentResolver.getShopComments,
   );
   router.put(
     "/comment/update",
     authMiddleware,
     authUserAdminMiddleware,
-    commentResolver.updateComment
+    commentResolver.updateComment,
   );
   router.put(
     "/comment/delete",
     authMiddleware,
     authUserAdminMiddleware,
-    commentResolver.deleteComment
+    commentResolver.deleteComment,
   );
 
   //Basket routes
   router.post(
     "/basket/product/add",
     authMiddleware,
-    basketResolver.addProductToBasket
+    basketResolver.addProductToBasket,
   );
   router.put(
     "/basket/product/update",
     authMiddleware,
-    basketResolver.updateBasketItem
+    basketResolver.updateBasketItem,
   );
   router.get(
     "/baskets",
     authMiddleware,
     authUserAdminMiddleware,
-    basketResolver.getBaskets
+    basketResolver.getBaskets,
   );
   router.get("/basket/total", authMiddleware, basketResolver.getBasketTotal);
   router.get(
     "/basket/deliveryFees",
     authMiddleware,
-    basketResolver.getBasketDeliveryFees
+    basketResolver.getBasketDeliveryFees,
   );
   router.get(
     "/basket/deliveryDates",
     authMiddleware,
-    basketResolver.getBasketExpectedDeliveryDays
+    basketResolver.getBasketExpectedDeliveryDays,
   );
   router.get("/basket", authMiddleware, basketResolver.getBasket);
   router.delete("/basket/delete", authMiddleware, basketResolver.deleteBasket);
   router.put(
     "/basket/product/remove",
     authMiddleware,
-    basketResolver.removeProductFromBasket
+    basketResolver.removeProductFromBasket,
   );
   router.put(
     "/basket/product/increase",
     authMiddleware,
-    basketResolver.increaseProductQuantity
+    basketResolver.increaseProductQuantity,
   );
   router.put(
     "/basket/product/decrease",
     authMiddleware,
-    basketResolver.decreaseProductQuantity
+    basketResolver.decreaseProductQuantity,
   );
 
   //Payment routes
@@ -541,13 +548,13 @@ let routes = (app) => {
   router.get(
     "/payment/reference",
     authMiddleware,
-    paymentResolver.getReference
+    paymentResolver.getReference,
   );
   router.get(
     "/payments/",
     authMiddleware,
     authUserAdminMiddleware,
-    paymentResolver.getPayments
+    paymentResolver.getPayments,
   );
   router.get("/payment", authMiddleware, paymentResolver.getPayment);
 
@@ -557,89 +564,89 @@ let routes = (app) => {
   router.put(
     "/payment/revert/shop",
     authMiddleware,
-    paymentResolver.revertPayShop
+    paymentResolver.revertPayShop,
   );
 
   // delivery address routes
   router.post(
     "/deliveryAddress/create",
     authMiddleware,
-    deliveryAddressResolver.createDeliveryAddress
+    deliveryAddressResolver.createDeliveryAddress,
   );
   router.get(
     "/deliveryAddresses",
     authMiddleware,
-    deliveryAddressResolver.getDeliveryAddresses
+    deliveryAddressResolver.getDeliveryAddresses,
   );
   router.get(
     "/deliveryAddress",
     authMiddleware,
-    deliveryAddressResolver.getDeliveryAddress
+    deliveryAddressResolver.getDeliveryAddress,
   );
   router.put(
     "/deliveryAddress/update",
     authMiddleware,
-    deliveryAddressResolver.updateDeliveryAddress
+    deliveryAddressResolver.updateDeliveryAddress,
   );
   router.put(
     "/deliveryAddress/setDefault",
     authMiddleware,
-    deliveryAddressResolver.setDefaultDeliveryAddress
+    deliveryAddressResolver.setDefaultDeliveryAddress,
   );
   router.delete(
     "/deliveryAddress/delete",
     authMiddleware,
-    deliveryAddressResolver.deleteDeliveryAddress
+    deliveryAddressResolver.deleteDeliveryAddress,
   );
 
   // body measurement template routes
   router.post(
     "/bodyMeasurementTemplate/add",
     authMiddleware,
-    bodyMeasurementTemplateResolver.addBodyMeasurementTemplate
+    bodyMeasurementTemplateResolver.addBodyMeasurementTemplate,
   );
   router.get(
     "/bodyMeasurementEnums",
     authMiddleware,
-    bodyMeasurementTemplateResolver.getBodyMeasurementEums
+    bodyMeasurementTemplateResolver.getBodyMeasurementEums,
   );
   router.get(
     "/bodyMeasurementTemplates",
     authMiddleware,
-    bodyMeasurementTemplateResolver.getBodyMeasurementTemplates
+    bodyMeasurementTemplateResolver.getBodyMeasurementTemplates,
   );
   router.get(
     "/bodyMeasurementTemplate",
     authMiddleware,
-    bodyMeasurementTemplateResolver.getBodyMeasurementTemplate
+    bodyMeasurementTemplateResolver.getBodyMeasurementTemplate,
   );
   router.get(
     "/bodyMeasurementTemplate/authUser",
     authMiddleware,
-    bodyMeasurementTemplateResolver.getAuthUserBodyMeasurementTemplates
+    bodyMeasurementTemplateResolver.getAuthUserBodyMeasurementTemplates,
   );
 
   router.put(
     "/bodyMeasurementTemplate/update",
     authMiddleware,
-    bodyMeasurementTemplateResolver.updateBodyMeasurementTemplate
+    bodyMeasurementTemplateResolver.updateBodyMeasurementTemplate,
   );
   router.delete(
     "/bodyMeasurementTemplate/delete",
     authMiddleware,
-    bodyMeasurementTemplateResolver.deleteBodyMeasurementTemplate
+    bodyMeasurementTemplateResolver.deleteBodyMeasurementTemplate,
   );
 
   // body measurement routes
   router.post(
     "/product/bodyMeasurement/add",
     authMiddleware,
-    bodyMeasurementResolver.addBodyMeasurement
+    bodyMeasurementResolver.addBodyMeasurement,
   );
   router.get(
     "/bodyMeasurement/product",
     authMiddleware,
-    bodyMeasurementResolver.getProductBodyMeasurement
+    bodyMeasurementResolver.getProductBodyMeasurement,
   );
 
   // order routes
@@ -648,63 +655,83 @@ let routes = (app) => {
     "/orders",
     authMiddleware,
     authUserAdminMiddleware,
-    orderResolver.getOrders
+    orderResolver.getOrders,
   );
   router.get("/order", authMiddleware, orderResolver.getOrder);
   router.get("/order/rec", orderResolver.getOrderForReceipt);
   router.get(
     "/order/authUser/buyer/orderId",
     authMiddleware,
-    orderResolver.getOrderByOrderId
+    orderResolver.getOrderByOrderId,
   );
   router.get(
     "/order/authUser/buyer/order",
     authMiddleware,
     authUserAdminMiddleware,
-    orderResolver.getOrder
+    orderResolver.getOrder,
   );
   router.get(
     "/orders/authUser/buyer",
     authMiddleware,
-    orderResolver.getAuthBuyerOrders
+    orderResolver.getAuthBuyerOrders,
   );
   router.get(
     "/orders/authUser/vendor",
     authMiddleware,
-    orderResolver.getAuthVendorProductOrders
+    orderResolver.getAuthVendorProductOrders,
   );
   router.get(
     "/orders/products",
     authMiddleware,
-    orderResolver.getProductOrders
+    orderResolver.getProductOrders,
   );
   router.get("/orders/product", authMiddleware, orderResolver.getProductOrder);
   router.get(
     "/orders/authUser/vendor/product",
     authMiddleware,
-    orderResolver.getProductOrder
+    orderResolver.getProductOrder,
   );
   router.get(
     "/orders/product-order/status/history",
     authMiddleware,
-    orderResolver.getProductOrderStatusHistory
+    orderResolver.getProductOrderStatusHistory,
   );
   router.get(
     "/orders/status/options",
     authMiddleware,
-    orderResolver.getOrderStatusOptions
+    orderResolver.getOrderStatusOptions,
   );
   router.put(
     "/order/status",
     authMiddleware,
-    orderResolver.updateProductOrderStatus
+    orderResolver.updateProductOrderStatus,
   );
   router.put("/order/cancel", authMiddleware, orderResolver.cancelOrder);
   router.put("/order/reject", authMiddleware, orderResolver.rejectOrder);
   router.post(
     "/order/reciept/download",
     authMiddleware,
-    orderResolver.downloadReciept
+    orderResolver.downloadReciept,
+  );
+  router.get(
+    "/order/instore/total",
+    authUserAdminMiddleware,
+    orderResolver.getInstoreOrderTotal,
+  );
+  router.post(
+    "/order/instore/create",
+    authUserAdminMiddleware,
+    orderResolver.createInstoreOrder,
+  );
+  router.get(
+    "/order/instore/customers",
+    authUserAdminMiddleware,
+    orderResolver.getInstoreCustomers,
+  );
+  router.post(
+    "/order/receipt/email",
+    authUserAdminMiddleware,
+    orderResolver.sendOrderReceiptEmail,
   );
 
   // point routes
@@ -714,7 +741,7 @@ let routes = (app) => {
   router.post(
     "/point/convert/voucher",
     authMiddleware,
-    pointResolver.convertPointToVoucher
+    pointResolver.convertPointToVoucher,
   );
 
   // Voucher routes
@@ -722,12 +749,12 @@ let routes = (app) => {
   router.get(
     "/vouchers/authUser/active",
     authMiddleware,
-    voucherResolver.getAuthUserActiveVouchers
+    voucherResolver.getAuthUserActiveVouchers,
   );
   router.get(
     "/vouchers/authUser/inactive",
     authMiddleware,
-    voucherResolver.getAuthUserInactiveVouchers
+    voucherResolver.getAuthUserInactiveVouchers,
   );
   router.get("/vouchers", authMiddleware, voucherResolver.getVouchers);
   router.get("/voucher", authMiddleware, voucherResolver.getVoucher);
@@ -745,240 +772,240 @@ let routes = (app) => {
   router.get(
     "/analytics/shop",
     authMiddleware,
-    analyticsResolver.getShopAnalytics
+    analyticsResolver.getShopAnalytics,
   );
   router.get(
     "/analytics/products/general",
     authMiddleware,
-    analyticsResolver.getProductOrderAnalytics
+    analyticsResolver.getProductOrderAnalytics,
   );
   router.get(
     "/analytics/count",
     authMiddleware,
-    analyticsResolver.getOrderCountAnalytics
+    analyticsResolver.getOrderCountAnalytics,
   );
   router.get(
     "/analytics/products",
     authMiddleware,
-    analyticsResolver.getProductAnalytics
+    analyticsResolver.getProductAnalytics,
   );
   router.get(
     "/analytics/users/shop/count",
     authMiddleware,
-    analyticsResolver.getUsersShopCountAnalytics
+    analyticsResolver.getUsersShopCountAnalytics,
   );
 
   router.get(
     "/analytics/count/productOrders/date",
     authMiddleware,
-    analyticsResolver.getProductOrdersCountByDate
+    analyticsResolver.getProductOrdersCountByDate,
   );
 
   // Body Measurement Guide routes
   router.get(
     "/bodyMeasurementGuide/readyMade",
     authMiddleware,
-    bodyMeasurementGuideResolver.getReadyMadeSizeGuide
+    bodyMeasurementGuideResolver.getReadyMadeSizeGuide,
   );
   router.get(
     "/bodyMeasurementGuide/bespoke",
     authMiddleware,
-    bodyMeasurementGuideResolver.getBodyMeasurementGuide
+    bodyMeasurementGuideResolver.getBodyMeasurementGuide,
   );
   router.get(
     "/bodyMeasurementGuide/bespoke/gallery",
     authMiddleware,
-    bodyMeasurementGuideResolver.getFieldImagesGallery
+    bodyMeasurementGuideResolver.getFieldImagesGallery,
   );
   router.get(
     "/bodyMeasurementGuide/bespoke/fields",
     authMiddleware,
-    bodyMeasurementGuideResolver.getBodyMeasurementFields
+    bodyMeasurementGuideResolver.getBodyMeasurementFields,
   );
   router.put(
     "/bodyMeasurementGuide/bespoke/field/Image",
     authMiddleware,
     authUserAdminMiddleware,
     upload,
-    bodyMeasurementGuideResolver.updateFieldImage
+    bodyMeasurementGuideResolver.updateFieldImage,
   );
   router.put(
     "/bodyMeasurementGuide/bespoke/field/Image/delete",
     authMiddleware,
     authUserAdminMiddleware,
-    bodyMeasurementGuideResolver.deleteBodyMeasurementFieldImage
+    bodyMeasurementGuideResolver.deleteBodyMeasurementFieldImage,
   );
   router.put(
     "/bodyMeasurementGuide/bespoke/field/update",
     authMiddleware,
     authUserAdminMiddleware,
-    bodyMeasurementGuideResolver.editBodyMeasurementField
+    bodyMeasurementGuideResolver.editBodyMeasurementField,
   );
   router.put(
     "/bodyMeasurementGuide/bespoke/field/delete",
     authMiddleware,
     authUserAdminMiddleware,
-    bodyMeasurementGuideResolver.deleteBodyMeasurementField
+    bodyMeasurementGuideResolver.deleteBodyMeasurementField,
   );
   router.delete(
     "/bodyMeasurementGuide/bespoke/delete",
     authMiddleware,
     authUserAdminMiddleware,
-    bodyMeasurementGuideResolver.deleteBodyMeasurementGuide
+    bodyMeasurementGuideResolver.deleteBodyMeasurementGuide,
   );
   router.put(
     "/bodyMeasurementGuide/bespoke/name/update",
     authMiddleware,
     authUserAdminMiddleware,
-    bodyMeasurementGuideResolver.updateBodyMeasurementGuideName
+    bodyMeasurementGuideResolver.updateBodyMeasurementGuideName,
   );
   router.put(
     "/bodyMeasurementGuide/bespoke/field/add",
     authMiddleware,
     authUserAdminMiddleware,
-    bodyMeasurementGuideResolver.addBodyMeasurementGuideField
+    bodyMeasurementGuideResolver.addBodyMeasurementGuideField,
   );
   router.post(
     "/bodyMeasurementGuide/bespoke/add",
     authMiddleware,
     authUserAdminMiddleware,
-    bodyMeasurementGuideResolver.addBodyMeasurementGuide
+    bodyMeasurementGuideResolver.addBodyMeasurementGuide,
   );
 
   // Delivery Fee routes
   router.get(
     "/deliveryFees",
     authMiddleware,
-    deliveryFeeResolver.getDeliveryFees
+    deliveryFeeResolver.getDeliveryFees,
   );
   router.put(
     "/deliveryFee/update",
     authMiddleware,
-    deliveryFeeResolver.updateDeliveryFee
+    deliveryFeeResolver.updateDeliveryFee,
   );
 
   // Exchange Rate routes
   router.get(
     "/exchangeRate",
     authMiddleware,
-    exchangeRateResolver.getExchangeRate
+    exchangeRateResolver.getExchangeRate,
   );
   router.put(
     "/exchangeRate/update",
     authMiddleware,
-    exchangeRateResolver.updateExchangeRate
+    exchangeRateResolver.updateExchangeRate,
   );
   // notifications routes
   router.post(
     "/notification/pushToken/register",
     authMiddleware,
-    notificationResolver.registerPushToken
+    notificationResolver.registerPushToken,
   );
   router.post(
     "/notification/test",
     authMiddleware,
-    notificationResolver.testPushNotification
+    notificationResolver.testPushNotification,
   );
   router.post(
     "/notification/individual/test",
     authMiddleware,
-    notificationResolver.testNotifyIndividualUser
+    notificationResolver.testNotifyIndividualUser,
   );
   router.post(
     "/notification/email/test",
     authMiddleware,
-    notificationResolver.testEmailNotification
+    notificationResolver.testEmailNotification,
   );
   router.get(
     "/notification/inbox",
     authMiddleware,
-    notificationResolver.getNotifications
+    notificationResolver.getNotifications,
   );
   router.get(
     "/notification/inbox/admins",
     authMiddleware,
-    notificationResolver.getAdminsNotifications
+    notificationResolver.getAdminsNotifications,
   );
   router.put(
     "/notification/inbox/delete",
     authMiddleware,
-    notificationResolver.deleteNotification
+    notificationResolver.deleteNotification,
   );
   router.put(
     "/notification/inbox/all/delete",
     authMiddleware,
-    notificationResolver.clearAllAuthUserNotifications
+    notificationResolver.clearAllAuthUserNotifications,
   );
   router.put(
     "/notification/inbox/markAsSeen",
     authMiddleware,
-    notificationResolver.markNotificationsAsSeen
+    notificationResolver.markNotificationsAsSeen,
   );
 
   // Email Template routes
   router.post(
     "/emailTemplate/add",
     authMiddleware,
-    emailTemplateResolver.addEmailTemplate
+    emailTemplateResolver.addEmailTemplate,
   );
 
   router.get(
     "/emailTemplates",
     authMiddleware,
-    emailTemplateResolver.getEmailTemplates
+    emailTemplateResolver.getEmailTemplates,
   );
 
   router.get(
     "/emailTemplate",
     authMiddleware,
-    emailTemplateResolver.getEmailTemplate
+    emailTemplateResolver.getEmailTemplate,
   );
 
   // recent views routes
   router.get(
     "/products/recentViews",
     authMiddleware,
-    recentViewsResolver.getAuthRecentViews
+    recentViewsResolver.getAuthRecentViews,
   );
   // help articles routes
   router.post(
     "/help/article/add",
     authMiddleware,
     authUserAdminMiddleware,
-    helpArticlesResolver.addArticle
+    helpArticlesResolver.addArticle,
   );
   router.get("/help/articles", helpArticlesResolver.getArticles);
   router.get(
     "/help/articles/popular",
-    helpArticlesResolver.getPopularTopicsByCategory
+    helpArticlesResolver.getPopularTopicsByCategory,
   );
   router.get("/help/article", helpArticlesResolver.getArticle);
   router.put(
     "/help/article/update",
     authMiddleware,
-    helpArticlesResolver.updateArticle
+    helpArticlesResolver.updateArticle,
   );
   router.put(
     "/help/article/update/markHelpful",
-    helpArticlesResolver.markHelpful
+    helpArticlesResolver.markHelpful,
   );
   router.put(
     "/help/article/update/popular",
     authMiddleware,
     authUserAdminMiddleware,
-    helpArticlesResolver.addToPopularTopics
+    helpArticlesResolver.addToPopularTopics,
   );
   router.put(
     "/help/article/update/unpopular",
     authMiddleware,
     authUserAdminMiddleware,
-    helpArticlesResolver.removeFromPopularTopics
+    helpArticlesResolver.removeFromPopularTopics,
   );
   router.delete(
     "/help/article/delete",
     authMiddleware,
     authUserAdminMiddleware,
-    helpArticlesResolver.deleteArticle
+    helpArticlesResolver.deleteArticle,
   );
 
   //blog
@@ -987,19 +1014,19 @@ let routes = (app) => {
     authMiddleware,
     upload,
     validateFileSizes,
-    blogResolver.createBlogPost
+    blogResolver.createBlogPost,
   );
   router.get(
     "/blog/posts",
     authMiddleware,
     authUserAdminMiddleware,
-    blogResolver.getBlogPosts
+    blogResolver.getBlogPosts,
   );
   router.get("/blog/posts/published", blogResolver.getPublishedBlogPosts);
   router.get("/blog/posts/published/tags", blogResolver.getPublishedTags);
   router.get(
     "/blog/posts/tag/published",
-    blogResolver.getPublishedBlogPostsByTag
+    blogResolver.getPublishedBlogPostsByTag,
   );
   router.get("/blog/post", blogResolver.getBlogPost);
   router.get("/blog/post/similar", blogResolver.getSimilarPublisedBlogPosts);
@@ -1010,43 +1037,43 @@ let routes = (app) => {
     authMiddleware,
     upload,
     validateFileSizes,
-    blogResolver.updateBlogPost
+    blogResolver.updateBlogPost,
   );
   router.put(
     "/blog/post/update/status",
     authMiddleware,
-    blogResolver.changeBlogPostStatus
+    blogResolver.changeBlogPostStatus,
   );
   router.put(
     "/blog/post/author/make",
     authMiddleware,
-    blogResolver.makeUserBlogAuthor
+    blogResolver.makeUserBlogAuthor,
   );
   router.put(
     "/blog/post/author/remove",
     authMiddleware,
-    blogResolver.removeUserBlogAuthor
+    blogResolver.removeUserBlogAuthor,
   );
 
   router.delete(
     "/blog/post/delete",
     authMiddleware,
-    blogResolver.deleteBlogPost
+    blogResolver.deleteBlogPost,
   );
   router.post(
     "/blog/post/comment/create",
 
-    blogResolver.addPostComment
+    blogResolver.addPostComment,
   );
   router.post(
     "/blog/post/comment/reply",
 
-    blogResolver.replyComment
+    blogResolver.replyComment,
   );
   router.get(
     "/blog/post/comments",
 
-    blogResolver.getPostComments
+    blogResolver.getPostComments,
   );
 
   // Email List routes
@@ -1054,21 +1081,21 @@ let routes = (app) => {
     "/email/list",
     authMiddleware,
     authUserAdminMiddleware,
-    emailListResolver.getEmailList
+    emailListResolver.getEmailList,
   );
   router.post("/email/waitlist/add", emailListResolver.addToWaitingList);
   router.post("/email/newsletter/add", emailListResolver.addToNewsletter);
   router.delete(
     "/email/remove",
     authMiddleware,
-    emailListResolver.removeFromEmailList
+    emailListResolver.removeFromEmailList,
   );
 
   // Policy routes
   router.get(
     "/policy/seller",
     authMiddleware,
-    policyResolver.getSellerPolicyLink
+    policyResolver.getSellerPolicyLink,
   );
 
   // Onboarding Documents routes
@@ -1076,12 +1103,12 @@ let routes = (app) => {
     "/shop/onboarding-document/add",
     authMiddleware,
     uploadPDFandImages,
-    onboadingDocumentsResolver.uploadOnboardingDocument
+    onboadingDocumentsResolver.uploadOnboardingDocument,
   );
   router.get(
     "/shop/onboarding-documents",
     authMiddleware,
-    onboadingDocumentsResolver.getShopOnboardingDocuments
+    onboadingDocumentsResolver.getShopOnboardingDocuments,
   );
 
   return app.use("/", router);

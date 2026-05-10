@@ -618,24 +618,27 @@ const getAuthShopRevenues = async (req, res) => {
     if (!shop) {
       return res.status(400).send({ error: "Shop not found" });
     }
+    // populate product and order
     const shopRevenuesQury = await ProductOrderModel.find({ shop: shop._id })
+      .populate("order")
       .populate("product")
       .lean();
-    const shopRevenues = shopRevenuesQury.map((order) => {
-      const product = order.product;
-
-      const shopRevenue = order.shopRevenue;
-      const amount = order.amount.find((a) => a.currency === "NGN");
+    const shopRevenues = shopRevenuesQury.map((productOrder) => {
+      const product = productOrder.product;
+      const channel = productOrder?.order?.channel || "online";
+      const shopRevenue = productOrder.shopRevenue;
+      const amount = productOrder.amount.find((a) => a.currency === "NGN");
       return {
-        purchaseDate: order.createdAt,
+        purchaseDate: productOrder.order.createdAt,
         buyerPaid: amount,
         shopRevenue,
+        channel,
         purchasedProduct: {
           title: product.title,
           productId: product.productId,
           productType: product.productType,
-          sku: order.sku,
-          images: order.images,
+          sku: productOrder.sku,
+          images: productOrder.images,
         },
       };
     });
@@ -659,29 +662,31 @@ const getShopRevenues = async (req, res) => {
       return res.status(400).send({ error: "Shop not found" });
     }
     const shopRevenuesQury = await ProductOrderModel.find({ shop: shop._id })
-      .populate("product")
+      .populate("product").populate("order")
       .lean();
-    const shopRevenues = shopRevenuesQury.map((order) => {
-      const product = order.product;
-      const productOrder_id = order._id;
-      const shopRevenue = order.shopRevenue;
+    const shopRevenues = shopRevenuesQury.map((productOrder) => {
+      const product = productOrder.product;
+      const productOrder_id = productOrder._id;
+      const shopRevenue = productOrder.shopRevenue;
       shopRevenue.status =
-        order?.status?.value === "order cancelled"
+        productOrder?.status?.value === "order cancelled"
           ? "cancelled"
           : shopRevenue.status;
-      const amount = order.amount.find((a) => a.currency === "NGN");
-      const images = order.images;
+      const amount = productOrder.amount.find((a) => a.currency === "NGN");
+      const images = productOrder.images;
+      const channel = productOrder?.order?.channel || "online";
       // resizes images
       return {
         productOrder_id,
-        purchaseDate: order.createdAt,
+        purchaseDate: productOrder.order.createdAt,
         buyerPaid: amount,
         shopRevenue,
+        channel,
         purchasedProduct: {
           title: product.title,
           productId: product.productId,
           productType: product.productType,
-          sku: order.sku,
+          sku: productOrder.sku,
           images,
         },
       };

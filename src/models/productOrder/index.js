@@ -1,8 +1,6 @@
 const mongoose = require("mongoose");
 const timestamp = require("mongoose-timestamp");
 const { orderStatusEnums, currencyEnums } = require("../../helpers/constants");
-const { size, min } = require("lodash");
-const e = require("express");
 
 const ProductOrderSchema = new mongoose.Schema({
   order: {
@@ -21,12 +19,20 @@ const ProductOrderSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Users",
-    required: true,
+    required: function () {
+      return this.channel === "online";
+    },
   },
   product: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Product",
     required: true,
+  },
+  channel: {
+    type: String,
+    enum: ["online", "in-store"],
+    default: "online",
+    index: true,
   },
   quantity: { type: Number, required: true },
   sku: { type: String, required: true },
@@ -73,6 +79,16 @@ const ProductOrderSchema = new mongoose.Schema({
       value: { type: Number, required: true },
     },
   ],
+  pricing: {
+    unitPrice: Number, // actual charged (instore or online)
+    basePrice: Number, // vendor original price
+    discountApplied: Number, // if any
+    pricingSource: {
+      type: String,
+      enum: ["online", "in-store"],
+      default: "online",
+    },
+  },
   promo: {
     promoId: { type: String, required: false },
     discountPercentage: { type: Number, required: false },
@@ -126,11 +142,16 @@ const ProductOrderSchema = new mongoose.Schema({
 });
 
 ProductOrderSchema.plugin(timestamp);
+// add indexes to optimize queries
+ProductOrderSchema.index({ order: 1 });
+ProductOrderSchema.index({ user: 1 });
+ProductOrderSchema.index({ shop: 1, createdAt: 1 });
+ProductOrderSchema.index({ status: "text" });
 
 const ProductOrderModel = mongoose.model(
   "ProductOrders",
   ProductOrderSchema,
-  "ProductOrders"
+  "ProductOrders",
 );
 
 module.exports = ProductOrderModel;
