@@ -36,6 +36,7 @@ const ProductOrderSchema = new mongoose.Schema({
   },
   quantity: { type: Number, required: true },
   sku: { type: String, required: true },
+  barcode: { type: String, required: function () { return this.channel === "in-store"; } },
   size: { type: String, required: true },
   color: { type: String, required: true },
   images: [

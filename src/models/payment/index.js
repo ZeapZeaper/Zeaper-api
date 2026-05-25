@@ -20,8 +20,19 @@ const PaymentSchema = new mongoose.Schema({
     ref: "Users",
     required: false,
   },
-  fullName: { type: String, required: true },
-  email: { type: String, required: true },
+  fullName: {
+    type: String,
+    required: function () {
+      return this.orderSource === "online";
+    },
+  },
+  email: {
+    type: String,
+    required: function () {
+      return this.orderSource === "online";
+    },
+    default: null,
+  },
   basket: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Baskets",

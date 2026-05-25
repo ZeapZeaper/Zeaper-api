@@ -41,6 +41,7 @@ const blogResolver = require("../resolvers/blog");
 const emailListResolver = require("../resolvers/emailList");
 const policyResolver = require("../resolvers/policy");
 const onboadingDocumentsResolver = require("../resolvers/onboadingDocuments");
+const reportResolver = require("../resolvers/report");
 const orderQueue = require("../queue/orderQueue");
 const handleMoreFieldsUploads = uploadMultiple.fields([
   { name: "documents", maxCount: 5 },
@@ -800,6 +801,16 @@ let routes = (app) => {
     authMiddleware,
     analyticsResolver.getProductOrdersCountByDate,
   );
+  router.get(
+    "/analytics/instore/orders",
+    authMiddleware,
+    analyticsResolver.getInstoreOrderAnalytics,
+  );
+  router.get(
+    "/analytics/online/orders",
+    authMiddleware,
+    analyticsResolver.getOnlineOrderAnalytics,
+  );
 
   // Body Measurement Guide routes
   router.get(
@@ -1109,6 +1120,13 @@ let routes = (app) => {
     "/shop/onboarding-documents",
     authMiddleware,
     onboadingDocumentsResolver.getShopOnboardingDocuments,
+  );
+
+  // Report routes
+  router.get(
+    "/reports/orders/available",
+    authUserAdminMiddleware,
+    reportResolver.getAvailableOrderReports,
   );
 
   return app.use("/", router);

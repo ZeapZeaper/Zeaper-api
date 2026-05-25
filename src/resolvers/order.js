@@ -199,6 +199,7 @@ const buildProductOrdersInstore = async ({
       product: product._id,
       quantity,
       sku: item.sku,
+      barcode: variation.barcode || null,
       status: {
         name: deliveredStatus.name || "delivered",
         value: deliveredStatus.value || "order delivered",
@@ -1715,16 +1716,25 @@ const createInstoreOrder = async (req, res) => {
     if (!paymentChannel) {
       return res.status(400).send({ error: "paymentChannel is required" });
     }
-    if (!inStoreCustomerDetails?.fullName) {
-      return res.status(400).send({ error: "Customer full name is required" });
-    }
-    if (!inStoreCustomerDetails?.phone) {
-      return res.status(400).send({ error: "Customer phone is required" });
-    }
-    const normalizedPhone = normalizePhoneNumber(inStoreCustomerDetails.phone);
-    if (!normalizedPhone) {
+    const customerFullName =
+      inStoreCustomerDetails?.fullName?.toString().trim() || "Instore Guest";
+    const customerPhone = inStoreCustomerDetails?.phone
+      ? inStoreCustomerDetails.phone.toString().trim()
+      : null;
+    const normalizedPhone = customerPhone
+      ? normalizePhoneNumber(customerPhone)
+      : null;
+    if (customerPhone && !normalizedPhone) {
       return res.status(400).send({ error: "Invalid customer phone" });
     }
+    const customerEmail = inStoreCustomerDetails?.email || null;
+    const sanitizedInStoreCustomerDetails = {
+      ...(inStoreCustomerDetails || {}),
+      fullName: customerFullName,
+      email: customerEmail,
+      phone: customerPhone,
+      phoneNormalized: normalizedPhone,
+    };
     const authUser = req?.cachedUser || (await getAuthUser(req));
     if (!authUser) {
       return res.status(400).send({ error: "Auth user not found" });
@@ -1754,8 +1764,8 @@ const createInstoreOrder = async (req, res) => {
       reference,
       orderSource: "in-store",
       salesAgent: authUser._id,
-      fullName: inStoreCustomerDetails?.fullName || "Walk-in Customer",
-      email: inStoreCustomerDetails?.email || null,
+      fullName: customerFullName,
+      email: customerEmail,
       status: "success",
       currency: "NGN",
       amount: totalData.itemsTotal * 100, // kobo
@@ -1776,7 +1786,6 @@ const createInstoreOrder = async (req, res) => {
       sku: item.sku,
       lockedUnitPrice: item.unitPrice,
     }));
-    inStoreCustomerDetails.phoneNormalized = normalizedPhone;
 
     // ✅ 4. Create order using existing system
     const orderResult = await createOrder({
@@ -1785,7 +1794,7 @@ const createInstoreOrder = async (req, res) => {
       gainedPoints: 0,
       channel: "in-store",
       passedItems: basketItems,
-      inStoreCustomerDetails,
+      inStoreCustomerDetails: sanitizedInStoreCustomerDetails,
     });
 
     if (orderResult.error) {
@@ -1797,10 +1806,7 @@ const createInstoreOrder = async (req, res) => {
     // ✅ 5. Attach in-store specific data
     await OrderModel.findByIdAndUpdate(order._id, {
       channel: "in-store",
-      inStoreCustomerDetails: {
-        ...inStoreCustomerDetails,
-        phoneNormalized: normalizedPhone,
-      },
+      inStoreCustomerDetails: sanitizedInStoreCustomerDetails,
       salesAgent: authUser._id,
       storeLocation: "Lagos",
       summary: {
@@ -1809,8 +1815,20 @@ const createInstoreOrder = async (req, res) => {
         itemsCount: items.length,
       },
     });
+
+    // ✅ 6. Fetch complete order with all populated fields (for receipt)
+    const completeOrder = await OrderModel.findOne({ _id: order._id })
+      .populate("productOrders")
+      .populate("payment")
+      .populate("user")
+      .populate({
+        path: "productOrders",
+        populate: [{ path: "product" }, { path: "user" }, { path: "shop" }],
+      })
+      .lean();
+
     return res.status(200).send({
-      data: order,
+      data: completeOrder,
       message: "In-store order created successfully",
     });
   } catch (error) {
@@ -1923,6 +1941,12 @@ const getInstoreCustomers = async (req, res) => {
     }
 
     const customers = await OrderModel.aggregate(aggregatePipeline);
+    customers.forEach((customer) => {
+      customer.firstName = customer.fullName?.split(" ")[0] || "";
+      customer.lastName = customer.fullName
+        ? customer.fullName.split(" ").slice(1).join(" ")
+        : "";
+    });
 
     return res.status(200).send({
       data: customers,

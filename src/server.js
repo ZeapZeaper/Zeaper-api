@@ -17,13 +17,13 @@ const app = express();
 app.use(
   "/api-docs",
   swaggerUi.serve,
-  swaggerUi.setup(specs, { explorer: true })
+  swaggerUi.setup(specs, { explorer: true }),
 );
 //stripeWebhook
 app.post(
   "/stripe/webhook",
   bodyParser.raw({ type: "application/json" }),
-  stripeWebhook
+  stripeWebhook,
 );
 app.use(function (err, req, res, next) {
   console.log("error", err);
@@ -59,14 +59,14 @@ app.use(
     extended: true,
     limit: "500mb",
     parameterLimit: 1000000,
-  })
+  }),
 );
 app.use(
   bodyParser.urlencoded({
     extended: true,
     limit: "500mb",
     parameterLimit: 1000000,
-  })
+  }),
 );
 
 const corsOptions = {
@@ -86,6 +86,8 @@ app.use(function (req, res, next) {
 
   next();
 });
+
+mongoose.set("strictQuery", false);
 
 const start = async () => {
   try {
@@ -111,7 +113,7 @@ const start = async () => {
       console.log(
         `Server is running.... on port ${
           process.env.PORT || 8080
-        } and frontend is on version ${process.env.FRONTEND_VERSION}`
+        } and frontend is on version ${process.env.FRONTEND_VERSION}`,
       );
     });
 

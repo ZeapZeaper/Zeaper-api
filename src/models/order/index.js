@@ -21,22 +21,16 @@ const OrderSchema = new mongoose.Schema({
   inStoreCustomerDetails: {
     fullName: {
       type: String,
-      required: function () {
-        return this.channel === "in-store";
-      },
+      required: false,
     },
     email: { type: String, required: false },
     phone: {
       type: String,
-      required: function () {
-        return this.channel === "in-store";
-      },
+      required: false,
     },
     phoneNormalized: {
       type: String,
-      required: function () {
-        return this.channel === "in-store";
-      },
+      required: false,
     },
     address: { type: String, required: false },
     region: { type: String, required: false },
