@@ -447,7 +447,7 @@ const createOrder = async ({
       });
     } else {
       buildResult = await buildOnlineProductOrders({
-        savedOrder,
+        order: savedOrder,
         basketItems,
         currency,
         deliveryMethod,
