@@ -3066,7 +3066,7 @@ const updateInstorePricesBulk = async (req, res) => {
       }
 
       const variation = product.variations.find((v) => v.sku === sku);
-     
+
       if (!variation) {
         errors.push({ sku, error: "Variation not found" });
         continue;
@@ -3088,7 +3088,10 @@ const updateInstorePricesBulk = async (req, res) => {
         variation.instorePrice = instorePrice;
       }
       if (!variation.barcode && variation.instorePrice) {
-        variation.barcode = await getNewBarcodeForVariation(productId, variation.sku);
+        variation.barcode = await getNewBarcodeForVariation(
+          productId,
+          variation.sku,
+        );
       }
 
       product.timeLine.push({
@@ -3143,7 +3146,7 @@ const getInstoreProducts = async (req, res) => {
         $match: {
           disabled: false,
           status: "live",
-          "variations.instorePrice": { $exists: true, $ne: null },
+          "variations.instorePrice": { $exists: true },
         },
       },
 
