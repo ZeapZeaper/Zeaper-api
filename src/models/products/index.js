@@ -140,6 +140,8 @@ const ProductSchema = new mongoose.Schema({
     {
       sku: { type: String, required: true },
       price: { type: Number, required: true },
+      instorePrice: { type: Number, required: false },
+      barcode: { type: String, required: false },
       discount: { type: Number, required: false },
       colorValue: { type: String, required: true },
       size: { type: String, required: true },
@@ -192,6 +194,11 @@ const ProductSchema = new mongoose.Schema({
 });
 
 ProductSchema.plugin(timestamp);
+ProductSchema.index({ title: "text", description: "text" });
+ProductSchema.index({ productId: 1 });
+ProductSchema.index({ "variations.sku": 1 });
+ProductSchema.index({ "variations.barcode": 1 });
+
 const ProductModel = mongoose.model("Product", ProductSchema);
 
 module.exports = ProductModel;

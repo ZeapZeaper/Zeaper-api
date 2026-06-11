@@ -15,8 +15,10 @@ const storageRef = firebase.storage().bucket(`${bucket}`);
 const deleteUserFromFirebase = async (uid) => {
   try {
     const user = await firebase.auth().deleteUser(uid);
+    
     return user;
   } catch (error) {
+    console.error("Error deleting user from Firebase:", error);
     return error;
   }
 };

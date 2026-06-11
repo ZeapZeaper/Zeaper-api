@@ -15,6 +15,10 @@ const BankDetailSchema = new mongoose.Schema({
   accountName: { type: String, required: false },
   accountNumber: { type: String, required: false },
 });
+const commissionSchema = new mongoose.Schema({
+  bespoke: { type: Number, required: false, default: 0.75 },
+  readyToWear: { type: Number, required: false, default: 0.8 },
+});
 
 const ShopSchema = new mongoose.Schema({
   shopId: { type: String, required: false },
@@ -57,6 +61,7 @@ const ShopSchema = new mongoose.Schema({
   //   },
   // },
   bankDetails: BankDetailSchema,
+  commission: commissionSchema,
   imageUrl: {
     link: { type: String, required: false },
     name: { type: String, required: false },

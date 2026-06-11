@@ -13,6 +13,7 @@ const {
   getExpectedVendorCompletionDate,
   replaceProductOrderVariablesinTemplate,
   replaceUserVariablesinTemplate,
+  replaceOrderVariablesinTemplate,
   calcShopRevenueValue,
   capitalizeFirstLetter,
   displayDate,
@@ -28,6 +29,7 @@ const generatePdf = require("../helpers/pdf");
 const { ENV } = require("../config");
 const { sendEmail } = require("../helpers/emailer");
 const EmailTemplateModel = require("../models/emailTemplate");
+const PaymentModel = require("../models/payment");
 const url =
   ENV === "prod"
     ? process.env.DOC_DOWNLOAD_URL_PROD
@@ -36,6 +38,11 @@ const url =
 function getRandomInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));
 }
+
+const normalizePhoneNumber = (phone) => {
+  if (!phone) return "";
+  return phone.toString().replace(/\D/g, "");
+};
 
 const generateUniqueOrderId = async () => {
   let orderId;
@@ -48,7 +55,7 @@ const generateUniqueOrderId = async () => {
       {
         orderId,
       },
-      { lean: true }
+      { lean: true },
     );
 
     if (exist) {
@@ -88,13 +95,13 @@ const sendProductOrdershopEmail = async (productOrder) => {
   const formattedProductOrderTemplateBody =
     replaceProductOrderVariablesinTemplate(
       replaceUserVariablesinTemplate(productOrderEmailTemplate?.body, user),
-      productOrder
+      productOrder,
     );
 
   const formattedProductOrderTemplateSubject =
     replaceProductOrderVariablesinTemplate(
       replaceUserVariablesinTemplate(productOrderEmailTemplate?.subject, user),
-      productOrder
+      productOrder,
     );
 
   const emailParam = {
@@ -106,21 +113,155 @@ const sendProductOrdershopEmail = async (productOrder) => {
 
   const sentEmail = await sendEmail(emailParam);
 };
+const buildBaseProductOrderData = ({ product, variation, index }) => {
+  const itemNo = index + 1;
 
-const buildProductOrders = async (
+  const color = variation?.colorValue;
+  const size = variation?.size;
+
+  const images =
+    product?.colors
+      .find((c) => c.value == color)
+      ?.images.map((img) => ({
+        link: img.link,
+        name: img.name,
+      })) || [];
+
+  return {
+    itemNo,
+    color,
+    size,
+    images,
+  };
+};
+const buildProductOrdersInstore = async ({
+  order,
+  items, // use original items from calculateInstoreTotal
+}) => {
+  const productOrders = [];
+
+  const productIds = items.map((i) => i.productId);
+
+  const products = await ProductModel.find({
+    productId: { $in: productIds },
+  })
+    .populate("shop")
+    .lean();
+
+  const productMap = {};
+  products.forEach((p) => {
+    productMap[p.productId] = p;
+  });
+
+  for (let index = 0; index < items.length; index++) {
+    const item = items[index];
+    const product = productMap[item.productId];
+
+    if (!product) {
+      throw new Error(`Product not found: ${item.productId}`);
+    }
+
+    const variation = product.variations.find((v) => v.sku === item.sku);
+
+    if (!variation) {
+      throw new Error(`Invalid SKU: ${item.sku}`);
+    }
+    if (!item.lockedUnitPrice || item.lockedUnitPrice <= 0) {
+      throw new Error("Invalid locked price");
+    }
+
+    const quantity = item.quantity;
+    const unitPrice = item.lockedUnitPrice;
+    const amountDue = unitPrice * quantity;
+
+    const basePrice = variation.price;
+    const discountApplied = variation.discount || variation.price;
+    const originalAmountDue = basePrice || discountApplied * quantity;
+
+    const shop = product.shop;
+    const commission = shop?.commission;
+
+    const baseData = buildBaseProductOrderData({
+      order,
+      product,
+      variation,
+      item,
+      index,
+    });
+    const deliveredStatus = orderStatusEnums.find(
+      (orderStatus) => orderStatus.value === "order delivered",
+    );
+    const productOrder = new ProductOrderModel({
+      order: order._id,
+      orderId: order.orderId,
+      itemNo: baseData.itemNo,
+      shop: shop?._id,
+      product: product._id,
+      quantity,
+      sku: item.sku,
+      barcode: variation.barcode || null,
+      status: {
+        name: deliveredStatus.name || "delivered",
+        value: deliveredStatus.value || "order delivered",
+      },
+      // in-store orders are marked delivered immediately
+
+      // ✅ actual charged price
+      amount: [
+        {
+          currency: "NGN",
+          value: amountDue,
+        },
+      ],
+      channel: "in-store",
+      pricing: {
+        unitPrice,
+        basePrice,
+        discountApplied,
+        pricingSource: "in-store",
+      },
+      color: baseData.color,
+      size: baseData.size,
+      images: baseData.images,
+
+      // ✅ still based on vendor price
+      shopRevenue: {
+        currency: "NGN",
+        status: "pending",
+        value: calcShopRevenueValue({
+          productType: product.productType,
+          originalAmountDue,
+          amountDue: originalAmountDue, // 👈 IMPORTANT
+          commission,
+          adminControlledDiscount: false,
+        }),
+      },
+    });
+
+    const saved = await productOrder.save();
+    if (!saved) continue;
+
+    productOrders.push(saved._id);
+  }
+
+  return { productOrders };
+};
+const buildOnlineProductOrders = async ({
   order,
   basketItems,
   currency,
   deliveryMethod,
-  deliveryDetails
-) => {
+  deliveryDetails,
+}) => {
   const productOrders = [];
   const orderId = order.orderId;
   let defaultImage = null;
   const workerTasks = [];
 
   const promises = basketItems.map(async (item, index) => {
-    const product = await ProductModel.findOne({ _id: item.product }).lean();
+    const product = await ProductModel.findOne({ _id: item.product })
+      .populate("shop")
+      .lean();
     if (!product) return;
 
     const shop = product.shop;
@@ -139,8 +280,9 @@ const buildProductOrders = async (
         })) || [];
 
     const variation = product.variations.find((v) => v.sku === sku);
+    const unitPrice = variation.discount || variation.price;
     const originalAmountDue = variation?.price * quantity;
-    const amountDue = (variation?.discount || variation.price) * quantity;
+    const amountDue = unitPrice * quantity;
 
     // Multi-currency
     const amount = [{ currency: "NGN", value: amountDue }];
@@ -173,12 +315,13 @@ const buildProductOrders = async (
       min: addWeekDays(createdAt, expectedVendorCompletionDays.min),
       max: addWeekDays(createdAt, expectedVendorCompletionDays.max),
     };
+    const commission = shop?.commission;
 
     const productOrder = new ProductOrderModel({
       order: order._id,
       orderId,
       itemNo,
-      shop,
+      shop: shop ? shop._id : null,
       product: item.product._id,
       quantity,
       sku,
@@ -187,6 +330,12 @@ const buildProductOrders = async (
       bodyMeasurements: item.bodyMeasurements,
       status: { name: "placed", value: "order placed" },
       amount,
+      pricing: {
+        unitPrice,
+        basePrice: variation.price,
+        discountApplied: variation.discount || variation.price,
+        pricingSource: "online",
+      },
       promo: product.promo,
       color,
       images,
@@ -198,6 +347,7 @@ const buildProductOrders = async (
           productType,
           originalAmountDue,
           amountDue,
+          commission,
           adminControlledDiscount:
             product?.promo?.adminControlledDiscount || false,
         }),
@@ -243,102 +393,134 @@ const buildProductOrders = async (
   return { productOrders, defaultImage, workerTasks };
 };
 
-const createOrder = async ({ payment, user, gainedPoints }) => {
+const createOrder = async ({
+  payment,
+  user,
+  gainedPoints,
+  passedItems,
+  channel = "online",
+  salesAgent,
+  inStoreCustomerDetails,
+}) => {
   try {
-    const basket = await BasketModel.findOne({ _id: payment.basket }).lean();
-    if (!basket) return { error: "Basket not found" };
+    let basket = null;
+    let deliveryDetails = null;
+    let basketItems = passedItems;
 
-    const deliveryDetails = basket.deliveryDetails;
-    if (!deliveryDetails) return { error: "Delivery details not found" };
+    if (!passedItems) {
+      basket = await BasketModel.findOne({ _id: payment.basket }).lean();
+      if (!basket) return { error: "Basket not found" };
 
-    const basketItems = basket.basketItems;
+      basketItems = basket.basketItems;
+      deliveryDetails = basket.deliveryDetails;
+
+      if (!deliveryDetails) return { error: "Delivery details not found" };
+    }
+
     const orderId = await generateUniqueOrderId();
 
     const order = new OrderModel({
       orderId,
       user,
-      basket: basket._id,
+      salesAgent,
+      basket: basket?._id,
       deliveryDetails,
       payment: payment._id,
       gainedPoints, // handled by worker
+      channel: channel || "online",
+      inStoreCustomerDetails,
     });
 
     const savedOrder = await order.save();
+
     if (!savedOrder?._id) return { error: "Order not created" };
 
     const currency = payment.currency;
     const deliveryMethod = payment?.deliveryMethod;
 
-    const { productOrders, defaultImage, workerTasks } =
-      await buildProductOrders(
-        savedOrder,
+    let buildResult;
+
+    if (channel === "in-store") {
+      buildResult = await buildProductOrdersInstore({
+        order: savedOrder,
+        items: passedItems,
+      });
+    } else {
+      buildResult = await buildOnlineProductOrders({
+        order: savedOrder,
         basketItems,
         currency,
         deliveryMethod,
-        deliveryDetails
-      );
+        deliveryDetails,
+        channel,
+      });
+    }
+
+    const { productOrders, defaultImage, workerTasks = [] } = buildResult;
 
     if (!productOrders.length) return { error: "Product orders not created" };
 
     const updatedOrder = await OrderModel.findOneAndUpdate(
       { _id: savedOrder._id },
       { productOrders },
-      { new: true }
+      { new: true },
     );
 
     // update variation quantities
     await updateVariationQuantity(basketItems, "subtract");
 
     // delete basket
-    await BasketModel.findOneAndDelete({ _id: basket._id });
-
+    if (basket) {
+      await BasketModel.findOneAndDelete({ _id: basket._id });
+    }
     // ================= add order-level worker tasks =================
-    workerTasks.push({
-      taskType: "notifyAdmins",
-      orderId,
-      user_id: user,
-      title: "Order Placed",
-      body: `Your order with order ID ${orderId} has been placed successfully`,
-      image: defaultImage || null,
-    });
-
-    workerTasks.push({
-      taskType: "notifyUser",
-      orderId,
-      user_id: user,
-      title: "Order Placed",
-      body: `Your order with order ID ${orderId} has been placed successfully`,
-      image: defaultImage || null,
-    });
-
-    workerTasks.push({
-      taskType: "sendBuyerOrderEmail",
-      order: {
-        _id: updatedOrder._id,
-        orderId: updatedOrder.orderId,
-        orderPoints: updatedOrder.gainedPoints,
-      },
-      user_id: user,
-      orderId,
-    });
-
-    // add loyalty points as worker task
-    if (gainedPoints && gainedPoints > 0) {
+    if (channel === "online") {
       workerTasks.push({
-        taskType: "addLoyaltyPoints",
+        taskType: "notifyAdmins",
+        orderId,
         user_id: user,
-        points: gainedPoints,
+        title: "Order Placed",
+        body: `Your order with order ID ${orderId} has been placed successfully`,
+        image: defaultImage || null,
+      });
+
+      workerTasks.push({
+        taskType: "notifyUser",
+        orderId,
+        user_id: user,
+        title: "Order Placed",
+        body: `Your order with order ID ${orderId} has been placed successfully`,
+        image: defaultImage || null,
+      });
+
+      workerTasks.push({
+        taskType: "sendBuyerOrderEmail",
+        order: {
+          _id: updatedOrder._id,
+          orderId: updatedOrder.orderId,
+          orderPoints: updatedOrder.gainedPoints,
+        },
+        user_id: user,
         orderId,
       });
-    }
-    // add updateBuyerHasOrders as worker task to update buyer
-    workerTasks.push({
-      taskType: "updateBuyerHasOrders",
-      user_id: user,
-      orderId,
-    });
-    updatedOrder.defaultImage = defaultImage;
 
+      // add loyalty points as worker task
+      if (gainedPoints && gainedPoints > 0) {
+        workerTasks.push({
+          taskType: "addLoyaltyPoints",
+          user_id: user,
+          points: gainedPoints,
+          orderId,
+        });
+      }
+      // add updateBuyerHasOrders as worker task to update buyer
+      workerTasks.push({
+        taskType: "updateBuyerHasOrders",
+        user_id: user,
+        orderId,
+      });
+      updatedOrder.defaultImage = defaultImage;
+    }
     return {
       order: updatedOrder,
       productOrders,
@@ -353,8 +535,9 @@ const createOrder = async ({ payment, user, gainedPoints }) => {
 const updateVariationQuantity = async (basketItems, action) => {
   return new Promise(async (resolve) => {
     basketItems.forEach(async (item) => {
+      const _id = item.product;
       const product = await ProductModel.findOne({
-        _id: item.product._id,
+        _id,
       }).lean();
       if (!product) {
         return;
@@ -362,7 +545,7 @@ const updateVariationQuantity = async (basketItems, action) => {
 
       const variations = product.variations;
       const variation = variations.find(
-        (variation) => variation.sku === item.sku
+        (variation) => variation.sku === item.sku,
       );
       if (!variation) {
         return;
@@ -385,9 +568,9 @@ const updateVariationQuantity = async (basketItems, action) => {
         },
         {
           $set: {
-            "variations.$.quantity": newQuantity,
+            "variations.$.quantity": newQuantity < 0 ? 0 : newQuantity,
           },
-        }
+        },
       );
     });
     resolve(true);
@@ -396,7 +579,7 @@ const updateVariationQuantity = async (basketItems, action) => {
 
 const getProductOrderPercentage = (allocatedPercentage, productOrder) => {
   const status = orderStatusEnums?.find(
-    (status) => status.value === productOrder?.status?.value
+    (status) => status.value === productOrder?.status?.value,
   );
   if (!status) return 0;
   // allocatedPercentage is the percentage of the item in the overall order
@@ -406,13 +589,13 @@ const getProductOrderPercentage = (allocatedPercentage, productOrder) => {
 };
 const calcOrderProgress = (productOrders) => {
   const total = productOrders?.filter(
-    (productOrder) => productOrder?.status?.value !== "order cancelled"
+    (productOrder) => productOrder?.status?.value !== "order cancelled",
   ).length;
   return productOrders?.reduce((acc, productOrder) => {
     const allocatedPercentage = 100 / total;
     const productOrderPercentage = getProductOrderPercentage(
       allocatedPercentage,
-      productOrder
+      productOrder,
     );
     return acc + productOrderPercentage;
   }, 0);
@@ -450,7 +633,7 @@ const getAuthBuyerOrders = async (req, res) => {
       // map status enum to each product order
       productOrders.forEach((productOrder) => {
         productOrder.status = orderStatusEnums.find(
-          (status) => status.value === productOrder.status.value
+          (status) => status.value === productOrder.status.value,
         );
       });
     });
@@ -532,13 +715,12 @@ const getOrder = async (req, res) => {
       .populate("productOrders")
       .populate("payment")
       .populate("user")
+      .populate("salesAgent")
       .populate({
         path: "productOrders",
         populate: [
           { path: "product" },
-          {
-            path: "user",
-          },
+
           {
             path: "shop",
           },
@@ -547,13 +729,27 @@ const getOrder = async (req, res) => {
 
       .lean();
 
-    const user = order.user;
+    const user = order?.user;
     const isAdmin = authUser.superAdmin || authUser.isAdmin;
-    if (user._id.toString() !== authUser._id.toString() && !isAdmin) {
+    if (user?._id.toString() !== authUser._id.toString() && !isAdmin) {
       return res
         .status(400)
         .send({ error: "You are not authorized to view this order" });
     }
+    if (!order?.user && order?.inStoreCustomerDetails) {
+      const { fullName, email, phone } = order.inStoreCustomerDetails;
+      const firstName = fullName?.split(" ")[0] || "";
+      const lastName = fullName?.split(" ")[1] || "";
+      order.user = {
+        ...(email && { email }),
+        ...(phone && { phone }),
+        ...(firstName && { firstName }),
+        ...(lastName && { lastName }),
+      };
+    }
+    order.productOrders.forEach((productOrder) => {
+      productOrder.user = order.user;
+    });
 
     return res
       .status(200)
@@ -587,7 +783,9 @@ const getOrderForReceipt = async (req, res) => {
       })
 
       .lean();
-
+    if (!order) {
+      return res.status(400).send({ error: "Order not found" });
+    }
     return res
       .status(200)
       .send({ data: order, message: "Order fetched successfully" });
@@ -677,9 +875,8 @@ const getProductOrders = async (req, res) => {
         },
       },
     ];
-    const productOrdersQuery = await ProductOrderModel.aggregate(
-      aggregate
-    ).exec();
+    const productOrdersQuery =
+      await ProductOrderModel.aggregate(aggregate).exec();
     // populate user and product
     await ProductOrderModel.populate(productOrdersQuery[0].productOrders, {
       path: "product", // populate product
@@ -728,6 +925,7 @@ const getProductOrder = async (req, res) => {
       .populate("product")
       .populate("shop")
       .populate("user")
+      .populate("order")
 
       .lean();
     if (!productOrder) {
@@ -748,17 +946,24 @@ const getProductOrder = async (req, res) => {
       });
     }
 
-    const order = await OrderModel.findOne({
-      _id: productOrder.order,
-    }).lean();
+    const order = productOrder.order;
 
     const deliveryDetails = order.deliveryDetails;
-    productOrder.order = order;
     productOrder.deliveryDetails = deliveryDetails;
     productOrder.status = orderStatusEnums.find(
-      (status) => status.value === productOrder.status.value
+      (status) => status.value === productOrder.status.value,
     );
-
+    if (!productOrder?.user && order?.inStoreCustomerDetails) {
+      const { fullName, email, phone } = order.inStoreCustomerDetails;
+      const firstName = fullName?.split(" ")[0] || "";
+      const lastName = fullName?.split(" ")[1] || "";
+      productOrder.user = {
+        ...(email && { email }),
+        ...(phone && { phone }),
+        ...(firstName && { firstName }),
+        ...(lastName && { lastName }),
+      };
+    }
     return res.status(200).send({
       data: productOrder,
       message: "Product Order fetched successfully",
@@ -789,7 +994,7 @@ const getProductOrderStatusHistory = async (req, res) => {
       status = productOrder.cancel.lastStatusBeforeCancel;
     }
     const statusIndex = statusOptions.findIndex(
-      (s) => s.value === status.value
+      (s) => s.value === status.value,
     );
     const statusHistory = statusOptions.slice(0, statusIndex + 1);
     // add date only when value is placed or confirmed
@@ -910,7 +1115,7 @@ const updateProductOrderStatus = async (req, res) => {
       const cancelledBy = productOrder.cancel?.cancelledBy || "buyer";
       return res.status(400).send({
         error: `This order was already cancelled by ${capitalizeFirstLetter(
-          cancelledBy
+          cancelledBy,
         )}`,
       });
     }
@@ -949,10 +1154,10 @@ const updateProductOrderStatus = async (req, res) => {
     }
 
     const dispatchedIndex = orderStatusEnums.findIndex(
-      (s) => s.value === "order dispatched"
+      (s) => s.value === "order dispatched",
     );
     const selectedIndex = orderStatusEnums.findIndex(
-      (s) => s.value === selectedStatus.value
+      (s) => s.value === selectedStatus.value,
     );
 
     if (selectedIndex < dispatchedIndex) {
@@ -986,7 +1191,7 @@ const updateProductOrderStatus = async (req, res) => {
         cancel,
         shopRevenue,
       },
-      { new: true }
+      { new: true },
     );
 
     /* ---------------- Notifications ---------------- */
@@ -1019,7 +1224,7 @@ const updateProductOrderStatus = async (req, res) => {
           productOrder.orderId
         } confirmed. Expected completion between ${displayDate(
           min,
-          false
+          false,
         )} and ${displayDate(max, false)}`;
       }
 
@@ -1084,7 +1289,7 @@ const cancelOrder = async (req, res) => {
     if (cancelledBy && !cancelledByEnums.includes(cancelledBy)) {
       return res.status(400).send({
         error: `cancelledBy must be one of the following: ${cancelledByEnums.join(
-          ", "
+          ", ",
         )}`,
       });
     }
@@ -1121,7 +1326,7 @@ const cancelOrder = async (req, res) => {
     }
 
     const cancelledStatus = orderStatusEnums.find(
-      (s) => s.value === "order cancelled"
+      (s) => s.value === "order cancelled",
     );
     const cancel = {
       isCancelled: true,
@@ -1136,7 +1341,7 @@ const cancelOrder = async (req, res) => {
     const updatedStatus = await ProductOrderModel.findOneAndUpdate(
       { _id: productOrder._id },
       { status: cancelledStatus, cancel, shopRevenue },
-      { new: true }
+      { new: true },
     );
     const isRejectedBySeller = cancelledBy === "seller";
     const user = productOrder.user;
@@ -1247,7 +1452,7 @@ const rejectOrder = async (req, res) => {
     }
 
     const cancelledStatus = orderStatusEnums.find(
-      (s) => s.value === "order cancelled"
+      (s) => s.value === "order cancelled",
     );
     const cancel = {
       isCancelled: true,
@@ -1262,7 +1467,7 @@ const rejectOrder = async (req, res) => {
     const updatedStatus = await ProductOrderModel.findOneAndUpdate(
       { _id: productOrder._id },
       { status: cancelledStatus, cancel, shopRevenue },
-      { new: true }
+      { new: true },
     );
 
     const user = productOrder.user;
@@ -1358,7 +1563,7 @@ const downloadReciept = async (req, res) => {
         type: "url",
         website_url,
       },
-      progressParams
+      progressParams,
     );
 
     const today = new Date();
@@ -1381,6 +1586,449 @@ const downloadReciept = async (req, res) => {
   }
 };
 
+const calculateInstoreTotal = async ({ items, currency = "NGN" }) => {
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    throw new Error("Items are required");
+  }
+
+  const productIds = items.map((i) => i.productId);
+  const products = await ProductModel.find({
+    productId: { $in: productIds },
+  })
+    .select("title variations productId")
+    .lean();
+
+  const productMap = {};
+  products.forEach((p) => {
+    productMap[p.productId] = p;
+  });
+
+  let itemsTotal = 0;
+  const detailedItems = [];
+
+  for (const item of items) {
+    const { productId, sku, quantity } = item;
+
+    if (!productId || !sku || !quantity) {
+      throw new Error("Each item must have productId, sku, and quantity");
+    }
+
+    const product = productMap[productId];
+    if (!product) {
+      throw new Error(`Product not found: ${productId}`);
+    }
+
+    const variation = product.variations.find((v) => v.sku === sku);
+    if (!variation) {
+      throw new Error(`Invalid SKU for product: ${product.title}`);
+    }
+
+    if (variation.bespoke?.isBespoke) {
+      throw new Error(
+        `Bespoke products are not available for in-store purchase: ${product.title} (SKU: ${sku})`,
+      );
+    }
+    if (variation.quantity < quantity) {
+      throw new Error(
+        `Insufficient stock for ${product.title} (SKU: ${sku}). Available: ${variation.quantity}`,
+      );
+    }
+    const instorePrice = variation.instorePrice;
+    if (!instorePrice) {
+      throw new Error(
+        `In-store price not set for ${product.title} (SKU: ${sku}). This is likely not available for in-store purchase. Please check your product settings or contact support.`,
+      );
+    }
+    const unitPrice = instorePrice;
+    const totalPrice = unitPrice * quantity;
+
+    itemsTotal += totalPrice;
+
+    detailedItems.push({
+      productId,
+      product: product._id,
+      title: product.title,
+      sku,
+      quantity,
+      unitPrice,
+      totalPrice,
+      status: "available",
+    });
+  }
+
+  return {
+    currency,
+    itemsTotal,
+    items: detailedItems,
+  };
+};
+
+const getInstoreOrderTotal = async (req, res) => {
+  try {
+    const { items, currency = "NGN" } = req.query;
+    if (!items) {
+      return res.status(400).send({ error: "Items are required" });
+    }
+    //convert items from string to array
+    let parsedItems;
+    try {
+      parsedItems = JSON.parse(items);
+    } catch (error) {
+      return res.status(400).send({ error: "Invalid items format" });
+    }
+    const result = await calculateInstoreTotal({
+      items: parsedItems,
+      currency,
+    });
+
+    let convertedTotal = result.itemsTotal;
+
+    if (currency !== "NGN") {
+      convertedTotal = await currencyConversion(result.itemsTotal, currency);
+    }
+
+    return res.status(200).send({
+      data: {
+        currency,
+        itemsTotal: convertedTotal,
+        baseCurrencyTotal: result.itemsTotal,
+        items: result.items,
+      },
+      message: "In-store total calculated successfully",
+    });
+  } catch (error) {
+    return res.status(400).send({ error: error.message });
+  }
+};
+
+const createInstoreOrder = async (req, res) => {
+  try {
+    const {
+      items,
+      paymentChannel, // "bank_transfer" | "pos_terminal"
+      inStoreCustomerDetails,
+    } = req.body;
+
+    if (!items || items.length === 0) {
+      return res.status(400).send({ error: "Items are required" });
+    }
+
+    if (!paymentChannel) {
+      return res.status(400).send({ error: "paymentChannel is required" });
+    }
+    const customerFullName =
+      inStoreCustomerDetails?.fullName?.toString().trim() || "Instore Guest";
+    const customerPhone = inStoreCustomerDetails?.phone
+      ? inStoreCustomerDetails.phone.toString().trim()
+      : null;
+    const normalizedPhone = customerPhone
+      ? normalizePhoneNumber(customerPhone)
+      : null;
+    if (customerPhone && !normalizedPhone) {
+      return res.status(400).send({ error: "Invalid customer phone" });
+    }
+    const customerEmail = inStoreCustomerDetails?.email || null;
+    const sanitizedInStoreCustomerDetails = {
+      ...(inStoreCustomerDetails || {}),
+      fullName: customerFullName,
+      email: customerEmail,
+      phone: customerPhone,
+      phoneNormalized: normalizedPhone,
+    };
+    const authUser = req?.cachedUser || (await getAuthUser(req));
+    if (!authUser) {
+      return res.status(400).send({ error: "Auth user not found" });
+    }
+    if (paymentChannel !== "bank_transfer" && paymentChannel !== "pos") {
+      return res.status(400).send({
+        error: "Invalid payment channel. Must be 'bank_transfer' or 'pos'",
+      });
+    }
+    // check if auth user is admin or super admin or sales agent
+    if (
+      !authUser.superAdmin &&
+      !authUser.isAdmin &&
+      authUser.role !== "sales_agent"
+    ) {
+      return res
+        .status(403)
+        .send({ error: "You are not authorized to create in-store orders" });
+    }
+    // ✅ 1. Calculate & VALIDATE total (includes stock check)
+    const totalData = await calculateInstoreTotal({ items });
+
+    // ✅ 2. Create offline payment
+    const reference = `POS-${Date.now()}`;
+
+    const payment = new PaymentModel({
+      reference,
+      orderSource: "in-store",
+      salesAgent: authUser._id,
+      fullName: customerFullName,
+      email: customerEmail,
+      status: "success",
+      currency: "NGN",
+      amount: totalData.itemsTotal * 100, // kobo
+      total: totalData.itemsTotal * 100,
+      itemsTotal: totalData.itemsTotal * 100,
+      gateway: "offline",
+      channel: paymentChannel,
+      paidAt: new Date(),
+      gatewayResponse: "Payment recorded as successful for in-store order",
+    });
+
+    const savedPayment = await payment.save();
+
+    const basketItems = totalData.items.map((item) => ({
+      product: item.product,
+      productId: item.productId,
+      quantity: item.quantity,
+      sku: item.sku,
+      lockedUnitPrice: item.unitPrice,
+    }));
+
+    // ✅ 4. Create order using existing system
+    const orderResult = await createOrder({
+      payment: savedPayment,
+      salesAgent: authUser._id,
+      gainedPoints: 0,
+      channel: "in-store",
+      passedItems: basketItems,
+      inStoreCustomerDetails: sanitizedInStoreCustomerDetails,
+    });
+
+    if (orderResult.error) {
+      return res.status(400).send({ error: orderResult.error });
+    }
+
+    const order = orderResult.order;
+
+    // ✅ 5. Attach in-store specific data
+    await OrderModel.findByIdAndUpdate(order._id, {
+      channel: "in-store",
+      inStoreCustomerDetails: sanitizedInStoreCustomerDetails,
+      salesAgent: authUser._id,
+      storeLocation: "Lagos",
+      summary: {
+        totalAmount: totalData.itemsTotal,
+        currency: "NGN",
+        itemsCount: items.length,
+      },
+    });
+
+    // ✅ 6. Fetch complete order with all populated fields (for receipt)
+    const completeOrder = await OrderModel.findOne({ _id: order._id })
+      .populate("productOrders")
+      .populate("payment")
+      .populate("user")
+      .populate({
+        path: "productOrders",
+        populate: [{ path: "product" }, { path: "user" }, { path: "shop" }],
+      })
+      .lean();
+
+    return res.status(200).send({
+      data: completeOrder,
+      message: "In-store order created successfully",
+    });
+  } catch (error) {
+    console.error("createInstoreOrder error:", error);
+    return res.status(500).send({ error: error.message });
+  }
+};
+const getInstoreCustomers = async (req, res) => {
+  try {
+    const authUser = req?.cachedUser || (await getAuthUser(req));
+    if (!authUser) {
+      return res.status(401).send({ error: "User not found" });
+    }
+    if (
+      !authUser.superAdmin &&
+      !authUser.isAdmin &&
+      authUser.role !== "sales_agent"
+    ) {
+      return res
+        .status(403)
+        .send({ error: "You are not authorized to view in-store customers" });
+    }
+
+    const { search } = req.query;
+    const normalizedSearchPhone = normalizePhoneNumber(search);
+
+    const matchStage = {
+      channel: "in-store",
+      "inStoreCustomerDetails.phone": { $exists: true, $nin: [null, ""] },
+    };
+    if (search) {
+      matchStage.$or = [
+        {
+          "inStoreCustomerDetails.fullName": { $regex: search, $options: "i" },
+        },
+        { "inStoreCustomerDetails.phone": { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const aggregatePipeline = [
+      { $match: matchStage },
+      {
+        $addFields: {
+          normalizedPhone: {
+            $ifNull: [
+              "$inStoreCustomerDetails.phoneNormalized",
+              {
+                $replaceAll: {
+                  input: {
+                    $replaceAll: {
+                      input: {
+                        $replaceAll: {
+                          input: {
+                            $replaceAll: {
+                              input: {
+                                $replaceAll: {
+                                  input: {
+                                    $toString: "$inStoreCustomerDetails.phone",
+                                  },
+                                  find: " ",
+                                  replacement: "",
+                                },
+                              },
+                              find: "-",
+                              replacement: "",
+                            },
+                          },
+                          find: "(",
+                          replacement: "",
+                        },
+                      },
+                      find: ")",
+                      replacement: "",
+                    },
+                  },
+                  find: "+",
+                  replacement: "",
+                },
+              },
+            ],
+          },
+        },
+      },
+      { $match: { normalizedPhone: { $ne: "" } } },
+      { $sort: { createdAt: -1 } },
+      {
+        $group: {
+          _id: "$normalizedPhone",
+          fullName: { $first: "$inStoreCustomerDetails.fullName" },
+          email: { $first: "$inStoreCustomerDetails.email" },
+          phone: { $first: "$inStoreCustomerDetails.phone" },
+          phoneNormalized: { $first: "$normalizedPhone" },
+          address: { $first: "$inStoreCustomerDetails.address" },
+          region: { $first: "$inStoreCustomerDetails.region" },
+          country: { $first: "$inStoreCustomerDetails.country" },
+          orderCount: { $sum: 1 },
+          lastOrderAt: { $max: "$createdAt" },
+          firstOrderAt: { $min: "$createdAt" },
+        },
+      },
+      { $sort: { lastOrderAt: -1 } },
+    ];
+
+    if (normalizedSearchPhone) {
+      aggregatePipeline.push({
+        $match: {
+          phoneNormalized: { $regex: normalizedSearchPhone, $options: "i" },
+        },
+      });
+    }
+
+    const customers = await OrderModel.aggregate(aggregatePipeline);
+    customers.forEach((customer) => {
+      customer.firstName = customer.fullName?.split(" ")[0] || "";
+      customer.lastName = customer.fullName
+        ? customer.fullName.split(" ").slice(1).join(" ")
+        : "";
+    });
+
+    return res.status(200).send({
+      data: customers,
+      message: "In-store customers fetched successfully",
+    });
+  } catch (error) {
+    return res.status(500).send({ error: error.message });
+  }
+};
+
+const sendOrderReceiptEmail = async (req, res) => {
+  try {
+    const { email, order_id } = req.body;
+
+    if (!email) {
+      return res.status(400).send({ error: "email is required" });
+    }
+    if (!order_id) {
+      return res.status(400).send({ error: "order_id is required" });
+    }
+
+    const order = await OrderModel.findOne({ _id: order_id })
+      .populate("productOrders")
+      .populate("payment")
+      .populate("user")
+      .populate({
+        path: "productOrders",
+        populate: [{ path: "product" }, { path: "shop" }],
+      })
+      .lean();
+
+    if (!order) {
+      return res.status(404).send({ error: "Order not found" });
+    }
+
+    // Build user object — prefer populated user, fall back to inStoreCustomerDetails
+    let user = order.user;
+    if (!user && order.inStoreCustomerDetails) {
+      const {
+        fullName,
+        email: customerEmail,
+        phone,
+      } = order.inStoreCustomerDetails;
+      const [firstName = "", ...rest] = (fullName || "").split(" ");
+      const lastName = rest.join(" ");
+      user = {
+        firstName,
+        lastName,
+        ...(customerEmail && { email: customerEmail }),
+        ...(phone && { phone }),
+      };
+    }
+
+    const orderEmailTemplate = await EmailTemplateModel.findOne({
+      name: "in-store-order",
+    }).lean();
+
+    const emailBody = replaceOrderVariablesinTemplate(
+      replaceUserVariablesinTemplate(orderEmailTemplate?.body, user),
+      order,
+    );
+
+    const emailSubject = replaceOrderVariablesinTemplate(
+      replaceUserVariablesinTemplate(orderEmailTemplate?.subject, user),
+      order,
+    );
+
+    await sendEmail({
+      from: "admin@zeaper.com",
+      to: [email],
+      subject: emailSubject || "Order Successful",
+      body: emailBody || "",
+      attach: true,
+      order_id,
+    });
+
+    return res.status(200).send({ message: "Order receipt sent successfully" });
+  } catch (error) {
+    return res.status(500).send({ error: error.message });
+  }
+};
+
 module.exports = {
   createOrder,
   getAuthBuyerOrders,
@@ -1398,4 +2046,8 @@ module.exports = {
   rejectOrder,
   downloadReciept,
   sendProductOrdershopEmail,
+  getInstoreOrderTotal,
+  createInstoreOrder,
+  getInstoreCustomers,
+  sendOrderReceiptEmail,
 };
