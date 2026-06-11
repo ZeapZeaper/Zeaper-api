@@ -8,9 +8,34 @@ const OrderSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Users",
-    required: true,
+    required: function () {
+      return this.channel === "online";
+    },
   },
-
+  channel: {
+    type: String,
+    enum: ["online", "in-store"],
+    default: "online",
+    index: true,
+  },
+  inStoreCustomerDetails: {
+    fullName: {
+      type: String,
+      required: false,
+    },
+    email: { type: String, required: false },
+    phone: {
+      type: String,
+      required: false,
+    },
+    phoneNormalized: {
+      type: String,
+      required: false,
+    },
+    address: { type: String, required: false },
+    region: { type: String, required: false },
+    country: { type: String, required: false },
+  },
   productOrders: [
     {
       type: mongoose.Schema.Types.ObjectId,
@@ -40,9 +65,22 @@ const OrderSchema = new mongoose.Schema({
     ref: "Vouchers",
     required: false,
   },
+  salesAgent: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Users",
+    required: function () {
+      return this.channel === "in-store";
+    },
+  }, // staff who sold it
+  storeLocation: { type: String, required: false, default: "Lagos" },
 });
 
 OrderSchema.plugin(timestamp);
+OrderSchema.index({ orderId: 1 });
+OrderSchema.index({ user: 1 });
+OrderSchema.index({ channel: 1, createdAt: -1 });
+OrderSchema.index({ channel: 1, "inStoreCustomerDetails.phoneNormalized": 1 });
+OrderSchema.index({ salesAgent: 1 });
 
 const OrderModel = mongoose.model("Orders", OrderSchema, "Orders");
 

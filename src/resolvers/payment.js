@@ -52,7 +52,7 @@ const getStripeClientSecret = async (
   currency,
   reference,
   basketId,
-  userId
+  userId,
 ) => {
   try {
     const paymentIntent = await stripe.paymentIntents.create({
@@ -113,7 +113,7 @@ const getReference = async (req, res) => {
     if (!allowedDeliveryCountries.includes(country)) {
       return res.status(400).send({
         error: `country not supported. Supported countries are ${allowedDeliveryCountries.join(
-          ", "
+          ", ",
         )}`,
       });
     }
@@ -179,8 +179,7 @@ const getReference = async (req, res) => {
       if (payment.status === "success") {
         // Check if order exists
         let order = await OrderModel.findOne({ payment: payment._id }).lean();
-
-        if (!order) {
+        if (!order || order?.productOrders?.length === 0) {
           // Process successful payment if order missing
           const processResult = await processSuccessfulPayment(payment);
           order = processResult.order;
@@ -206,7 +205,7 @@ const getReference = async (req, res) => {
     const calculateTotal = await calculateTotalBasketPrice(
       basket,
       country,
-      method
+      method,
     );
     const amountDue = calculateTotal.total;
     const itemsTotalDue = calculateTotal.itemsTotal;
@@ -234,7 +233,7 @@ const getReference = async (req, res) => {
         currency.toLowerCase(),
         reference,
         basket.basketId,
-        user.userId
+        user.userId,
       );
       stripeClientSecret = stripeData.stripeClientSecret;
       stripePaymentIntentId = stripeData.stripePaymentIntentId;
@@ -244,7 +243,7 @@ const getReference = async (req, res) => {
     await BasketModel.findOneAndUpdate(
       { basketId: basket.basketId },
       { deliveryDetails },
-      { new: true }
+      { new: true },
     );
 
     // --- 10️⃣ Create new payment if none exists ---
@@ -340,7 +339,7 @@ const processSuccessfulPayment = async ({
         gatewayResponse: verifiedData.gatewayResponse,
         gateway: verifiedData.gateway,
       },
-      { new: true }
+      { new: true },
     );
   }
 
@@ -355,13 +354,23 @@ const processSuccessfulPayment = async ({
   const amountInNaira = amountInKobo / 100;
   const addedPoints = Math.floor(amountInNaira / 1000) * 10;
 
-  if (order) {
+  // 5. Check if order is COMPLETE (has productOrders)
+  if (order && order.productOrders && order.productOrders.length > 0) {
     return {
       payment: updatedPayment,
       order,
       addedPoints,
       alreadyProcessed: true,
     };
+  }
+
+  // If order exists but is incomplete, delete it and retry
+  if (order && (!order.productOrders || order.productOrders.length === 0)) {
+    console.warn(
+      `Incomplete order found for payment ${reference}. Deleting and retrying...`,
+    );
+    await OrderModel.deleteOne({ _id: order._id });
+    order = null;
   }
 
   // 5. Create order (atomic protection via unique index)
@@ -383,7 +392,7 @@ const processSuccessfulPayment = async ({
     await orderQueue.add(
       `processOrder-${reference}`,
       { workerTasks },
-      { jobId: reference }
+      { jobId: reference },
     );
   }
 
@@ -644,7 +653,7 @@ const payShop = async (req, res) => {
     const updatedProductOrder = await ProductOrderModel.findOneAndUpdate(
       { _id: productOrder_id },
       { shopRevenue },
-      { new: true }
+      { new: true },
     );
     if (!updatedProductOrder) {
       return res.status(400).send({ error: "unable to update shop revenue" });
@@ -708,7 +717,7 @@ const revertPayShop = async (req, res) => {
     const updatedProductOrder = await ProductOrderModel.findOneAndUpdate(
       { _id: productOrder_id },
       { shopRevenue },
-      { new: true }
+      { new: true },
     );
     if (!updatedProductOrder) {
       return res.status(400).send({ error: "unable to update shop revenue" });

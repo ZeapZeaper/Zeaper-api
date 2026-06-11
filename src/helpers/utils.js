@@ -361,7 +361,6 @@ const currencyConversion = async (amount, currency) => {
   if (!currencyRates) {
     currencyRates = await ExchangeRateModel.find().lean();
     cache.set("exchangeRates", currencyRates);
-    
   }
 
   // find rate from cached list
@@ -405,7 +404,6 @@ const covertToNaira = async (amount, currency) => {
   if (!currencyRates) {
     currencyRates = await ExchangeRateModel.find().lean();
     cache.set("exchangeRates", currencyRates);
-    
   }
   let rate;
   if (currency === "USD") {
@@ -718,19 +716,18 @@ const calcShopRevenueValue = ({
   originalAmountDue,
   amountDue,
   adminControlledDiscount = false,
+  commission = { bespoke: 0.75, readyToWear: 0.8 },
 }) => {
   const amount = adminControlledDiscount ? originalAmountDue : amountDue;
   const bespokes = ["bespokeCloth", "bespokeShoe"];
-  // 75% for bespoke
-  // 80% for ready-to-wear
   const isBespoke = bespokes.includes(productType);
   let revenueValue = amount;
-  // I temporarily disabled this logic as per request due to launching incentives for early vendors
-  // if (isBespoke) {
-  //   revenueValue = amount * 0.75;
-  // } else {
-  //   revenueValue = amount * 0.8;
-  // }
+
+  if (isBespoke) {
+    revenueValue = amount * commission.bespoke;
+  } else {
+    revenueValue = amount * commission.readyToWear;
+  }
   return revenueValue.toFixed(2);
 };
 const detectDeviceType = (req) => {
