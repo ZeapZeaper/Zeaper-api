@@ -120,6 +120,11 @@ let routes = (app) => {
   );
   router.put("/user/verifyUserOTP", authMiddleware, userResolver.verifyUserOTP);
   router.put("/user/sendOTPToUser", authMiddleware, userResolver.sendOTPToUser);
+  router.put(
+    "/user/update/admin-permission",
+    authMiddleware,
+    userResolver.updateAdminPermissions,
+  );
   router.put("/user/update", authMiddleware, userResolver.updateUser);
   router.put(
     "/user/update/profilePic",
