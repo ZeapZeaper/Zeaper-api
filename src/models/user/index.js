@@ -80,6 +80,24 @@ const UserSchema = new mongoose.Schema({
   welcomeEmailSent: { type: Boolean, required: false, default: false },
   initialPointGiven: { type: Boolean, required: false, default: false },
   hasOrders: { type: Boolean, default: false, index: true },
+  adminPermissionHistory: [
+    {
+      changedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Users",
+        required: true,
+      },
+      changedAt: { type: Date, required: true, default: Date.now },
+      previous: {
+        isAdmin: { type: Boolean, required: true },
+        superAdmin: { type: Boolean, required: true },
+      },
+      next: {
+        isAdmin: { type: Boolean, required: true },
+        superAdmin: { type: Boolean, required: true },
+      },
+    },
+  ],
   disabledAt: { type: Date, required: false },
   disabledBy: { type: String, required: false },
   expiresAt: {

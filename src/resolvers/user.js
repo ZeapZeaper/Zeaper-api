@@ -1090,6 +1090,131 @@ const getAdminUsers = async (req, res) => {
   }
 };
 
+const updateAdminPermissions = async (req, res) => {
+  try {
+    const { _id, isAdmin, superAdmin } = req.body;
+
+    if (!_id) {
+      return res.status(400).send({ error: "_id is required" });
+    }
+
+    if (typeof isAdmin === "undefined" && typeof superAdmin === "undefined") {
+      return res
+        .status(400)
+        .send({ error: "Provide at least one of isAdmin or superAdmin" });
+    }
+
+    if (typeof isAdmin !== "undefined" && typeof isAdmin !== "boolean") {
+      return res.status(400).send({ error: "isAdmin must be a boolean" });
+    }
+
+    if (
+      typeof superAdmin !== "undefined" &&
+      typeof superAdmin !== "boolean"
+    ) {
+      return res.status(400).send({ error: "superAdmin must be a boolean" });
+    }
+
+    const authUser = req?.cachedUser || (await getAuthUser(req));
+    if (!authUser) {
+      return res.status(401).send({ error: "User not authenticated" });
+    }
+
+    if (!authUser.superAdmin) {
+      return res
+        .status(403)
+        .send({ error: "Only super admins can update admin permissions" });
+    }
+
+    const user = await UserModel.findById(_id).lean();
+    if (!user) {
+      return res.status(404).send({ error: "User not found" });
+    }
+
+    if (_id.toString() === authUser._id.toString() && superAdmin === false) {
+      return res
+        .status(400)
+        .send({ error: "You cannot remove your own super admin permission" });
+    }
+
+    if (isAdmin === true && superAdmin === true) {
+      return res.status(400).send({
+        error: "A super admin cannot be an admin at the same time",
+      });
+    }
+
+    const updateData = {};
+
+    if (typeof superAdmin === "boolean") {
+      updateData.superAdmin = superAdmin;
+      if (superAdmin) {
+        updateData.isAdmin = false;
+      }
+    }
+
+    if (typeof isAdmin === "boolean") {
+      const superAdminState =
+        typeof superAdmin === "boolean" ? superAdmin : user.superAdmin;
+      if (superAdminState && isAdmin) {
+        return res.status(400).send({
+          error: "A super admin cannot be an admin at the same time",
+        });
+      }
+      updateData.isAdmin = superAdminState ? false : isAdmin;
+    }
+
+    const nextState = {
+      isAdmin:
+        typeof updateData.isAdmin === "boolean" ? updateData.isAdmin : user.isAdmin,
+      superAdmin:
+        typeof updateData.superAdmin === "boolean"
+          ? updateData.superAdmin
+          : user.superAdmin,
+    };
+
+    if (
+      nextState.isAdmin === !!user.isAdmin &&
+      nextState.superAdmin === !!user.superAdmin
+    ) {
+      return res.status(200).send({
+        data: user,
+        message: "No admin permission changes detected",
+      });
+    }
+
+    const historyEntry = {
+      changedBy: authUser._id,
+      changedAt: new Date(),
+      previous: {
+        isAdmin: !!user.isAdmin,
+        superAdmin: !!user.superAdmin,
+      },
+      next: {
+        isAdmin: !!nextState.isAdmin,
+        superAdmin: !!nextState.superAdmin,
+      },
+    };
+
+    const updatedUser = await UserModel.findByIdAndUpdate(
+      _id,
+      {
+        ...updateData,
+        $push: { adminPermissionHistory: historyEntry },
+      },
+      { new: true },
+    );
+
+    userCache.set(updatedUser.uid, updatedUser);
+
+    return res.status(200).send({
+      data: updatedUser,
+      message: "User admin permissions updated successfully",
+    });
+  } catch (error) {
+    return res.status(500).send({ error: error.message });
+  }
+};
+
 const updateUser = async (req, res) => {
   try {
     const { _id, email, phoneNumber, social } = req.body;
@@ -1104,6 +1229,17 @@ const updateUser = async (req, res) => {
     if (!isAdmin && authUser._id.toString() !== _id.toString()) {
       return res.status(400).send({ error: "You are not authorized" });
     }
+
+    if (
+      Object.prototype.hasOwnProperty.call(req.body, "isAdmin") ||
+      Object.prototype.hasOwnProperty.call(req.body, "superAdmin")
+    ) {
+      return res.status(403).send({
+        error:
+          "You are not authorized to update admin permissions here. Use the admin permission endpoint.",
+      });
+    }
+
     const user = await UserModel.findById(_id);
     if (!user) {
       return res.status(404).send({ error: "User not found" });
@@ -1463,6 +1599,7 @@ module.exports = {
   getUserById,
   getUserInfoByEmail,
   getAdminUsers,
+  updateAdminPermissions,
   updateUser,
   deleteUsers,
   restoreUser,
