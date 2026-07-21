@@ -321,6 +321,11 @@ const validateReadyMadeShoes = async (product) => {
 const addVariationToReadyMadeShoes = async (product, variation) => {
   const { price, colorValue, size, quantity } = variation;
   const { colors, sizes, variations } = product;
+  const promoDiscountPercentage = product?.promo?.discountPercentage || 0;
+  const promoDiscountValue =
+    promoDiscountPercentage > 0
+      ? price - (price * promoDiscountPercentage) / 100
+      : null;
 
   let sku;
   if (!variation) {
@@ -354,7 +359,10 @@ const addVariationToReadyMadeShoes = async (product, variation) => {
       return { error: "variation does not exist" };
     }
     const index = variations.findIndex((v) => v.sku === sku);
-    variations[index] = { ...variation };
+    variations[index] = {
+      ...variation,
+      ...(promoDiscountValue !== null && { discount: promoDiscountValue }),
+    };
     await product.save();
     return variations[index];
   }
@@ -370,6 +378,7 @@ const addVariationToReadyMadeShoes = async (product, variation) => {
     colorValue,
     size,
     quantity,
+    ...(promoDiscountValue !== null && { discount: promoDiscountValue }),
   };
 
   variations.push(newVariation);

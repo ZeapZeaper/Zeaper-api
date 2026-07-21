@@ -2650,6 +2650,96 @@ const getProductOptions = async (req, res) => {
     return res.status(500).send({ error: err.message });
   }
 };
+
+const getRemainingProductVariations = async (req, res) => {
+  try {
+    const { productId } = req.query;
+
+    if (!productId) {
+      return res.status(400).send({ error: "productId is required" });
+    }
+
+    const product = await ProductModel.findOne({ productId }).lean();
+
+    if (!product) {
+      return res.status(404).send({ error: "product not found" });
+    }
+
+    const user = req?.cachedUser || (await getAuthUser(req));
+    if (!user) {
+      return res.status(401).send({ error: "Unauthorized" });
+    }
+
+    if (user.shopId !== product.shopId && !user?.isAdmin && !user?.superAdmin) {
+      return res
+        .status(403)
+        .send({ error: "You are not authorized to view this product variations" });
+    }
+
+    if (product.productType === "bespokeCloth" || product.productType === "bespokeShoe") {
+      return res.status(400).send({
+        error:
+          "Variation matrix is only supported for ready-made and accessory products",
+      });
+    }
+
+    const sizes = (product.sizes || []).filter(Boolean);
+    const colorValues = (product.colors || []).map((color) => color.value).filter(Boolean);
+
+    if (!sizes.length) {
+      return res.status(400).send({
+        error: "Product has no sizes. Add sizes first before generating variation matrix",
+      });
+    }
+
+    if (!colorValues.length) {
+      return res.status(400).send({
+        error: "Product has no colors. Add colors first before generating variation matrix",
+      });
+    }
+
+    const variations = product.variations || [];
+    const existingComboSet = new Set(
+      variations
+        .filter((variation) => variation?.colorValue && variation?.size)
+        .map((variation) => `${variation.size}::${variation.colorValue}`),
+    );
+
+    const availableVariations = [];
+
+    colorValues.forEach((colorValue) => {
+      sizes.forEach((size) => {
+        const comboKey = `${size}::${colorValue}`;
+        if (!existingComboSet.has(comboKey)) {
+          availableVariations.push({
+            sku: `${product.productId}-${size}-${colorValue}`,
+            size,
+            colorValue,
+          });
+        }
+      });
+    });
+
+    return res.status(200).send({
+      data: {
+        productId: product.productId,
+        title: product.title,
+        productType: product.productType,
+        sizeStandard: product.sizeStandard || null,
+        sizes,
+        colors: colorValues,
+        totalPossibleCombinations: sizes.length * colorValues.length,
+        existingVariationsCount: variations.length,
+        availableVariationsCount: availableVariations.length,
+        availableVariations,
+      },
+      message: "Remaining product variations fetched successfully",
+    });
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
+};
+
 const addProductVariation = async (req, res) => {
   try {
     const { productId, variation, currentStep } = req.body;
@@ -2734,6 +2824,104 @@ const addProductVariation = async (req, res) => {
     return res.status(200).send({
       data: updatedVariation,
       message: "variation added successfully",
+    });
+  } catch (err) {
+    return res.status(500).send({ error: err.message });
+  }
+};
+
+const addProductVariationsBulk = async (req, res) => {
+  try {
+    const { productId, variations, currentStep } = req.body;
+
+    if (!productId) {
+      return res.status(400).send({ error: "productId is required" });
+    }
+
+    if (!Array.isArray(variations) || variations.length === 0) {
+      return res.status(400).send({ error: "variations must be a non-empty array" });
+    }
+
+    const product = await ProductModel.findOne({ productId }).exec();
+    if (!product) {
+      return res.status(400).send({ error: "product not found" });
+    }
+
+    if (currentStep) {
+      product.currentStep = currentStep;
+    }
+
+    const user = req?.cachedUser || (await getAuthUser(req));
+    if (!user) {
+      return res.status(401).send({ error: "Unauthorized" });
+    }
+
+    if (user.shopId !== product.shopId && !user?.isAdmin && !user?.superAdmin) {
+      return res
+        .status(400)
+        .send({ error: "You are not authorized to edit this product" });
+    }
+
+    const productType = product.productType;
+    const added = [];
+    const failed = [];
+    const timeLineEntries = [];
+
+    for (let i = 0; i < variations.length; i++) {
+      const variationInput = variations[i];
+      let result;
+
+      if (productType === "readyMadeCloth") {
+        result = await addVariationToReadyMadeClothes(product, variationInput);
+      }
+      if (productType === "readyMadeShoe") {
+        result = await addVariationToReadyMadeShoes(product, variationInput);
+      }
+      if (productType === "accessory") {
+        result = await addVariationToAccesories(product, variationInput);
+      }
+      if (productType === "bespokeCloth") {
+        result = await addVariationToBespokeCloth(product, variationInput);
+      }
+      if (productType === "bespokeShoe") {
+        result = await addVariationToBespokeShoe(product, variationInput);
+      }
+
+      if (!result || result?.error) {
+        failed.push({
+          index: i,
+          variation: variationInput,
+          error: result?.error || "unable to add variation",
+        });
+        continue;
+      }
+
+      added.push(result);
+      timeLineEntries.push({
+        date: new Date(),
+        description: `variation with sku ${result.sku} added`,
+        actionBy: user._id,
+      });
+    }
+
+    if (timeLineEntries.length > 0) {
+      await ProductModel.findOneAndUpdate(
+        { productId },
+        { $push: { timeLine: { $each: timeLineEntries } } },
+        { new: true },
+      ).exec();
+    }
+
+    return res.status(200).send({
+      data: {
+        productId,
+        totalRequested: variations.length,
+        totalAdded: added.length,
+        totalFailed: failed.length,
+        added,
+        failed,
+      },
+      message: "Bulk variation add operation completed",
     });
   } catch (err) {
     return res.status(500).send({ error: err.message });
@@ -3274,6 +3462,7 @@ module.exports = {
   getShopDraftProducts,
   setProductStatus,
   getProductOptions,
+  getRemainingProductVariations,
   getQueryProductsDynamicFilters,
   getProductListDynamicFilters,
   getProductById,
@@ -3283,6 +3472,7 @@ module.exports = {
   setProductImageAsDefault,
   addImagesToProductColor,
   addProductVariation,
+  addProductVariationsBulk,
   editProductVariation,
   updateAutoPriceAdjustment,
   deleteProductVariation,

@@ -300,6 +300,16 @@ let routes = (app) => {
     productResolver.addProductVariation,
   );
   router.put(
+    "/product/update/addProductVariations",
+    authMiddleware,
+    productResolver.addProductVariationsBulk,
+  );
+  router.get(
+    "/product/variation/remaining",
+    authMiddleware,
+    productResolver.getRemainingProductVariations,
+  );
+  router.put(
     "/product/update/deleteProductColor",
     authMiddleware,
     productResolver.deleteProductColor,

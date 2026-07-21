@@ -271,6 +271,11 @@ const validateBespokeClothes = async (product) => {
 };
 const addVariationToBespokeCloth = async (product, variation) => {
   const { price, colorType, availableColors, discount } = variation;
+    const promoDiscountPercentage = product?.promo?.discountPercentage || 0;
+    const promoDiscountValue =
+      promoDiscountPercentage > 0
+        ? price - (price * promoDiscountPercentage) / 100
+        : null;
   const { variations } = product;
   // check if there is bespoke variation already
   const isBespoke = variations.some((v) => v.bespoke?.isBespoke);
@@ -324,7 +329,8 @@ const addVariationToBespokeCloth = async (product, variation) => {
     const editedVariation = {
       sku: sku,
       price,
-      discount: discount || null,
+        discount:
+          promoDiscountValue !== null ? promoDiscountValue : discount || null,
       size: "Custom",
       quantity: 1,
       colorValue: "Bespoke",
@@ -351,6 +357,7 @@ const addVariationToBespokeCloth = async (product, variation) => {
     size: "Custom",
     quantity: 1,
     colorValue: "Bespoke",
+      discount: promoDiscountValue !== null ? promoDiscountValue : discount || null,
     bespoke: {
       isBespoke: true,
       colorType,
