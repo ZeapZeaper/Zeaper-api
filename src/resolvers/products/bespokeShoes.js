@@ -150,14 +150,14 @@ const editBespokeShoes = async (req) => {
     // remove productId from params
     delete params.productId;
     params.sizes = ["Custom"];
-    params. sizeStandard = "Custom";
+    params.sizeStandard = "Custom";
 
     const bespokeShoe = await ProductModel.findOneAndUpdate(
       { productId },
       {
         ...params,
       },
-      { new: true }
+      { new: true },
     );
     return bespokeShoe;
   } catch (err) {
@@ -287,11 +287,11 @@ const validateBespokeShoes = async (product) => {
 };
 const addVariationToBespokeShoe = async (product, variation) => {
   const { price, colorType, availableColors, discount } = variation;
-    const promoDiscountPercentage = product?.promo?.discountPercentage || 0;
-    const promoDiscountValue =
-      promoDiscountPercentage > 0
-        ? price - (price * promoDiscountPercentage) / 100
-        : null;
+  const promoDiscountPercentage = product?.promo?.discountPercentage || 0;
+  const promoDiscountValue =
+    promoDiscountPercentage > 0
+      ? price - (price * promoDiscountPercentage) / 100
+      : null;
   const { variations } = product;
   // check if there is bespoke variation already
   const isBespoke = variations.some((v) => v.bespoke?.isBespoke);
@@ -323,7 +323,7 @@ const addVariationToBespokeShoe = async (product, variation) => {
   if (
     colorType === "single" &&
     availableColors.some(
-      (color) => colorEnums.map((c) => c.name).indexOf(color) === -1
+      (color) => colorEnums.map((c) => c.name).indexOf(color) === -1,
     )
   ) {
     return { error: "invalid color in available colors" };
@@ -344,8 +344,8 @@ const addVariationToBespokeShoe = async (product, variation) => {
     const editedVariation = {
       sku: sku,
       price,
-        discount:
-          promoDiscountValue !== null ? promoDiscountValue : discount || null,
+      discount:
+        promoDiscountValue !== null ? promoDiscountValue : discount || null,
       size: "Custom",
       quantity: 1,
       colorValue: "Bespoke",
@@ -372,7 +372,8 @@ const addVariationToBespokeShoe = async (product, variation) => {
     size: "Custom",
     quantity: 1,
     colorValue: "Bespoke",
-      discount: promoDiscountValue !== null ? promoDiscountValue : discount || null,
+    discount:
+      promoDiscountValue !== null ? promoDiscountValue : discount || null,
     bespoke: {
       isBespoke: true,
       colorType,

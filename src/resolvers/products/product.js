@@ -2673,10 +2673,15 @@ const getRemainingProductVariations = async (req, res) => {
     if (user.shopId !== product.shopId && !user?.isAdmin && !user?.superAdmin) {
       return res
         .status(403)
-        .send({ error: "You are not authorized to view this product variations" });
+        .send({
+          error: "You are not authorized to view this product variations",
+        });
     }
 
-    if (product.productType === "bespokeCloth" || product.productType === "bespokeShoe") {
+    if (
+      product.productType === "bespokeCloth" ||
+      product.productType === "bespokeShoe"
+    ) {
       return res.status(400).send({
         error:
           "Variation matrix is only supported for ready-made and accessory products",
@@ -2684,17 +2689,21 @@ const getRemainingProductVariations = async (req, res) => {
     }
 
     const sizes = (product.sizes || []).filter(Boolean);
-    const colorValues = (product.colors || []).map((color) => color.value).filter(Boolean);
+    const colorValues = (product.colors || [])
+      .map((color) => color.value)
+      .filter(Boolean);
 
     if (!sizes.length) {
       return res.status(400).send({
-        error: "Product has no sizes. Add sizes first before generating variation matrix",
+        error:
+          "Product has no sizes. Add sizes first before generating variation matrix",
       });
     }
 
     if (!colorValues.length) {
       return res.status(400).send({
-        error: "Product has no colors. Add colors first before generating variation matrix",
+        error:
+          "Product has no colors. Add colors first before generating variation matrix",
       });
     }
 
@@ -2839,7 +2848,9 @@ const addProductVariationsBulk = async (req, res) => {
     }
 
     if (!Array.isArray(variations) || variations.length === 0) {
-      return res.status(400).send({ error: "variations must be a non-empty array" });
+      return res
+        .status(400)
+        .send({ error: "variations must be a non-empty array" });
     }
 
     const product = await ProductModel.findOne({ productId }).exec();

@@ -153,7 +153,7 @@ const editAccessories = async (req) => {
       {
         ...params,
       },
-      { new: true }
+      { new: true },
     );
     return accessory;
   } catch (err) {

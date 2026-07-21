@@ -23,14 +23,22 @@ const {
 const editBespokeClothes = async (req) => {
   try {
     const params = req.body;
-    const { productId, categories, colors, bodyMeasurement, variations, autoPriceAdjustment } =
-      params;
+    const {
+      productId,
+      categories,
+      colors,
+      bodyMeasurement,
+      variations,
+      autoPriceAdjustment,
+    } = params;
 
     if (categories && Object.keys(categories).length === 0) {
       return { error: "categories is required" };
     }
-    if(autoPriceAdjustment){
-      return { error: "you can not update autoPriceAdjustment with this endpoint" };
+    if (autoPriceAdjustment) {
+      return {
+        error: "you can not update autoPriceAdjustment with this endpoint",
+      };
     }
     if (categories) {
       const {
@@ -139,14 +147,14 @@ const editBespokeClothes = async (req) => {
     // remove productId from params
     delete params.productId;
     params.sizes = ["Custom"];
-    params. sizeStandard = "Custom";
+    params.sizeStandard = "Custom";
 
     const bespokeCloth = await ProductModel.findOneAndUpdate(
       { productId },
       {
         ...params,
       },
-      { new: true }
+      { new: true },
     );
     return bespokeCloth;
   } catch (err) {
@@ -271,11 +279,11 @@ const validateBespokeClothes = async (product) => {
 };
 const addVariationToBespokeCloth = async (product, variation) => {
   const { price, colorType, availableColors, discount } = variation;
-    const promoDiscountPercentage = product?.promo?.discountPercentage || 0;
-    const promoDiscountValue =
-      promoDiscountPercentage > 0
-        ? price - (price * promoDiscountPercentage) / 100
-        : null;
+  const promoDiscountPercentage = product?.promo?.discountPercentage || 0;
+  const promoDiscountValue =
+    promoDiscountPercentage > 0
+      ? price - (price * promoDiscountPercentage) / 100
+      : null;
   const { variations } = product;
   // check if there is bespoke variation already
   const isBespoke = variations.some((v) => v.bespoke?.isBespoke);
@@ -307,7 +315,7 @@ const addVariationToBespokeCloth = async (product, variation) => {
   if (
     colorType === "single" &&
     availableColors.some(
-      (color) => colorEnums.map((c) => c.name).indexOf(color) === -1
+      (color) => colorEnums.map((c) => c.name).indexOf(color) === -1,
     )
   ) {
     return { error: "invalid color in available colors" };
@@ -329,8 +337,8 @@ const addVariationToBespokeCloth = async (product, variation) => {
     const editedVariation = {
       sku: sku,
       price,
-        discount:
-          promoDiscountValue !== null ? promoDiscountValue : discount || null,
+      discount:
+        promoDiscountValue !== null ? promoDiscountValue : discount || null,
       size: "Custom",
       quantity: 1,
       colorValue: "Bespoke",
@@ -357,7 +365,8 @@ const addVariationToBespokeCloth = async (product, variation) => {
     size: "Custom",
     quantity: 1,
     colorValue: "Bespoke",
-      discount: promoDiscountValue !== null ? promoDiscountValue : discount || null,
+    discount:
+      promoDiscountValue !== null ? promoDiscountValue : discount || null,
     bespoke: {
       isBespoke: true,
       colorType,

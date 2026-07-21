@@ -42,18 +42,18 @@ const editReadyMadeShoes = async (req) => {
       return { error: "sizes is required and must be unique" };
     }
     const formatShoeSizeEnums = shoeSizeEnums.map((s) =>
-      s.toString().toLowerCase().trim()
+      s.toString().toLowerCase().trim(),
     );
 
     if (
       sizes?.some(
         (s) =>
-          formatShoeSizeEnums.indexOf(s.toString().toLowerCase().trim()) === -1
+          formatShoeSizeEnums.indexOf(s.toString().toLowerCase().trim()) === -1,
       )
     ) {
       return {
         error: `invalid size category. size must be one of ${shoeSizeEnums.join(
-          ", "
+          ", ",
         )}`,
       };
     }
@@ -63,7 +63,7 @@ const editReadyMadeShoes = async (req) => {
     if (sizeStandard && sizeStandardEnums.indexOf(sizeStandard) === -1) {
       return {
         error: `invalid sizeStandard category. sizeStandard must be one of ${sizeStandardEnums.join(
-          ", "
+          ", ",
         )}`,
       };
     }
@@ -185,7 +185,7 @@ const editReadyMadeShoes = async (req) => {
       {
         ...params,
       },
-      { new: true }
+      { new: true },
     );
     return readyMadeShoe;
   } catch (err) {
@@ -279,18 +279,18 @@ const validateReadyMadeShoes = async (product) => {
     return { error: "sizes is required and must be unique" };
   }
   const formatShoeSizeEnums = shoeSizeEnums.map((s) =>
-    s.toString().toLowerCase().trim()
+    s.toString().toLowerCase().trim(),
   );
 
   if (
     sizes?.some(
       (s) =>
-        formatShoeSizeEnums.indexOf(s.toString().toLowerCase().trim()) === -1
+        formatShoeSizeEnums.indexOf(s.toString().toLowerCase().trim()) === -1,
     )
   ) {
     return {
       error: `invalid size category. size must be one of ${shoeSizeEnums.join(
-        ", "
+        ", ",
       )}`,
     };
   }
