@@ -429,7 +429,12 @@ const deleteProductColor = async (req, res) => {
     const colorImages = colorExist.images;
     const images = colorImages.map((image) => image.name);
     const isDefault = colorImages.find((image) => image.isDefault);
-    if (isDefault && colors.length > 1) {
+    const otherColors = colors.filter((c) => c.value !== color);
+    const hasDefaultInOtherColors = otherColors.some((c) =>
+      c.images?.some((image) => image.isDefault),
+    );
+
+    if (isDefault && colors.length > 1 && !hasDefaultInOtherColors) {
       return res.status(400).send({
         error:
           "There is a default image for this color. set another image as default before deleting this color",
@@ -2671,11 +2676,9 @@ const getRemainingProductVariations = async (req, res) => {
     }
 
     if (user.shopId !== product.shopId && !user?.isAdmin && !user?.superAdmin) {
-      return res
-        .status(403)
-        .send({
-          error: "You are not authorized to view this product variations",
-        });
+      return res.status(403).send({
+        error: "You are not authorized to view this product variations",
+      });
     }
 
     if (
