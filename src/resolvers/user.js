@@ -1108,10 +1108,7 @@ const updateAdminPermissions = async (req, res) => {
       return res.status(400).send({ error: "isAdmin must be a boolean" });
     }
 
-    if (
-      typeof superAdmin !== "undefined" &&
-      typeof superAdmin !== "boolean"
-    ) {
+    if (typeof superAdmin !== "undefined" && typeof superAdmin !== "boolean") {
       return res.status(400).send({ error: "superAdmin must be a boolean" });
     }
 
@@ -1165,7 +1162,9 @@ const updateAdminPermissions = async (req, res) => {
 
     const nextState = {
       isAdmin:
-        typeof updateData.isAdmin === "boolean" ? updateData.isAdmin : user.isAdmin,
+        typeof updateData.isAdmin === "boolean"
+          ? updateData.isAdmin
+          : user.isAdmin,
       superAdmin:
         typeof updateData.superAdmin === "boolean"
           ? updateData.superAdmin

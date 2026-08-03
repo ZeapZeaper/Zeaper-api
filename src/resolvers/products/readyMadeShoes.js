@@ -42,18 +42,18 @@ const editReadyMadeShoes = async (req) => {
       return { error: "sizes is required and must be unique" };
     }
     const formatShoeSizeEnums = shoeSizeEnums.map((s) =>
-      s.toString().toLowerCase().trim()
+      s.toString().toLowerCase().trim(),
     );
 
     if (
       sizes?.some(
         (s) =>
-          formatShoeSizeEnums.indexOf(s.toString().toLowerCase().trim()) === -1
+          formatShoeSizeEnums.indexOf(s.toString().toLowerCase().trim()) === -1,
       )
     ) {
       return {
         error: `invalid size category. size must be one of ${shoeSizeEnums.join(
-          ", "
+          ", ",
         )}`,
       };
     }
@@ -63,7 +63,7 @@ const editReadyMadeShoes = async (req) => {
     if (sizeStandard && sizeStandardEnums.indexOf(sizeStandard) === -1) {
       return {
         error: `invalid sizeStandard category. sizeStandard must be one of ${sizeStandardEnums.join(
-          ", "
+          ", ",
         )}`,
       };
     }
@@ -185,7 +185,7 @@ const editReadyMadeShoes = async (req) => {
       {
         ...params,
       },
-      { new: true }
+      { new: true },
     );
     return readyMadeShoe;
   } catch (err) {
@@ -279,18 +279,18 @@ const validateReadyMadeShoes = async (product) => {
     return { error: "sizes is required and must be unique" };
   }
   const formatShoeSizeEnums = shoeSizeEnums.map((s) =>
-    s.toString().toLowerCase().trim()
+    s.toString().toLowerCase().trim(),
   );
 
   if (
     sizes?.some(
       (s) =>
-        formatShoeSizeEnums.indexOf(s.toString().toLowerCase().trim()) === -1
+        formatShoeSizeEnums.indexOf(s.toString().toLowerCase().trim()) === -1,
     )
   ) {
     return {
       error: `invalid size category. size must be one of ${shoeSizeEnums.join(
-        ", "
+        ", ",
       )}`,
     };
   }
@@ -321,6 +321,11 @@ const validateReadyMadeShoes = async (product) => {
 const addVariationToReadyMadeShoes = async (product, variation) => {
   const { price, colorValue, size, quantity } = variation;
   const { colors, sizes, variations } = product;
+  const promoDiscountPercentage = product?.promo?.discountPercentage || 0;
+  const promoDiscountValue =
+    promoDiscountPercentage > 0
+      ? price - (price * promoDiscountPercentage) / 100
+      : null;
 
   let sku;
   if (!variation) {
@@ -354,7 +359,10 @@ const addVariationToReadyMadeShoes = async (product, variation) => {
       return { error: "variation does not exist" };
     }
     const index = variations.findIndex((v) => v.sku === sku);
-    variations[index] = { ...variation };
+    variations[index] = {
+      ...variation,
+      ...(promoDiscountValue !== null && { discount: promoDiscountValue }),
+    };
     await product.save();
     return variations[index];
   }
@@ -370,6 +378,7 @@ const addVariationToReadyMadeShoes = async (product, variation) => {
     colorValue,
     size,
     quantity,
+    ...(promoDiscountValue !== null && { discount: promoDiscountValue }),
   };
 
   variations.push(newVariation);
