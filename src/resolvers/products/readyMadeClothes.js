@@ -41,18 +41,19 @@ const editReadyMadeClothes = async (req) => {
       return { error: "sizes is required and must be unique" };
     }
     const formatClothSizeEnums = clothSizeEnums.map((s) =>
-      s.toString().toLowerCase().trim()
+      s.toString().toLowerCase().trim(),
     );
 
     if (
       sizes?.some(
         (s) =>
-          formatClothSizeEnums.indexOf(s.toString().toLowerCase().trim()) === -1
+          formatClothSizeEnums.indexOf(s.toString().toLowerCase().trim()) ===
+          -1,
       )
     ) {
       return {
         error: `invalid size category. size must be one of ${clothSizeEnums.join(
-          ", "
+          ", ",
         )}`,
       };
     }
@@ -62,7 +63,7 @@ const editReadyMadeClothes = async (req) => {
     if (sizeStandard && sizeStandardEnums.indexOf(sizeStandard) === -1) {
       return {
         error: `invalid sizeStandard category. sizeStandard must be one of ${sizeStandardEnums.join(
-          ", "
+          ", ",
         )}`,
       };
     }
@@ -183,7 +184,7 @@ const editReadyMadeClothes = async (req) => {
       {
         ...params,
       },
-      { new: true }
+      { new: true },
     );
     return readyMadeCloth;
   } catch (err) {
@@ -282,21 +283,21 @@ const validateReadyMadeClothes = async (product) => {
     return { error: "sizes is required and must be unique" };
   }
   const formatClothSizeEnums = clothSizeEnums.map((s) =>
-      s.toString().toLowerCase().trim()
-    );
+    s.toString().toLowerCase().trim(),
+  );
 
-    if (
-      sizes?.some(
-        (s) =>
-          formatClothSizeEnums.indexOf(s.toString().toLowerCase().trim()) === -1
-      )
-    ) {
-      return {
-        error: `invalid size category. size must be one of ${clothSizeEnums.join(
-          ", "
-        )}`,
-      };
-    }
+  if (
+    sizes?.some(
+      (s) =>
+        formatClothSizeEnums.indexOf(s.toString().toLowerCase().trim()) === -1,
+    )
+  ) {
+    return {
+      error: `invalid size category. size must be one of ${clothSizeEnums.join(
+        ", ",
+      )}`,
+    };
+  }
   // check for duplicates in color.value in colors array
   const colorValues = colors.map((color) => color.value);
   if (checkForDuplicates(colorValues)) {
@@ -324,6 +325,11 @@ const validateReadyMadeClothes = async (product) => {
 const addVariationToReadyMadeClothes = async (product, variation) => {
   const { price, colorValue, size, quantity } = variation;
   const { colors, sizes, variations } = product;
+  const promoDiscountPercentage = product?.promo?.discountPercentage || 0;
+  const promoDiscountValue =
+    promoDiscountPercentage > 0
+      ? price - (price * promoDiscountPercentage) / 100
+      : null;
   let sku;
   if (!variation) {
     return { error: "variation is required" };
@@ -356,7 +362,10 @@ const addVariationToReadyMadeClothes = async (product, variation) => {
       return { error: "variation does not exist" };
     }
     const index = variations.findIndex((v) => v.sku === sku);
-    variations[index] = { ...variation };
+    variations[index] = {
+      ...variation,
+      ...(promoDiscountValue !== null && { discount: promoDiscountValue }),
+    };
     await product.save();
     return variations[index];
   }
@@ -371,6 +380,7 @@ const addVariationToReadyMadeClothes = async (product, variation) => {
     colorValue,
     size,
     quantity,
+    ...(promoDiscountValue !== null && { discount: promoDiscountValue }),
   };
   variations.push(newVariation);
 
