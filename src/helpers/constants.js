@@ -368,6 +368,16 @@ const colorEnums = [
   { name: "Wine", hex: "#722F37" },
   { name: "Chocolate", hex: "#D2691E" },
   { name: "Milk", hex: "#F5F5DC" },
+  { name: "Sky Blue", hex: "#87CEEB" },
+  { name: "Royal Blue", hex: "#4169E1" },
+  { name: "Mauve", hex: "#E0B0FF" },
+  { name: "Ash", hex: "#B2BEB5" },
+  { name: "Violet", hex: "#EE82EE" },
+  { name: "Dark Grey", hex: "#A9A9A9" },
+  { name: "Light Grey", hex: "#D3D3D3" },
+  { name: "Dark Brown", hex: "#5C4033" },
+  { name: "Saddle Brown", hex: "#8B4513" },
+  { name: "Oxblood", hex: "#4A0000" },
 ];
 const mainEnums = [
   "Top",
