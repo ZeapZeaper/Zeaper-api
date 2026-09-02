@@ -694,15 +694,15 @@ const clothSizeEnumsByRegion = {
     "XXS",
     "XXXL",
     "XXXS",
-    "Custom"
+    "Custom",
   ],
 };
 
 // Combine, deduplicate, and sort
 const clothSizeEnums = Array.from(
   new Set(
-    Object.values(clothSizeEnumsByRegion).flat().map(String) // ensure all are strings
-  )
+    Object.values(clothSizeEnumsByRegion).flat().map(String), // ensure all are strings
+  ),
 ).sort((a, b) => {
   const numA = Number(a);
   const numB = Number(b);
@@ -877,14 +877,25 @@ const shoeSizeEnumsByRegion = {
     "29.5",
     "30",
   ],
-  INTL: ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "One Size", "Adjustable", "Custom"],
+  INTL: [
+    "XS",
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL",
+    "XXXL",
+    "One Size",
+    "Adjustable",
+    "Custom",
+  ],
 };
 
 // Combine, deduplicate, and sort
 const shoeSizeEnums = Array.from(
   new Set(
-    Object.values(shoeSizeEnumsByRegion).flat().map(String) // ensure all are strings
-  )
+    Object.values(shoeSizeEnumsByRegion).flat().map(String), // ensure all are strings
+  ),
 ).sort((a, b) => {
   const numA = Number(a);
   const numB = Number(b);
