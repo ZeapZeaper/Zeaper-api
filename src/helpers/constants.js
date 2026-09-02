@@ -1,3 +1,5 @@
+const readyMadeSizeGuide = require("./readyMadeSizeGuide");
+
 const clothStyleEnums = [
   "2-in-1 Short",
   "A-Line Dress",
@@ -554,165 +556,97 @@ const brandEnums = [
   "Other",
 ];
 
-const clothSizeEnumsByRegion = {
-  US: [
-    "0",
-    "1",
-    "2",
-    "3",
-    "4",
-    "5",
-    "6",
-    "7",
-    "8",
-    "9",
-    "10",
-    "11",
-    "12",
-    "13",
-    "14",
-    "15",
-    "16",
-    "18",
-    "20",
-    "22",
-    "24",
-    "32",
-    "34",
-    "36",
-    "38",
-    "40",
-    "42",
-    "44",
-    "46",
-    "48",
-  ],
-  UK: [
-    "2",
-    "4",
-    "6",
-    "8",
-    "10",
-    "12",
-    "14",
-    "16",
-    "18",
-    "20",
-    "22",
-    "24",
-    "26",
-    "34",
-    "36",
-    "38",
-    "40",
-    "42",
-    "44",
-    "46",
-  ],
-  EU: [
-    "32",
-    "34",
-    "36",
-    "38",
-    "40",
-    "42",
-    "44",
-    "46",
-    "48",
-    "50",
-    "52",
-    "54",
-    "56",
-  ],
-  AUS: [
-    "4",
-    "6",
-    "8",
-    "10",
-    "12",
-    "14",
-    "16",
-    "18",
-    "20",
-    "22",
-    "24",
-    "26",
-    "28",
-    "34",
-    "36",
-    "38",
-    "40",
-    "42",
-    "44",
-    "46",
-  ],
-  CAN: [
-    "0",
-    "1",
-    "2",
-    "3",
-    "4",
-    "5",
-    "6",
-    "7",
-    "8",
-    "9",
-    "10",
-    "11",
-    "12",
-    "13",
-    "14",
-    "15",
-    "16",
-    "18",
-    "20",
-    "22",
-    "24",
-    "32",
-    "34",
-    "36",
-    "38",
-    "40",
-    "42",
-    "44",
-    "46",
-    "48",
-  ],
-  INTL: [
-    "4XL",
-    "5XL",
-    "L",
-    "M",
-    "One Size",
-    "Petite",
-    "Plus Size",
-    "S",
-    "Tall",
-    "XL",
-    "XS",
-    "XXL",
-    "XXS",
-    "XXXL",
-    "XXXS",
-    "Custom",
-  ],
+const sortEnumValues = (values) => {
+  const collator = new Intl.Collator(undefined, {
+    numeric: true,
+    sensitivity: "base",
+  });
+
+  return Array.from(
+    new Set(values.map((v) => String(v).trim()).filter(Boolean)),
+  ).sort((a, b) => collator.compare(a, b));
 };
 
-// Combine, deduplicate, and sort
-const clothSizeEnums = Array.from(
-  new Set(
-    Object.values(clothSizeEnumsByRegion).flat().map(String), // ensure all are strings
-  ),
-).sort((a, b) => {
-  const numA = Number(a);
-  const numB = Number(b);
+const CLOTH_SIZE_CATEGORIES = ["top", "bottom"];
+const CLOTH_SIZE_UNITS = ["inch", "cm"];
 
-  // numeric sort first, then alphabetic
-  if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
-  if (!isNaN(numA)) return -1; // numbers come before text
-  if (!isNaN(numB)) return 1;
-  return a.localeCompare(b);
-});
+const expandNumericRange = (value) => {
+  const normalizedValue = String(value || "").trim();
+  const rangeMatch = normalizedValue.match(/^(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)$/);
+
+  if (!rangeMatch) return [normalizedValue];
+
+  const start = Number(rangeMatch[1]);
+  const end = Number(rangeMatch[2]);
+
+  if (Number.isNaN(start) || Number.isNaN(end) || start > end) {
+    return [normalizedValue];
+  }
+
+  const isHalfStepRange = Number.isInteger(start * 2) && Number.isInteger(end * 2);
+  const step = Number.isInteger(start) && Number.isInteger(end) ? 1 : isHalfStepRange ? 0.5 : null;
+
+  if (!step) return [normalizedValue];
+
+  const expanded = [];
+  for (let current = start; current <= end + 1e-9; current += step) {
+    const roundedCurrent = Number(current.toFixed(2));
+    expanded.push(
+      Number.isInteger(roundedCurrent)
+        ? String(roundedCurrent)
+        : String(roundedCurrent).replace(/\.0+$/, ""),
+    );
+  }
+
+  return expanded;
+};
+
+const buildClothSizeEnumsByRegionFromGuide = (guide) => {
+  const regionToValues = {
+    US: [],
+    UK: [],
+    EU: [],
+    AUS: [],
+    CAN: [],
+    INTL: [],
+  };
+
+  Object.values(guide || {}).forEach((genderGuide) => {
+    CLOTH_SIZE_CATEGORIES.forEach((category) => {
+      const categoryGuide = genderGuide?.[category];
+
+      CLOTH_SIZE_UNITS.forEach((unit) => {
+        (categoryGuide?.[unit] || []).forEach((row) => {
+          if (row?.Size) {
+            regionToValues.INTL.push(row.Size);
+          }
+
+          if (row?.["US/CAN"]) {
+            const usCanValues = expandNumericRange(row["US/CAN"]);
+            regionToValues.US.push(...usCanValues);
+            regionToValues.CAN.push(...usCanValues);
+          }
+
+          if (row?.UK) regionToValues.UK.push(...expandNumericRange(row.UK));
+          if (row?.EU) regionToValues.EU.push(...expandNumericRange(row.EU));
+          if (row?.AUS) regionToValues.AUS.push(...expandNumericRange(row.AUS));
+        });
+      });
+    });
+  });
+
+  return Object.fromEntries(
+    Object.entries(regionToValues).map(([region, values]) => [
+      region,
+      sortEnumValues(values),
+    ]),
+  );
+};
+
+const clothSizeEnumsByRegion =
+  buildClothSizeEnumsByRegionFromGuide(readyMadeSizeGuide);
+
+const clothSizeEnums = sortEnumValues(Object.values(clothSizeEnumsByRegion).flat());
 
 const shoeStyleEnums = [
   "Sneakers",

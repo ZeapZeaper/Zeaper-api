@@ -2530,7 +2530,7 @@ const getAuthUserRecommendedProducts = async (req, res) => {
 
 const getProductOptions = async (req, res) => {
   try {
-    const cacheKey = "productOptionsEnums";
+    const cacheKey = "productOptionsEnums:v2";
     const cached = await redis.get(cacheKey);
     if (cached) {
       return res.status(200).send({
