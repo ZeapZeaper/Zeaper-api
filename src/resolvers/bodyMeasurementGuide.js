@@ -5,13 +5,48 @@ const path = require("path");
 const { v4: uuidv4 } = require("uuid");
 const sharp = require("sharp");
 const { deleteLocalFile, deleLocalImages } = require("../helpers/utils");
-const readyMadeSizeGuide  = require("../helpers/readyMadeSizeGuide");
+const readyMadeSizeGuide = require("../helpers/readyMadeSizeGuide");
+
+const buildBodyMeasurementGuideImageUrl = (name) => {
+  if (!name) {
+    return "";
+  }
+
+  return `https://storage.googleapis.com/${storageRef.name}/${encodeURIComponent(
+    `/bodyMeasurementGuide/${name}`,
+  )}`;
+};
+const normalizeImageUrl = (imageUrl = {}) => {
+  if (!imageUrl?.name) {
+    return imageUrl;
+  }
+
+  return {
+    ...imageUrl,
+    link: buildBodyMeasurementGuideImageUrl(imageUrl.name),
+  };
+};
+
+const normalizeBodyMeasurementGuide = (guide = {}) => {
+  if (!guide?.fields) {
+    return guide;
+  }
+
+  return {
+    ...guide,
+    fields: guide.fields.map((field) => ({
+      ...field,
+      imageUrl: normalizeImageUrl(field.imageUrl),
+    })),
+  };
+};
 
 //saving image to firebase storage
 const addImage = async (req, filename) => {
   let url = {};
   if (filename) {
     const source = path.join(root + "/uploads/" + filename);
+
     await sharp(source)
       // .resize(1024, 1024)
       // .jpeg({ quality: 90 })
@@ -22,18 +57,17 @@ const addImage = async (req, filename) => {
         public: true,
         destination: `/bodyMeasurementGuide/${filename}`,
         metadata: {
-           cacheControl: "public, max-age=31536000, immutable", // 1 year caching
           firebaseStorageDownloadTokens: uuidv4(),
         },
-      }
+      },
     );
-    url = { 
-      // get the public url that avoids egress charges
-      link: `https://storage.googleapis.com/${storageRef.name}/bodyMeasurementGuide/${filename}`,
-       name: filename };
+    url = {
+      link: buildBodyMeasurementGuideImageUrl(filename),
+      name: filename,
+    };
     const deleteSourceFile = await deleteLocalFile(source);
     const deleteResizedFile = await deleteLocalFile(
-      path.resolve(req.file.destination, "resized", filename)
+      path.resolve(req.file.destination, "resized", filename),
     );
     await Promise.all([deleteSourceFile, deleteResizedFile]);
     return url;
@@ -145,29 +179,32 @@ const updateFieldImage = async (req, res) => {
         return res.status(404).send({ error: "Image not found" });
       }
       const imageUrlName = exist.fields.find(
-        (field) => field.imageUrl.link === existingLink
+        (field) => field.imageUrl.link === existingLink,
       ).imageUrl.name;
 
       const fieldIndex = bodyMeasurementGuide.fields.findIndex(
-        (field) => field._id.toString() === fieldId
+        (field) => field._id.toString() === fieldId,
       );
       if (bodyMeasurementGuide.fields[fieldIndex].imageUrl.name) {
         const isImageInUse = await checkImageInUse(
-          bodyMeasurementGuide.fields[fieldIndex].imageUrl.name
+          bodyMeasurementGuide.fields[fieldIndex].imageUrl.name,
+          fieldId,
         );
         if (!isImageInUse) {
           await deleteImageFromFirebase(
-            bodyMeasurementGuide.fields[fieldIndex].imageUrl.name
+            bodyMeasurementGuide.fields[fieldIndex].imageUrl.name,
           );
         }
       }
       bodyMeasurementGuide.fields[fieldIndex].imageUrl = {
-        link: existingLink,
+        link: buildBodyMeasurementGuideImageUrl(imageUrlName),
         name: imageUrlName,
       };
-      
+
       await bodyMeasurementGuide.save();
-      return res.status(200).send({ data: bodyMeasurementGuide });
+      return res.status(200).send({
+        data: normalizeBodyMeasurementGuide(bodyMeasurementGuide.toObject()),
+      });
     }
 
     const filename = req.file.filename;
@@ -175,21 +212,24 @@ const updateFieldImage = async (req, res) => {
     if (bodyMeasurementGuide) {
       const imageUrl = await addImage(req, filename);
       const fieldIndex = bodyMeasurementGuide.fields.findIndex(
-        (field) => field._id.toString() === fieldId
+        (field) => field._id.toString() === fieldId,
       );
       if (bodyMeasurementGuide.fields[fieldIndex].imageUrl.name) {
         const isImageInUse = await checkImageInUse(
-          bodyMeasurementGuide.fields[fieldIndex].imageUrl.name
+          bodyMeasurementGuide.fields[fieldIndex].imageUrl.name,
+          fieldId,
         );
         if (!isImageInUse) {
           await deleteImageFromFirebase(
-            bodyMeasurementGuide.fields[fieldIndex].imageUrl.name
+            bodyMeasurementGuide.fields[fieldIndex].imageUrl.name,
           );
         }
       }
       bodyMeasurementGuide.fields[fieldIndex].imageUrl = imageUrl;
       await bodyMeasurementGuide.save();
-      return res.status(200).send({ data: bodyMeasurementGuide });
+      return res.status(200).send({
+        data: normalizeBodyMeasurementGuide(bodyMeasurementGuide.toObject()),
+      });
     }
     if (!bodyMeasurementGuide) {
       return res.status(404).send({ error: "Field not found" });
@@ -222,7 +262,7 @@ const editBodyMeasurementField = async (req, res) => {
       return res.status(404).send({ error: "Field not found" });
     }
     const fieldIndex = bodyMeasurementGuide.fields.findIndex(
-      (field) => field._id.toString() === fieldId
+      (field) => field._id.toString() === fieldId,
     );
     bodyMeasurementGuide.fields[fieldIndex].field = field;
     bodyMeasurementGuide.fields[fieldIndex].description = description;
@@ -250,15 +290,15 @@ const deleteBodyMeasurementField = async (req, res) => {
       return res.status(404).send({ error: "Field not found" });
     }
     const fieldIndex = bodyMeasurementGuide.fields.findIndex(
-      (field) => field._id.toString() === fieldId
+      (field) => field._id.toString() === fieldId,
     );
     if (bodyMeasurementGuide.fields[fieldIndex].imageUrl.name) {
       const isImageInUse = await checkImageInUse(
-        bodyMeasurementGuide.fields[fieldIndex].imageUrl.name
+        bodyMeasurementGuide.fields[fieldIndex].imageUrl.name,
       );
       if (!isImageInUse) {
         await deleteImageFromFirebase(
-          bodyMeasurementGuide.fields[fieldIndex].imageUrl.name
+          bodyMeasurementGuide.fields[fieldIndex].imageUrl.name,
         );
       }
     }
@@ -284,15 +324,15 @@ const deleteBodyMeasurementFieldImage = async (req, res) => {
       return res.status(404).send({ error: "Field not found" });
     }
     const fieldIndex = bodyMeasurementGuide.fields.findIndex(
-      (field) => field._id.toString() === fieldId
+      (field) => field._id.toString() === fieldId,
     );
     if (bodyMeasurementGuide.fields[fieldIndex].imageUrl.name) {
       const isImageInUse = await checkImageInUse(
-        bodyMeasurementGuide.fields[fieldIndex].imageUrl.name
+        bodyMeasurementGuide.fields[fieldIndex].imageUrl.name,
       );
       if (!isImageInUse) {
         await deleteImageFromFirebase(
-          bodyMeasurementGuide.fields[fieldIndex].imageUrl.name
+          bodyMeasurementGuide.fields[fieldIndex].imageUrl.name,
         );
       }
     }
@@ -313,7 +353,7 @@ const deleteBodyMeasurementGuide = async (req, res) => {
     }
     const bodyMeasurementGuide =
       await BodyMeasurementGuideModel.findByIdAndDelete(
-        bodyMeasurementGuide_id
+        bodyMeasurementGuide_id,
       );
     if (!bodyMeasurementGuide) {
       return res
@@ -340,7 +380,7 @@ const updateBodyMeasurementGuideName = async (req, res) => {
       return res.status(400).send({ error: "required name" });
     }
     const bodyMeasurementGuide = await BodyMeasurementGuideModel.findById(
-      bodyMeasurementGuide_id
+      bodyMeasurementGuide_id,
     );
     if (!bodyMeasurementGuide) {
       return res
@@ -369,7 +409,7 @@ const addBodyMeasurementGuideField = async (req, res) => {
       return res.status(400).send({ error: "required description" });
     }
     const bodyMeasurementGuide = await BodyMeasurementGuideModel.findById(
-      bodyMeasurementGuide_id
+      bodyMeasurementGuide_id,
     );
     if (!bodyMeasurementGuide) {
       return res
@@ -379,7 +419,7 @@ const addBodyMeasurementGuideField = async (req, res) => {
     // check if field already exists
 
     const fieldExists = bodyMeasurementGuide.fields.find(
-      (f) => f.field.trim().toLowerCase() === field.trim().toLowerCase()
+      (f) => f.field.trim().toLowerCase() === field.trim().toLowerCase(),
     );
     if (fieldExists) {
       return res.status(400).send({ error: "Field already exists" });
@@ -433,7 +473,7 @@ const getBodyMeasurementFields = async (req, res) => {
       acc[key.toLowerCase()] = req.query[key];
       return acc;
     }, {});
-  
+
     const bodyMeasurementGuide = await BodyMeasurementGuideModel.find({
       ...queryParams,
     }).lean();
