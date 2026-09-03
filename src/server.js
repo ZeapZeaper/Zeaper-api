@@ -104,6 +104,7 @@ const start = async () => {
     // start worker if enabled
     if (process.env.RUN_WORKER === "true") {
       require("./workers/orderWorker");
+      require("./workers/paymentWorker");
     }
     if (process.env.RUN_CRONS === "true") {
       require("./crons")();

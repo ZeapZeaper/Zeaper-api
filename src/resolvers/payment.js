@@ -19,6 +19,7 @@ const ShopModel = require("../models/shop");
 const { verifyStripePayment } = require("../helpers/stripe");
 const { verifyPaystackPayment } = require("../helpers/paystack");
 const orderQueue = require("../queue/orderQueue");
+const paymentQueue = require("../queue/paymentQueue");
 
 const secretKey =
   ENV === "dev"
@@ -45,6 +46,96 @@ const generateReference = (param = {}) => {
   const lastChar = lastName.trim().charAt(0).toUpperCase() || "X";
 
   return `${firstChar}${lastChar}-${basketId}-${Date.now()}`;
+};
+
+const PAYMENT_ATTEMPT_STALE_MS = 15 * 60 * 1000; // 15 minutes
+const PAYMENT_PENDING_EXPIRY_MINUTES = Number(
+  process.env.PAYMENT_PENDING_EXPIRY_MINUTES || 30,
+);
+
+const getPaymentExpiryDelayMs = () => {
+  const minutes = Number.isFinite(PAYMENT_PENDING_EXPIRY_MINUTES)
+    ? PAYMENT_PENDING_EXPIRY_MINUTES
+    : 30;
+  return Math.max(1, minutes) * 60 * 1000;
+};
+
+const getPaymentExpiryJobId = (paymentId) => `expire-payment-${paymentId}`;
+
+const schedulePaymentExpiryJob = async (payment) => {
+  const paymentId = payment?._id?.toString?.();
+  const reference = payment?.reference;
+
+  if (!paymentId || !reference) return;
+
+  const jobId = getPaymentExpiryJobId(paymentId);
+  const existingJob = await paymentQueue.getJob(jobId);
+  if (existingJob) {
+    await existingJob.remove();
+  }
+
+  await paymentQueue.add(
+    "expirePendingPayment",
+    {
+      paymentId,
+      reference,
+    },
+    {
+      jobId,
+      delay: getPaymentExpiryDelayMs(),
+    },
+  );
+};
+
+const cancelPaymentExpiryJob = async (paymentId) => {
+  if (!paymentId) return;
+  const jobId = getPaymentExpiryJobId(paymentId.toString());
+  const job = await paymentQueue.getJob(jobId);
+  if (job) {
+    await job.remove();
+  }
+};
+
+const isSameAmount = (a, b) => Number(a || 0) === Number(b || 0);
+
+const shouldRefreshPaymentAttempt = ({
+  payment,
+  amount,
+  itemsTotal,
+  deliveryFee,
+  appliedVoucherAmount,
+  total,
+  currency,
+  method,
+}) => {
+  if (!payment) return false;
+
+  if (payment.status && payment.status !== "pending") return true;
+
+  const hasAmountMismatch =
+    !isSameAmount(payment.amount, amount) ||
+    !isSameAmount(payment.itemsTotal, itemsTotal) ||
+    !isSameAmount(payment.deliveryFee, deliveryFee) ||
+    !isSameAmount(payment.appliedVoucherAmount, appliedVoucherAmount) ||
+    !isSameAmount(payment.total, total);
+
+  if (hasAmountMismatch) return true;
+
+  if ((payment.currency || "") !== currency) return true;
+  if ((payment.deliveryMethod || "") !== method) return true;
+
+  const lastUpdate = payment.updatedAt ? new Date(payment.updatedAt).getTime() : 0;
+  const isStale = !lastUpdate || Date.now() - lastUpdate > PAYMENT_ATTEMPT_STALE_MS;
+  if (isStale) return true;
+
+  if (
+    currency !== "NGN" &&
+    (!payment.stripeClientSecret || !payment.stripePaymentIntentId)
+  ) {
+    return true;
+  }
+
+  return false;
 };
 
 const getStripeClientSecret = async (
@@ -163,16 +254,9 @@ const getReference = async (req, res) => {
     const deviceType = detectDeviceType(req);
 
     // --- 5️⃣ Check if payment exists ---
-    let payment = await PaymentModel.findOne({ basket: basket._id }).lean();
-    let reference =
-      payment?.reference ||
-      generateReference({
-        firstName: user.firstName,
-        lastName: user.lastName,
-        basketId: basket.basketId,
-      });
-    let stripeClientSecret = payment?.stripeClientSecret || null;
-    let stripePaymentIntentId = payment?.stripePaymentIntentId || null;
+    let payment = await PaymentModel.findOne({ basket: basket._id })
+      .sort({ updatedAt: -1 })
+      .lean();
 
     // --- 6️⃣ Handle existing payment ---
     if (payment) {
@@ -201,7 +285,7 @@ const getReference = async (req, res) => {
       }
     }
 
-    // --- 7️⃣ Calculate totals for new payment ---
+    // --- 7️⃣ Calculate totals for payment attempt ---
     const calculateTotal = await calculateTotalBasketPrice(
       basket,
       country,
@@ -225,6 +309,31 @@ const getReference = async (req, res) => {
 
     const fullName = `${user.firstName} ${user.lastName}`;
     const email = user.email;
+
+    const shouldRefreshAttempt = shouldRefreshPaymentAttempt({
+      payment,
+      amount,
+      itemsTotal,
+      deliveryFee,
+      appliedVoucherAmount,
+      total,
+      currency,
+      method,
+    });
+
+    let reference = payment?.reference;
+    let stripeClientSecret = payment?.stripeClientSecret || null;
+    let stripePaymentIntentId = payment?.stripePaymentIntentId || null;
+
+    if (!payment || shouldRefreshAttempt) {
+      reference = generateReference({
+        firstName: user.firstName,
+        lastName: user.lastName,
+        basketId: basket.basketId,
+      });
+      stripeClientSecret = null;
+      stripePaymentIntentId = null;
+    }
 
     // --- 8️⃣ Handle Stripe client secret if non-NGN ---
     if (currency !== "NGN") {
@@ -266,7 +375,40 @@ const getReference = async (req, res) => {
         deliveryMethod: method,
         deviceType,
       });
-      await newPayment.save();
+      const savedPayment = await newPayment.save();
+      await schedulePaymentExpiryJob(savedPayment);
+    } else if (shouldRefreshAttempt) {
+      const refreshedPayment = await PaymentModel.findOneAndUpdate(
+        { _id: payment._id },
+        {
+          reference,
+          stripeClientSecret,
+          stripePaymentIntentId,
+          status: "pending",
+          amount,
+          currency,
+          itemsTotal,
+          deliveryFee,
+          total,
+          appliedVoucherAmount,
+          deliveryMethod: method,
+          deviceType,
+          fullName,
+          email,
+          paidAt: null,
+          channel: null,
+          transactionDate: null,
+          cardType: null,
+          bank: null,
+          countryCode: null,
+          gatewayResponse: null,
+          fees: null,
+          gateway: "",
+          log: null,
+        },
+        { new: true },
+      );
+      await schedulePaymentExpiryJob(refreshedPayment);
     }
 
     return res.status(200).send({
@@ -342,6 +484,8 @@ const processSuccessfulPayment = async ({
       { new: true },
     );
   }
+
+  await cancelPaymentExpiryJob(updatedPayment._id);
 
   // 3. STRONGEST DEDUPLICATION (DB)
   let order = await OrderModel.findOne({
