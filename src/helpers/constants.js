@@ -572,7 +572,9 @@ const CLOTH_SIZE_UNITS = ["inch", "cm"];
 
 const expandNumericRange = (value) => {
   const normalizedValue = String(value || "").trim();
-  const rangeMatch = normalizedValue.match(/^(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)$/);
+  const rangeMatch = normalizedValue.match(
+    /^(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)$/,
+  );
 
   if (!rangeMatch) return [normalizedValue];
 
@@ -583,8 +585,14 @@ const expandNumericRange = (value) => {
     return [normalizedValue];
   }
 
-  const isHalfStepRange = Number.isInteger(start * 2) && Number.isInteger(end * 2);
-  const step = Number.isInteger(start) && Number.isInteger(end) ? 1 : isHalfStepRange ? 0.5 : null;
+  const isHalfStepRange =
+    Number.isInteger(start * 2) && Number.isInteger(end * 2);
+  const step =
+    Number.isInteger(start) && Number.isInteger(end)
+      ? 1
+      : isHalfStepRange
+        ? 0.5
+        : null;
 
   if (!step) return [normalizedValue];
 
@@ -646,7 +654,9 @@ const buildClothSizeEnumsByRegionFromGuide = (guide) => {
 const clothSizeEnumsByRegion =
   buildClothSizeEnumsByRegionFromGuide(readyMadeSizeGuide);
 
-const clothSizeEnums = sortEnumValues(Object.values(clothSizeEnumsByRegion).flat());
+const clothSizeEnums = sortEnumValues(
+  Object.values(clothSizeEnumsByRegion).flat(),
+);
 
 const shoeStyleEnums = [
   "Sneakers",

@@ -35,6 +35,9 @@ function verifyPaystackPayment(reference) {
         }
 
         const data = parsed.data;
+        if (String(data.status || "").toLowerCase() !== "success") {
+          return reject(new Error("Payment not successful"));
+        }
         const auth = data.authorization || {};
 
         resolve({
