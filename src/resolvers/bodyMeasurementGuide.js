@@ -6,6 +6,7 @@ const { v4: uuidv4 } = require("uuid");
 const sharp = require("sharp");
 const { deleteLocalFile, deleLocalImages } = require("../helpers/utils");
 const readyMadeSizeGuide = require("../helpers/readyMadeSizeGuide");
+const { getAuthUser } = require("../middleware/firebaseUserAuth");
 
 const buildBodyMeasurementGuideImageUrl = (name) => {
   if (!name) {
@@ -39,6 +40,20 @@ const normalizeBodyMeasurementGuide = (guide = {}) => {
       imageUrl: normalizeImageUrl(field.imageUrl),
     })),
   };
+};
+
+const requireSuperAdmin = async (req, res) => {
+  const authUser = req?.cachedUser || (await getAuthUser(req));
+
+  if (!authUser?.superAdmin) {
+    return {
+      errorResponse: res.status(403).send({
+        error: "You are not authorized to modify body measurement guides",
+      }),
+    };
+  }
+
+  return { authUser };
 };
 
 //saving image to firebase storage
@@ -145,6 +160,14 @@ const getFieldImagesGallery = async (req, res) => {
 
 const updateFieldImage = async (req, res) => {
   try {
+    const { errorResponse } = await requireSuperAdmin(req, res);
+    if (errorResponse) {
+      if (req.file) {
+        await deleLocalImages([req.file]);
+      }
+      return errorResponse;
+    }
+
     const { fieldId, existingLink, gender } = req.body;
 
     if (!req.file && !existingLink) {
@@ -240,6 +263,9 @@ const updateFieldImage = async (req, res) => {
 };
 const editBodyMeasurementField = async (req, res) => {
   try {
+    const { errorResponse } = await requireSuperAdmin(req, res);
+    if (errorResponse) return errorResponse;
+
     const { fieldId, field, description, gender } = req.body;
     if (!fieldId) {
       return res.status(400).send({ error: "required fieldId" });
@@ -275,6 +301,9 @@ const editBodyMeasurementField = async (req, res) => {
 };
 const deleteBodyMeasurementField = async (req, res) => {
   try {
+    const { errorResponse } = await requireSuperAdmin(req, res);
+    if (errorResponse) return errorResponse;
+
     const { fieldId, gender } = req.body;
     if (!fieldId) {
       return res.status(400).send({ error: "required fieldId" });
@@ -312,6 +341,9 @@ const deleteBodyMeasurementField = async (req, res) => {
 
 const deleteBodyMeasurementFieldImage = async (req, res) => {
   try {
+    const { errorResponse } = await requireSuperAdmin(req, res);
+    if (errorResponse) return errorResponse;
+
     const { fieldId, gender } = req.body;
     if (!gender) {
       return res.status(400).send({ error: "required gender" });
@@ -345,6 +377,9 @@ const deleteBodyMeasurementFieldImage = async (req, res) => {
 };
 const deleteBodyMeasurementGuide = async (req, res) => {
   try {
+    const { errorResponse } = await requireSuperAdmin(req, res);
+    if (errorResponse) return errorResponse;
+
     const { bodyMeasurementGuide_id } = req.body;
     if (!bodyMeasurementGuide_id) {
       return res
@@ -370,6 +405,9 @@ const deleteBodyMeasurementGuide = async (req, res) => {
 };
 const updateBodyMeasurementGuideName = async (req, res) => {
   try {
+    const { errorResponse } = await requireSuperAdmin(req, res);
+    if (errorResponse) return errorResponse;
+
     const { bodyMeasurementGuide_id, name } = req.body;
     if (!bodyMeasurementGuide_id) {
       return res
@@ -396,6 +434,9 @@ const updateBodyMeasurementGuideName = async (req, res) => {
 };
 const addBodyMeasurementGuideField = async (req, res) => {
   try {
+    const { errorResponse } = await requireSuperAdmin(req, res);
+    if (errorResponse) return errorResponse;
+
     const { bodyMeasurementGuide_id, field, description } = req.body;
     if (!bodyMeasurementGuide_id) {
       return res
@@ -439,6 +480,9 @@ const addBodyMeasurementGuideField = async (req, res) => {
 
 const addBodyMeasurementGuide = async (req, res) => {
   try {
+    const { errorResponse } = await requireSuperAdmin(req, res);
+    if (errorResponse) return errorResponse;
+
     const { name, gender } = req.body;
     if (!name) {
       return res.status(400).send({ error: "required name" });
