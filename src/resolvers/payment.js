@@ -124,8 +124,11 @@ const shouldRefreshPaymentAttempt = ({
   if ((payment.currency || "") !== currency) return true;
   if ((payment.deliveryMethod || "") !== method) return true;
 
-  const lastUpdate = payment.updatedAt ? new Date(payment.updatedAt).getTime() : 0;
-  const isStale = !lastUpdate || Date.now() - lastUpdate > PAYMENT_ATTEMPT_STALE_MS;
+  const lastUpdate = payment.updatedAt
+    ? new Date(payment.updatedAt).getTime()
+    : 0;
+  const isStale =
+    !lastUpdate || Date.now() - lastUpdate > PAYMENT_ATTEMPT_STALE_MS;
   if (isStale) return true;
 
   if (
