@@ -62,16 +62,23 @@ const worker = new Worker(
 
               const emailBody = replaceOrderVariablesinTemplate(
                 replaceUserVariablesinTemplate(orderEmailTemplate?.body, user),
-                task.order // lean object: { orderId, orderPoints, itemNo }
+                task.order, // lean object: { orderId, orderPoints, itemNo }
               );
 
               const emailSubject = replaceOrderVariablesinTemplate(
                 replaceUserVariablesinTemplate(
                   orderEmailTemplate?.subject,
-                  user
+                  user,
                 ),
-                task.order
+                task.order,
               );
+
+              const receiptOrderId = task.order?._id?.toString();
+              if (!receiptOrderId) {
+                throw new Error(
+                  "Missing order _id for receipt attachment generation",
+                );
+              }
 
               await sendEmail({
                 from: "admin@zeaper.com",
@@ -79,7 +86,7 @@ const worker = new Worker(
                 subject: emailSubject || "Order Successful",
                 body: emailBody || "",
                 attach: true,
-                order_id: task.order.orderId,
+                order_id: receiptOrderId,
               });
             }
             break;
@@ -116,7 +123,7 @@ const worker = new Worker(
         console.log(
           `Task ${task.taskType} completed for order ${
             task.orderId || task.productOrder?._id
-          }`
+          }`,
         );
       } catch (err) {
         console.error(`Task ${task.taskType} failed`, err);
@@ -125,7 +132,7 @@ const worker = new Worker(
 
     return { status: "done" };
   },
-  { connection: orderQueue.opts.connection }
+  { connection: orderQueue.opts.connection },
 );
 
 worker.on("completed", (job) => console.log("Job completed", job.id));
