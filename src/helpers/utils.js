@@ -16,6 +16,7 @@ const {
   userVariables,
   orderVariables,
   productOrderVariables,
+  productOptionEnumsKey,
 } = require("./constants");
 const algorithm = "aes-256-ctr";
 const ENCRYPTION_KEY = process.env.ZEAPCRYPTOKEY;
@@ -62,7 +63,7 @@ const cryptoEncrypt = (text) => {
   let cipher = crypto.createCipheriv(
     algorithm,
     Buffer.concat([Buffer.from(ENCRYPTION_KEY), Buffer.alloc(32)], 32),
-    iv
+    iv,
   );
 
   let encrypted = cipher.update(text);
@@ -116,7 +117,7 @@ const lowerFirstChar = (str) => {
 const validateProductAvailability = async (product, quantity, sku) => {
   const { variations } = product;
   const bespokeVariation = variations.find(
-    (v) => v.sku === sku && v.bespoke.isBespoke
+    (v) => v.sku === sku && v.bespoke.isBespoke,
   );
   if (bespokeVariation) {
     return { success: true };
@@ -252,7 +253,7 @@ const calculateTotalBasketPrice = async (basket, country, method) => {
       country,
       method,
       quantity,
-      itemsTotal
+      itemsTotal,
     );
 
     const total = itemsTotal + deliveryFee - voucherAmount;
@@ -289,7 +290,7 @@ const validateBodyMeasurements = (bodyMeasurements, bodyMeasurementEnums) => {
     const validItem = bodyMeasurementEnums.find(
       (m) =>
         m.name.toLowerCase().replaceAll(/\s/g, "") ===
-        name.toLowerCase().replaceAll(/\s/g, "")
+        name.toLowerCase().replaceAll(/\s/g, ""),
     );
 
     if (!validItem) {
@@ -379,7 +380,7 @@ const currencyConversionFromCache = (amount, currency) => {
   const currencyRates = cache.get("exchangeRates");
   if (!currencyRates) {
     console.warn(
-      "⚠️ Exchange rates cache is empty — returning unconverted amount."
+      "⚠️ Exchange rates cache is empty — returning unconverted amount.",
     );
     return amount;
   }
@@ -450,7 +451,7 @@ const getBodyMeasurementEnumsFromGuide = async () => {
   const bodyMeasurementGuide = await BodyMeasurementGuideModel.find().lean();
 
   const maleBodyMeasurementGuide = bodyMeasurementGuide.filter(
-    (guide) => guide.gender === "male"
+    (guide) => guide.gender === "male",
   );
   const maleBodyMeasurementEums = maleBodyMeasurementGuide.map((guide) => {
     const name = guide.name;
@@ -462,7 +463,7 @@ const getBodyMeasurementEnumsFromGuide = async () => {
     };
   });
   const femaleBodyMeasurementGuide = bodyMeasurementGuide.filter(
-    (guide) => guide.gender === "female"
+    (guide) => guide.gender === "female",
   );
   const femaleBodyMeasurementEums = femaleBodyMeasurementGuide.map((guide) => {
     const name = guide.name;
@@ -536,7 +537,7 @@ const replaceUserVariablesinTemplate = (template, user) => {
     if (replacedBracket.includes(variable)) {
       replacedTemplate = replacedTemplate.replaceAll(
         variable,
-        user[variable] || ""
+        user[variable] || "",
       );
     }
   });
@@ -553,7 +554,7 @@ const replaceShopVariablesinTemplate = (template, shop) => {
     if (replacedBracket.includes(variable)) {
       replacedTemplate = replacedTemplate.replaceAll(
         variable,
-        shop[variable] || ""
+        shop[variable] || "",
       );
     }
   });
@@ -569,7 +570,7 @@ const replaceOrderVariablesinTemplate = (template, order) => {
     if (replacedBracket.includes(variable)) {
       replacedTemplate = replacedTemplate.replaceAll(
         variable,
-        order[variable] || ""
+        order[variable] || "",
       );
     }
   });
@@ -591,7 +592,7 @@ const replaceProductOrderVariablesinTemplate = (template, productOrder) => {
     if (replacedBracket.includes(variable)) {
       replacedTemplate = replacedTemplate.replaceAll(
         variable,
-        productOrder[variable] || ""
+        productOrder[variable] || "",
       );
     }
   });
@@ -780,7 +781,7 @@ const deleteRedisKeysByPrefix = async (prefix) => {
         "MATCH",
         `${prefix}*`,
         "COUNT",
-        100
+        100,
       );
 
       if (keys && keys.length > 0) {
@@ -830,8 +831,8 @@ const normalizeQuillLists = (html) => {
       listType === "bullet"
         ? "ul"
         : listType === "ordered"
-        ? "ol"
-        : parent[0]?.tagName; // fallback
+          ? "ol"
+          : parent[0]?.tagName; // fallback
 
     // Fix parent container if wrong
     if (
@@ -908,6 +909,17 @@ const displayDate = (date, showTime = true) => {
   }
   return `${parsedDateDay} ${month} ${parsedDateValue}`;
 };
+
+const resetProductOptionsCache = async () => {
+  try {
+    // reset the cache for product options enums
+    // once it contains the key, delete the cache for product options enums
+    const cacheKey = makeCacheKey(productOptionEnumsKey, {});
+    await deleteRedisKeysByPrefix(cacheKey);
+  } catch (error) {
+    console.error("Failed to reset product options cache:", error);
+  }
+};
 module.exports = {
   deleteLocalFile,
   numberWithCommas,
@@ -948,4 +960,5 @@ module.exports = {
   normalizeQuillLists,
   capitalizeFirstLetter,
   displayDate,
+  resetProductOptionsCache,
 };

@@ -31,6 +31,7 @@ const {
   onlyFemaleAccessoryStyleEnums,
   shoeSizeEnumsByRegion,
   nonClothMainEnums,
+  productOptionEnumsKey
 } = require("../../helpers/constants");
 const {
   deleteLocalFile,
@@ -2530,9 +2531,10 @@ const getAuthUserRecommendedProducts = async (req, res) => {
 
 const getProductOptions = async (req, res) => {
   try {
-    const cacheKey = "productOptionsEnums:v2";
+    const cacheKey = makeCacheKey(productOptionEnumsKey, {});
     const cached = await redis.get(cacheKey);
     if (cached) {
+      console.log("Returning product options enums from cache");
       return res.status(200).send({
         data: JSON.parse(cached),
         message: "Product options enums fetched successfully (cache)",
