@@ -4,9 +4,14 @@ const root = require("../../root");
 const path = require("path");
 const { v4: uuidv4 } = require("uuid");
 const sharp = require("sharp");
-const { deleteLocalFile, deleLocalImages } = require("../helpers/utils");
+const {
+  deleteLocalFile,
+  deleLocalImages,
+  resetProductOptionsCache,
+} = require("../helpers/utils");
 const readyMadeSizeGuide = require("../helpers/readyMadeSizeGuide");
 const { getAuthUser } = require("../middleware/firebaseUserAuth");
+const redis = require("../helpers/redis");
 
 const buildBodyMeasurementGuideImageUrl = (name) => {
   if (!name) {
@@ -294,6 +299,8 @@ const editBodyMeasurementField = async (req, res) => {
     bodyMeasurementGuide.fields[fieldIndex].description = description;
 
     await bodyMeasurementGuide.save();
+    // reset the cache for product options enums
+    await resetProductOptionsCache();
     return res.status(200).send({ data: bodyMeasurementGuide });
   } catch (err) {
     return res.status(500).send({ error: err.message });
@@ -333,6 +340,8 @@ const deleteBodyMeasurementField = async (req, res) => {
     }
     bodyMeasurementGuide.fields.splice(fieldIndex, 1);
     await bodyMeasurementGuide.save();
+    // reset the cache for product options enums
+    await resetProductOptionsCache();
     return res.status(200).send({ data: bodyMeasurementGuide });
   } catch (err) {
     return res.status(500).send({ error: err.message });
@@ -427,6 +436,8 @@ const updateBodyMeasurementGuideName = async (req, res) => {
     }
     bodyMeasurementGuide.name = name;
     await bodyMeasurementGuide.save();
+    // reset the cache for product options enums
+    await resetProductOptionsCache();
     return res.status(200).send({ data: bodyMeasurementGuide });
   } catch (err) {
     return res.status(500).send({ error: err.message });
@@ -472,6 +483,8 @@ const addBodyMeasurementGuideField = async (req, res) => {
     };
     bodyMeasurementGuide.fields.push(newField);
     await bodyMeasurementGuide.save();
+    // reset the cache for product options enums
+    await resetProductOptionsCache();
     return res.status(200).send({ data: bodyMeasurementGuide });
   } catch (err) {
     return res.status(500).send({ error: err.message });
@@ -506,6 +519,7 @@ const addBodyMeasurementGuide = async (req, res) => {
       fields: [],
     });
     await bodyMeasurementGuide.save();
+    await resetProductOptionsCache();
     return res.status(200).send({ data: bodyMeasurementGuide });
   } catch (err) {
     return res.status(500).send({ error: err.message });
