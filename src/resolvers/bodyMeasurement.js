@@ -3,7 +3,7 @@ const BodyMeasurementModel = require("../models/bodyMeasurement");
 const BodyMeasurementGuideModel = require("../models/bodyMeasurementGuide");
 const ProductModel = require("../models/products");
 
-const validateBodyMeasurement = (measurements, bodyMeasurementEnums) => {
+const validateAddingBodyMeasurementToProduct = (measurements, bodyMeasurementEnums) => {
   let error;
   if (!measurements || !measurements.length) {
     error = "Please provide a valid array of measurements";
@@ -40,7 +40,8 @@ const validateBodyMeasurement = (measurements, bodyMeasurementEnums) => {
     }
     const validFields = validItem.fields;
     if (!fields.every((field) => validFields.includes(field))) {
-      error = `Invalid fields. Note that fields are case sensitive  valid fields for ${name} are ${validFields.join(
+  
+      error = `Invalid fields. Note that fields are case sensitive. Valid fields for ${name} are ${validFields.join(
         ", "
       )}`;
       return { error };
@@ -87,7 +88,7 @@ const addBodyMeasurement = async (req, res) => {
       }, [])
       .filter((m) => measurementNames.includes(m.name));
 
-    const validate = validateBodyMeasurement(
+    const validate = validateAddingBodyMeasurementToProduct(
       measurements,
       mergedBodyMeasurementEnums
     );

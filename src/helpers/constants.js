@@ -1350,6 +1350,7 @@ const onboardingDocumentEnums = [
     hint: "Utility bill, bank statement (≤ 3 months).",
   },
 ];
+const productOptionEnumsKey = "productOptionsEnums:v2"
 module.exports = {
   genderEnums,
   ageGroupEnums,
@@ -1400,4 +1401,5 @@ module.exports = {
   notificationTypeEnums,
   roleTypeEnums,
   onboardingDocumentEnums,
+  productOptionEnumsKey,
 };
