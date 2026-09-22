@@ -1,4 +1,15 @@
-const { orderStatusEnums } = require("../helpers/constants");
+const {
+  orderStatusEnums,
+  orderProcessing,
+  orderQualityCheck,
+  orderReadyForDelivery,
+  orderDispatched,
+  orderDelivered,
+  shopRevenuePendingStatus,
+  shopRevenueReadyStatus,
+  shopRevenueCompletedStatus,
+  shopRevenueCancelledStatus,
+} = require("../helpers/constants");
 const { getAuthUser } = require("../middleware/firebaseUserAuth");
 const BasketModel = require("../models/basket");
 const OrderModel = require("../models/order");
@@ -43,6 +54,18 @@ const normalizePhoneNumber = (phone) => {
   if (!phone) return "";
   return phone.toString().replace(/\D/g, "");
 };
+
+const vendorCancellationBlockedStatuses = orderStatusEnums
+  .filter((status) =>
+    [
+      orderProcessing,
+      orderQualityCheck,
+      orderReadyForDelivery,
+      orderDispatched,
+      orderDelivered,
+    ].includes(status.value),
+  )
+  .map((status) => status.value);
 
 const generateUniqueOrderId = async () => {
   let orderId;
@@ -1171,10 +1194,13 @@ const updateProductOrderStatus = async (req, res) => {
         return res.status(400).send({ error: "required deliveryDate" });
       }
       deliveryDate = new Date(req.body.deliveryDate);
-      shopRevenue.status = "completed";
+      shopRevenue.status = shopRevenueReadyStatus;
+    } else if (selectedStatus.value === "order cancelled") {
+      shopRevenue.status = shopRevenueCancelledStatus;
+      deliveryDate = null;
     } else {
       deliveryDate = null;
-      shopRevenue.status = "pending";
+      shopRevenue.status = shopRevenuePendingStatus;
     }
 
     /* ---------------- Update DB ---------------- */
@@ -1432,13 +1458,10 @@ const rejectOrder = async (req, res) => {
         .status(400)
         .send({ error: "Product Order already cancelled or rejected" });
     }
-    if (
-      productOrder.status.value === "order ready for delivery" ||
-      productOrder.status.value === "dispatched" ||
-      productOrder.status.value === "delivered"
-    ) {
+    if (vendorCancellationBlockedStatuses.includes(productOrder.status.value)) {
       return res.status(400).send({
-        error: "You cannot reject an order at this stage. Contact support",
+        error:
+          "You cannot reject an order after it has entered processing. Contact support",
       });
     }
 

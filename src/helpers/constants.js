@@ -1213,49 +1213,62 @@ const productTypeEnums = [
 
 const statusEnums = ["draft", "live", "under review", "rejected", "deleted"];
 const promoStatusEnums = ["draft", "live", "expired", "scheduled"];
+const shopRevenuePendingStatus = "pending";
+const shopRevenueReadyStatus = "ready";
+const shopRevenuePaidStatus = "paid";
+const shopRevenueCancelledStatus = "cancelled";
+const orderPlaced = "order placed";
+const orderConfirmed = "order confirmed";
+const orderProcessing = "order processing";
+const orderQualityCheck = "order quality check";
+const orderReadyForDelivery = "order ready for delivery";
+const orderDispatched = "order dispatched";
+const orderDelivered = "order delivered";
+const orderCancelled = "order cancelled";
+
 const orderStatusEnums = [
   {
     name: "placed",
-    value: "order placed",
+    value: orderPlaced,
     percentage: 0,
   },
   {
     name: "confirmed",
-    value: "order confirmed",
+    value: orderConfirmed,
     sellerAction: true,
     percentage: 20,
   },
   {
     name: "processing",
-    value: "order processing",
+    value: orderProcessing,
     sellerAction: true,
     percentage: 40,
   },
   {
     name: "quality check",
-    value: "order quality check",
+    value: orderQualityCheck,
     sellerAction: true,
     percentage: 60,
   },
   {
     name: "ready for delivery",
-    value: "order ready for delivery",
+    value: orderReadyForDelivery,
     sellerAction: false,
     percentage: 60,
   },
   {
     name: "dispatched",
-    value: "order dispatched",
+    value: orderDispatched,
     percentage: 80,
   },
   {
     name: "delivered",
-    value: "order delivered",
+    value: orderDelivered,
     percentage: 100,
   },
   {
     name: "cancelled",
-    value: "order cancelled",
+    value: orderCancelled,
     percentage: 0,
   },
 ];
@@ -1350,7 +1363,7 @@ const onboardingDocumentEnums = [
     hint: "Utility bill, bank statement (≤ 3 months).",
   },
 ];
-const productOptionEnumsKey = "productOptionsEnums:v2"
+const productOptionEnumsKey = "productOptionsEnums:v2";
 module.exports = {
   genderEnums,
   ageGroupEnums,
@@ -1358,6 +1371,10 @@ module.exports = {
   shoeTypeEnums,
   productTypeEnums,
   statusEnums,
+  shopRevenuePendingStatus,
+  shopRevenueReadyStatus,
+  shopRevenuePaidStatus,
+  shopRevenueCancelledStatus,
   sleeveLengthEnums,
   fasteningEnums,
   occasionEnums,
