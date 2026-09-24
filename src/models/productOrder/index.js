@@ -1,6 +1,21 @@
 const mongoose = require("mongoose");
 const timestamp = require("mongoose-timestamp");
-const { orderStatusEnums, currencyEnums } = require("../../helpers/constants");
+const {
+  orderStatusEnums,
+  orderPlaced,
+  orderConfirmed,
+  orderProcessing,
+  orderQualityCheck,
+  orderReadyForDelivery,
+  orderDispatched,
+  orderDelivered,
+  orderCancelled,
+  shopRevenuePendingStatus,
+  shopRevenueReadyStatus,
+  shopRevenuePaidStatus,
+  shopRevenueCancelledStatus,
+  currencyEnums,
+} = require("../../helpers/constants");
 
 const ProductOrderSchema = new mongoose.Schema({
   order: {
@@ -36,7 +51,12 @@ const ProductOrderSchema = new mongoose.Schema({
   },
   quantity: { type: Number, required: true },
   sku: { type: String, required: true },
-  barcode: { type: String, required: function () { return this.channel === "in-store"; } },
+  barcode: {
+    type: String,
+    required: function () {
+      return this.channel === "in-store";
+    },
+  },
   size: { type: String, required: true },
   color: { type: String, required: true },
   images: [
@@ -69,7 +89,16 @@ const ProductOrderSchema = new mongoose.Schema({
     value: {
       type: String,
       required: true,
-      enum: orderStatusEnums.map((status) => status.value),
+      enum: [
+        orderPlaced,
+        orderConfirmed,
+        orderProcessing,
+        orderQualityCheck,
+        orderReadyForDelivery,
+        orderDispatched,
+        orderDelivered,
+        orderCancelled,
+      ],
     },
   },
   confirmedAt: { type: String, required: false },
@@ -121,7 +150,17 @@ const ProductOrderSchema = new mongoose.Schema({
       default: "NGN",
     },
     value: { type: Number, required: true },
-    status: { type: String, required: false, default: "pending" },
+    status: {
+      type: String,
+      required: false,
+      default: shopRevenuePendingStatus,
+      enum: [
+        shopRevenuePendingStatus,
+        shopRevenueReadyStatus,
+        shopRevenuePaidStatus,
+        shopRevenueCancelledStatus,
+      ],
+    },
     reference: { type: String, required: false },
     paidAt: { type: Date, required: false, default: null },
   },
