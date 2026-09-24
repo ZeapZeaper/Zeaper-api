@@ -14,7 +14,12 @@ const OrderModel = require("../models/order");
 const ProductOrderModel = require("../models/productOrder");
 const { notifyShop } = require("./notification");
 const Stripe = require("stripe");
-const { allowedDeliveryCountries } = require("../helpers/constants");
+const {
+  allowedDeliveryCountries,
+  shopRevenueReadyStatus,
+  shopRevenuePaidStatus,
+  shopRevenuePendingStatus,
+} = require("../helpers/constants");
 const ShopModel = require("../models/shop");
 const { verifyStripePayment } = require("../helpers/stripe");
 const { verifyPaystackPayment } = require("../helpers/paystack");
@@ -791,10 +796,15 @@ const payShop = async (req, res) => {
     }
 
     const shopRevenue = productOrder.shopRevenue;
-    if (shopRevenue.status === "paid") {
+    if (shopRevenue.status === shopRevenuePaidStatus) {
       return res.status(400).send({ error: "Shop revenue already paid" });
     }
-    shopRevenue.status = "paid";
+    if (shopRevenue.status !== shopRevenueReadyStatus) {
+      return res.status(400).send({
+        error: "Shop revenue is not ready for payment yet",
+      });
+    }
+    shopRevenue.status = shopRevenuePaidStatus;
     shopRevenue.paidAt = paidAt;
     shopRevenue.reference = reference;
     const updatedProductOrder = await ProductOrderModel.findOneAndUpdate(
@@ -855,10 +865,10 @@ const revertPayShop = async (req, res) => {
     }
 
     const shopRevenue = productOrder.shopRevenue;
-    if (shopRevenue.status === "pending") {
+    if (shopRevenue.status === shopRevenuePendingStatus) {
       return res.status(400).send({ error: "Shop revenue already pending" });
     }
-    shopRevenue.status = "pending";
+    shopRevenue.status = shopRevenueReadyStatus;
     shopRevenue.paidAt = null;
     shopRevenue.reference = null;
     const updatedProductOrder = await ProductOrderModel.findOneAndUpdate(
