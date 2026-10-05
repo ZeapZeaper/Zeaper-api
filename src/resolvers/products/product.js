@@ -31,18 +31,20 @@ const {
   onlyFemaleAccessoryStyleEnums,
   shoeSizeEnumsByRegion,
   nonClothMainEnums,
-  productOptionEnumsKey
+  productOptionEnumsKey,
 } = require("../../helpers/constants");
 const {
   deleteLocalFile,
   getBodyMeasurementEnumsFromGuide,
   currencyConversion,
   makeCacheKey,
+  deleteRedisKeysByPrefix,
 } = require("../../helpers/utils");
 const ShopModel = require("../../models/shop");
 const { v4: uuidv4 } = require("uuid");
 const sharp = require("sharp");
 const path = require("path");
+const { ENV } = require("../../config");
 const {
   editReadyMadeClothes,
   validateReadyMadeClothes,
@@ -88,6 +90,15 @@ const ProductOrderModel = require("../../models/productOrder");
 const { addRecentView } = require("../recentviews");
 const RecentViewsModel = require("../../models/recentViews");
 const redis = require("../../helpers/redis");
+
+const resetBuyerProductCaches = async () => {
+  await Promise.all([
+    deleteRedisKeysByPrefix(`${ENV}:liveProducts:`),
+    deleteRedisKeysByPrefix(`${ENV}:newestArrivals:`),
+    deleteRedisKeysByPrefix(`${ENV}:mostPopular:base:`),
+    deleteRedisKeysByPrefix(`${ENV}:recommendedProducts:`),
+  ]);
+};
 const mongoose = require("mongoose");
 
 //saving image to firebase storage
@@ -755,6 +766,7 @@ const absoluteDeleteProducts = async (req, res) => {
       );
     });
     await Promise.all(disablePromises);
+    await resetBuyerProductCaches();
     return res.status(200).send({
       data: {
         deletedProductsCount: deletedProducts.deletedCount,
@@ -817,6 +829,7 @@ const deleteProducts = async (req, res) => {
       );
     });
     await Promise.all(promises);
+    await resetBuyerProductCaches();
     return res.status(200).send({ message: "products deleted successfully" });
   } catch (err) {
     return res.status(500).send({ error: err.message });
@@ -874,6 +887,7 @@ const restoreProducts = async (req, res) => {
       );
     });
     await Promise.all(promises);
+    await resetBuyerProductCaches();
     return res.status(200).send({ message: "products restored successfully" });
   } catch (err) {
     return res.status(500).send({ error: err.message });
@@ -1099,6 +1113,7 @@ const setProductStatus = async (req, res) => {
       },
       { new: true },
     ).exec();
+    await resetBuyerProductCaches();
     // notify shop if status is live or rejected
 
     let title = "Order Item Status Update";
@@ -1570,7 +1585,7 @@ const getLiveProducts = async (req, res) => {
 
       // save to redis cache for future requests only if result is not empty
       if (productsData && productsData.length > 0) {
-        await redis.set(cacheKey, JSON.stringify(productsData), "EX", 300); // Cache for 5 minutes
+        await redis.setEx(cacheKey, 300, JSON.stringify(productsData));
       }
     }
 
@@ -1769,7 +1784,7 @@ const getNewestArrivals = async (req, res) => {
       productsData = await ProductModel.aggregate(aggregate).exec();
       // save to redis cache for future requests only if result is not empty
       if (productsData && productsData.length > 0) {
-        await redis.set(cacheKey, JSON.stringify(productsData), "EX", 300); // Cache for 5 minutes
+        await redis.setEx(cacheKey, 300, JSON.stringify(productsData));
       }
     }
     const authUser = req.cachedUser || (await getAuthUser(req));
