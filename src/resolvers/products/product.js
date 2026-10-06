@@ -39,6 +39,7 @@ const {
   currencyConversion,
   makeCacheKey,
   deleteRedisKeysByPrefix,
+  getZeaperCommissionPercentages,
 } = require("../../helpers/utils");
 const ShopModel = require("../../models/shop");
 const { v4: uuidv4 } = require("uuid");
@@ -1624,6 +1625,21 @@ const getLiveProducts = async (req, res) => {
   }
 };
 
+const getZeaperCommissionRates = async (req, res) => {
+  try {
+    const commissionPercentages = getZeaperCommissionPercentages();
+
+    return res.status(200).send({
+      data: {
+        bespoke: commissionPercentages.bespoke,
+        readyToWear: commissionPercentages.readyToWear,
+      },
+      message: "Zeaper commission percentages fetched successfully",
+    });
+  } catch (error) {
+    return res.status(500).send({ error: error.message });
+  }
+};
 const getLiveProductsLeastPrice = async (req, res) => {
   try {
     const query = getQuery(req.query);
@@ -3266,7 +3282,7 @@ const updateInstorePricesBulk = async (req, res) => {
     const results = [];
     const errors = [];
     for (const update of updates) {
-      const { sku, instorePrice } = update;
+      const { sku, instorePrice, minInstorePrice } = update;
 
       if (!sku) {
         errors.push({ sku: null, error: "SKU is required" });
@@ -3280,6 +3296,18 @@ const updateInstorePricesBulk = async (req, res) => {
         errors.push({
           sku,
           error: "instorePrice must be a positive number or null",
+        });
+        continue;
+      }
+
+      if (
+        minInstorePrice !== null &&
+        minInstorePrice !== undefined &&
+        (typeof minInstorePrice !== "number" || minInstorePrice <= 0)
+      ) {
+        errors.push({
+          sku,
+          error: "minInstorePrice must be a positive number or null",
         });
         continue;
       }
@@ -3303,8 +3331,23 @@ const updateInstorePricesBulk = async (req, res) => {
       // ✅ Apply update
       if (instorePrice === null) {
         variation.instorePrice = undefined;
+        variation.minInstorePrice = undefined;
       } else {
         variation.instorePrice = instorePrice;
+        const normalizedMinInstorePrice =
+          minInstorePrice === null || minInstorePrice === undefined
+            ? instorePrice
+            : minInstorePrice;
+
+        if (normalizedMinInstorePrice > instorePrice) {
+          errors.push({
+            sku,
+            error: "minInstorePrice cannot be greater than instorePrice",
+          });
+          continue;
+        }
+
+        variation.minInstorePrice = normalizedMinInstorePrice;
       }
       if (!variation.barcode && variation.instorePrice) {
         variation.barcode = await getNewBarcodeForVariation(
@@ -3315,13 +3358,14 @@ const updateInstorePricesBulk = async (req, res) => {
 
       product.timeLine.push({
         date: new Date().toISOString(),
-        description: `Updated in-store price for SKU ${sku} to ${instorePrice}`,
+        description: `Updated in-store price for SKU ${sku} to ${instorePrice} with minimum negotiated price ${variation.minInstorePrice || instorePrice}`,
         actionBy: authUser._id,
       });
 
       results.push({
         sku,
         instorePrice: variation.instorePrice || null,
+        minInstorePrice: variation.minInstorePrice || null,
       });
     }
     console.log("product variations after updates:", product.variations);
@@ -3451,6 +3495,7 @@ const getInstoreProducts = async (req, res) => {
           size: "$variations.size",
 
           instorePrice: "$variations.instorePrice",
+          minInstorePrice: "$variations.minInstorePrice",
           quantity: "$variations.quantity",
 
           image: {
@@ -3481,6 +3526,7 @@ module.exports = {
   getCategoryProducts,
   getProducts,
   getAuthShopProducts,
+  getZeaperCommissionRates,
   getLiveProducts,
   getLiveProductsLeastPrice,
   getAllLiveBrandsAndProductCount,

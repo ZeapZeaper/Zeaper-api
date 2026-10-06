@@ -645,12 +645,29 @@ const getExpectedVendorCompletionDate = (productType) => {
   let min;
   let max;
   if (isBespoke) {
-    min = 10;
-    max = 15;
+    min = 7;
+    max = 10;
   } else {
     min = 1;
     max = 2;
   }
+  return { min, max, productType };
+};
+
+const getExpectedBuyerCompletionDate = (productType) => {
+  const bespokes = ["bespokeCloth", "bespokeShoe"];
+  const isBespoke = bespokes.includes(productType);
+  let min;
+  let max;
+
+  if (isBespoke) {
+    min = 10;
+    max = 15;
+  } else {
+    min = 2;
+    max = 4;
+  }
+
   return { min, max, productType };
 };
 
@@ -666,16 +683,16 @@ const getExpectedStandardDeliveryDate = (productType, country) => {
       min = 15;
       max = 20;
     } else {
-      min = 3;
-      max = 5;
+      min = 4;
+      max = 9;
     }
   } else {
     if (isBespoke) {
-      min = 25;
-      max = 30;
+      min = 15;
+      max = 25;
     } else {
-      min = 10;
-      max = 15;
+      min = 4;
+      max = 14;
     }
   }
   return { min, max, method, country };
@@ -690,7 +707,6 @@ const getExpectedExpressDeliveryDate = (productType, country) => {
   const bespokes = ["bespokeCloth", "bespokeShoe"];
   const isBespoke = bespokes.includes(productType);
   const method = "express";
-  const today = new Date();
   let min;
   let max;
   if (country.toLowerCase() === "nigeria") {
@@ -698,26 +714,39 @@ const getExpectedExpressDeliveryDate = (productType, country) => {
       min = 15;
       max = 20;
     } else {
-      min = 3;
-      max = 5;
+      min = 4;
+      max = 9;
     }
   } else {
     if (isBespoke) {
       min = 15;
       max = 20;
     } else {
-      min = 5;
-      max = 10;
+      min = 4;
+      max = 9;
     }
   }
   return { min, max, method, country };
 };
+
+const defaultShopRevenueCommission = {
+  bespoke: 0.8,
+  readyToWear: 0.85,
+};
+
+const getZeaperCommissionPercentages = (
+  commission = defaultShopRevenueCommission,
+) => ({
+  bespoke: Number(((1 - commission.bespoke) * 100).toFixed(2)),
+  readyToWear: Number(((1 - commission.readyToWear) * 100).toFixed(2)),
+});
+
 const calcShopRevenueValue = ({
   productType,
   originalAmountDue,
   amountDue,
   adminControlledDiscount = false,
-  commission = { bespoke: 0.75, readyToWear: 0.8 },
+  commission = defaultShopRevenueCommission,
 }) => {
   const amount = adminControlledDiscount ? originalAmountDue : amountDue;
   const bespokes = ["bespokeCloth", "bespokeShoe"];
@@ -952,6 +981,8 @@ module.exports = {
   getExpectedExpressDeliveryDate,
   getExpectedStandardDeliveryDate,
   getExpectedVendorCompletionDate,
+  getExpectedBuyerCompletionDate,
+  getZeaperCommissionPercentages,
   detectDeviceType,
   calcShopRevenueValue,
   convertToCdnUrl,

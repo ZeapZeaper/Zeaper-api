@@ -204,6 +204,11 @@ let routes = (app) => {
     authMiddleware,
     productResolver.getCategoryProducts,
   );
+  router.get(
+    "/products/commission",
+    authMiddleware,
+    productResolver.getZeaperCommissionRates,
+  );
   router.get("/products/live", authMiddleware, productResolver.getLiveProducts);
   router.get(
     "/products/live/leastPrice",
