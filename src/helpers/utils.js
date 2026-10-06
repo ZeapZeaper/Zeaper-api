@@ -717,7 +717,7 @@ const calcShopRevenueValue = ({
   originalAmountDue,
   amountDue,
   adminControlledDiscount = false,
-  commission = { bespoke: 0.75, readyToWear: 0.8 },
+  commission = { bespoke: 0.8, readyToWear: 0.85 },
 }) => {
   const amount = adminControlledDiscount ? originalAmountDue : amountDue;
   const bespokes = ["bespokeCloth", "bespokeShoe"];

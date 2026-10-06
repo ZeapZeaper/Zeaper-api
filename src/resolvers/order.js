@@ -197,9 +197,9 @@ const buildProductOrdersInstore = async ({
     const unitPrice = item.lockedUnitPrice;
     const amountDue = unitPrice * quantity;
 
-    const basePrice = variation.price;
-    const discountApplied = variation.discount || variation.price;
-    const originalAmountDue = basePrice || discountApplied * quantity;
+    const basePrice = item.lockedBasePrice || variation.instorePrice;
+    const discountApplied = item.lockedDiscountApplied || 0;
+    const originalAmountDue = basePrice * quantity;
 
     const shop = product.shop;
     const commission = shop?.commission;
@@ -254,9 +254,9 @@ const buildProductOrdersInstore = async ({
         value: calcShopRevenueValue({
           productType: product.productType,
           originalAmountDue,
-          amountDue: originalAmountDue, // 👈 IMPORTANT
+          amountDue,
           commission,
-          adminControlledDiscount: false,
+          adminControlledDiscount: discountApplied > 0,
         }),
       },
     });
@@ -632,6 +632,7 @@ const getAuthBuyerOrders = async (req, res) => {
     }
 
     const orders = await OrderModel.find({ user: authUser._id })
+      .sort({ createdAt: -1 })
       .populate("productOrders")
       .populate("payment")
       // populate product inside productOrders
@@ -891,6 +892,7 @@ const getProductOrders = async (req, res) => {
         $facet: {
           productOrders: [
             { $match: { ...query } },
+            { $sort: { createdAt: -1 } },
             { $skip: limit * (pageNumber - 1) },
             { $limit: limit },
           ],
@@ -1627,10 +1629,12 @@ const calculateInstoreTotal = async ({ items, currency = "NGN" }) => {
   });
 
   let itemsTotal = 0;
+  let originalItemsTotal = 0;
+  let discountTotal = 0;
   const detailedItems = [];
 
   for (const item of items) {
-    const { productId, sku, quantity } = item;
+    const { productId, sku, quantity, negotiatedUnitPrice } = item;
 
     if (!productId || !sku || !quantity) {
       throw new Error("Each item must have productId, sku, and quantity");
@@ -1662,10 +1666,46 @@ const calculateInstoreTotal = async ({ items, currency = "NGN" }) => {
         `In-store price not set for ${product.title} (SKU: ${sku}). This is likely not available for in-store purchase. Please check your product settings or contact support.`,
       );
     }
-    const unitPrice = instorePrice;
+    const minInstorePrice = variation.minInstorePrice || instorePrice;
+
+    if (
+      negotiatedUnitPrice !== undefined &&
+      (typeof negotiatedUnitPrice !== "number" ||
+        Number.isNaN(negotiatedUnitPrice) ||
+        negotiatedUnitPrice <= 0)
+    ) {
+      throw new Error(
+        `Invalid negotiated price for ${product.title} (SKU: ${sku})`,
+      );
+    }
+
+    if (
+      negotiatedUnitPrice !== undefined &&
+      negotiatedUnitPrice > instorePrice
+    ) {
+      throw new Error(
+        `Negotiated price cannot be above the in-store price for ${product.title} (SKU: ${sku})`,
+      );
+    }
+
+    if (
+      negotiatedUnitPrice !== undefined &&
+      negotiatedUnitPrice < minInstorePrice
+    ) {
+      throw new Error(
+        `Negotiated price cannot be below the minimum allowed amount for ${product.title} (SKU: ${sku})`,
+      );
+    }
+
+    const unitPrice =
+      negotiatedUnitPrice !== undefined ? negotiatedUnitPrice : instorePrice;
+    const discountApplied = Math.max(0, instorePrice - unitPrice);
     const totalPrice = unitPrice * quantity;
+    const totalDiscount = discountApplied * quantity;
 
     itemsTotal += totalPrice;
+    originalItemsTotal += instorePrice * quantity;
+    discountTotal += totalDiscount;
 
     detailedItems.push({
       productId,
@@ -1673,7 +1713,11 @@ const calculateInstoreTotal = async ({ items, currency = "NGN" }) => {
       title: product.title,
       sku,
       quantity,
+      basePrice: instorePrice,
       unitPrice,
+      minInstorePrice,
+      discountApplied,
+      totalDiscount,
       totalPrice,
       status: "available",
     });
@@ -1682,6 +1726,8 @@ const calculateInstoreTotal = async ({ items, currency = "NGN" }) => {
   return {
     currency,
     itemsTotal,
+    originalItemsTotal,
+    discountTotal,
     items: detailedItems,
   };
 };
@@ -1715,6 +1761,8 @@ const getInstoreOrderTotal = async (req, res) => {
         currency,
         itemsTotal: convertedTotal,
         baseCurrencyTotal: result.itemsTotal,
+        originalItemsTotal: result.originalItemsTotal,
+        discountTotal: result.discountTotal,
         items: result.items,
       },
       message: "In-store total calculated successfully",
@@ -1808,6 +1856,8 @@ const createInstoreOrder = async (req, res) => {
       quantity: item.quantity,
       sku: item.sku,
       lockedUnitPrice: item.unitPrice,
+      lockedBasePrice: item.basePrice,
+      lockedDiscountApplied: item.discountApplied,
     }));
 
     // ✅ 4. Create order using existing system

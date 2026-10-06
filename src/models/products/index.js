@@ -121,7 +121,7 @@ const ProductSchema = new mongoose.Schema({
   sizeStandard: {
     type: String,
     required: false,
-    enum:[...sizeStandardEnums,"Custom"],
+    enum: [...sizeStandardEnums, "Custom"],
   },
   colors: [
     {
@@ -141,6 +141,7 @@ const ProductSchema = new mongoose.Schema({
       sku: { type: String, required: true },
       price: { type: Number, required: true },
       instorePrice: { type: Number, required: false },
+      minInstorePrice: { type: Number, required: false },
       barcode: { type: String, required: false },
       discount: { type: Number, required: false },
       colorValue: { type: String, required: true },
