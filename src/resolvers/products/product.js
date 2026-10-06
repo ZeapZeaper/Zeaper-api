@@ -39,6 +39,7 @@ const {
   currencyConversion,
   makeCacheKey,
   deleteRedisKeysByPrefix,
+  getZeaperCommissionPercentages,
 } = require("../../helpers/utils");
 const ShopModel = require("../../models/shop");
 const { v4: uuidv4 } = require("uuid");
@@ -1624,6 +1625,22 @@ const getLiveProducts = async (req, res) => {
   }
 };
 
+
+const getZeaperCommissionRates = async (req, res) => {
+  try {
+    const commissionPercentages = getZeaperCommissionPercentages();
+
+    return res.status(200).send({
+      data: {
+        bespoke: commissionPercentages.bespoke,
+        readyToWear: commissionPercentages.readyToWear,
+      },
+      message: "Zeaper commission percentages fetched successfully",
+    });
+  } catch (error) {
+    return res.status(500).send({ error: error.message });
+  }
+};
 const getLiveProductsLeastPrice = async (req, res) => {
   try {
     const query = getQuery(req.query);
@@ -3510,6 +3527,7 @@ module.exports = {
   getCategoryProducts,
   getProducts,
   getAuthShopProducts,
+  getZeaperCommissionRates,
   getLiveProducts,
   getLiveProductsLeastPrice,
   getAllLiveBrandsAndProductCount,

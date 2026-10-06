@@ -182,6 +182,7 @@ const getReference = async (req, res) => {
       address,
       phoneNumber,
       postCode,
+      deliveryNote,
       method,
     } = req.query;
 
@@ -225,6 +226,7 @@ const getReference = async (req, res) => {
       firstName,
       lastName,
       postCode,
+      deliveryNote,
     };
 
     // --- 2️⃣ Get authenticated user ---

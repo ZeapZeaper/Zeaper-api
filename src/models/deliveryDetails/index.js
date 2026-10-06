@@ -8,6 +8,7 @@ const mongoose = require("mongoose");
   firstName: { type: String, required: true },
   lastName: { type: String, required: true },
   postCode: { type: String, required: false },
+  deliveryNote: { type: String, required: false, trim: true, maxlength: 500 },
 });
 
 exports.deliveryDetailsSchema = deliveryDetailsSchema;

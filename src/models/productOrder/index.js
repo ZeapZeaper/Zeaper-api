@@ -127,6 +127,10 @@ const ProductOrderSchema = new mongoose.Schema({
     min: { type: String, required: false },
     max: { type: String, required: false },
   },
+  expectedBuyerCompletionDate: {
+    min: { type: String, required: false },
+    max: { type: String, required: false },
+  },
   expectedDeliveryDate: {
     min: { type: String, required: false },
     max: { type: String, required: false },

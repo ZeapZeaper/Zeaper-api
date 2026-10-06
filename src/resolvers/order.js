@@ -22,6 +22,7 @@ const {
   getExpectedStandardDeliveryDate,
   getExpectedExpressDeliveryDate,
   getExpectedVendorCompletionDate,
+  getExpectedBuyerCompletionDate,
   replaceProductOrderVariablesinTemplate,
   replaceUserVariablesinTemplate,
   replaceOrderVariablesinTemplate,
@@ -338,6 +339,12 @@ const buildOnlineProductOrders = async ({
       min: addWeekDays(createdAt, expectedVendorCompletionDays.min),
       max: addWeekDays(createdAt, expectedVendorCompletionDays.max),
     };
+    const expectedBuyerCompletionDays =
+      getExpectedBuyerCompletionDate(productType);
+    const expectedBuyerCompletionDate = {
+      min: addWeekDays(createdAt, expectedBuyerCompletionDays.min),
+      max: addWeekDays(createdAt, expectedBuyerCompletionDays.max),
+    };
     const commission = shop?.commission;
 
     const productOrder = new ProductOrderModel({
@@ -379,6 +386,7 @@ const buildOnlineProductOrders = async ({
       user: order.user,
       expectedDeliveryDate,
       expectedVendorCompletionDate,
+      expectedBuyerCompletionDate,
     });
 
     const savedProductOrder = await productOrder.save();
