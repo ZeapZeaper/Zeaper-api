@@ -1625,7 +1625,6 @@ const getLiveProducts = async (req, res) => {
   }
 };
 
-
 const getZeaperCommissionRates = async (req, res) => {
   try {
     const commissionPercentages = getZeaperCommissionPercentages();
