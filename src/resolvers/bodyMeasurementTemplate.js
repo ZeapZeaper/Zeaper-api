@@ -10,8 +10,9 @@ const getGuideMeasurementsByGender = async (gender) => {
   const normalizedGender = String(gender || "").toLowerCase();
   const bodyMeasurementEnums = await getBodyMeasurementEnumsFromGuide();
   const clothMeasurements =
-    bodyMeasurementEnums?.cloth?.find((item) => item.gender === normalizedGender)
-      ?.value || [];
+    bodyMeasurementEnums?.cloth?.find(
+      (item) => item.gender === normalizedGender,
+    )?.value || [];
   const shoeMeasurements =
     bodyMeasurementEnums?.shoe?.find((item) => item.gender === normalizedGender)
       ?.value || [];
@@ -324,7 +325,7 @@ const updateBodyMeasurementTemplate = async (req, res) => {
       await BodyMeasurementTemplateModel.findOneAndUpdate(
         { _id: template_id },
         { measurements: validate.data },
-        { new: true }
+        { new: true },
       );
     if (!bodyMeasurementTemplate?._id) {
       return res

@@ -28,7 +28,7 @@ BodyMeasurementTemplateSchema.plugin(timestamp);
 const BodyMeasurementTemplateModel = mongoose.model(
   "BodyMeasurementTemplates",
   BodyMeasurementTemplateSchema,
-  "BodyMeasurementTemplates"
+  "BodyMeasurementTemplates",
 );
 
 module.exports = BodyMeasurementTemplateModel;
