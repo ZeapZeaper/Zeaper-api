@@ -11,9 +11,14 @@ const BodyMeasurementTemplateSchema = new mongoose.Schema({
   gender: { type: String, required: true },
   measurements: [
     {
-      field: { type: String, required: true },
-      value: { type: Number, required: true },
-      unit: { type: String, value: "inch", required: true },
+      name: { type: String, required: true },
+      measurements: [
+        {
+          field: { type: String, required: true },
+          value: { type: Number, required: true },
+          unit: { type: String, value: "inch", required: true },
+        },
+      ],
     },
   ],
 });
@@ -23,7 +28,7 @@ BodyMeasurementTemplateSchema.plugin(timestamp);
 const BodyMeasurementTemplateModel = mongoose.model(
   "BodyMeasurementTemplates",
   BodyMeasurementTemplateSchema,
-  "BodyMeasurementTemplates"
+  "BodyMeasurementTemplates",
 );
 
 module.exports = BodyMeasurementTemplateModel;

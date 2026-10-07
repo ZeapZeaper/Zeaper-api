@@ -47,8 +47,6 @@ const url =
     ? process.env.DOC_DOWNLOAD_URL_PROD
     : process.env.DOC_DOWNLOAD_URL_DEV;
 
-
-
 function getRandomInt(min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));
 }
@@ -642,7 +640,6 @@ const getAuthBuyerOrders = async (req, res) => {
     }
 
     const orders = await OrderModel.find({ user: authUser._id })
-      .sort({ createdAt: -1 })
       .populate("productOrders")
       .populate("payment")
       // populate product inside productOrders
