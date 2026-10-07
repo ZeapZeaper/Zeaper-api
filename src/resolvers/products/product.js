@@ -3017,10 +3017,16 @@ const editProductVariation = async (req, res) => {
         });
       }
     }
-    if (originalVariation?.bespoke?.colorType) {
+    if (
+      originalVariation?.bespoke?.colorType &&
+      typeof variation.colorType !== "string"
+    ) {
       variation.colorType = originalVariation.bespoke.colorType;
     }
-    if (originalVariation?.bespoke?.availableColors) {
+    if (
+      originalVariation?.bespoke?.availableColors &&
+      !Array.isArray(variation.availableColors)
+    ) {
       variation.availableColors = originalVariation.bespoke.availableColors;
     }
     // check if product has promo?.discountPercentage
