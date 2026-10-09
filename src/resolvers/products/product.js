@@ -3072,7 +3072,8 @@ const editProductVariation = async (req, res) => {
       originalVariation?.price !== variation.price &&
       originalVariation?.quantity !== variation.quantity
     ) {
-      description = `${descriptionBase}. price updated from ${originalVariation.price} to ${variation.price} and quantity updated from ${originalVariation.quantity} to ${variation.quantity}`;
+      const newQuantity = productType === "bespokeCloth" || productType === "bespokeShoe" ? variation.quantity || 1 : variation.quantity;
+      description = `${descriptionBase}. price updated from ${originalVariation.price} to ${variation.price} and quantity updated from ${originalVariation.quantity} to ${newQuantity}`;
     }
     const newTimeLine = {
       date: new Date(),
