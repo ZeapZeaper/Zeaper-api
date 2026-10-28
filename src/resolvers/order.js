@@ -768,14 +768,28 @@ const getOrder = async (req, res) => {
         .send({ error: "You are not authorized to view this order" });
     }
     if (!order?.user && order?.inStoreCustomerDetails) {
-      const { fullName, email, phone } = order.inStoreCustomerDetails;
+      const { fullName, email, phone, address } = order.inStoreCustomerDetails;
       const firstName = fullName?.split(" ")[0] || "";
       const lastName = fullName?.split(" ")[1] || "";
+      const normalizedPhone = normalizePhoneNumber(phone);
+      const allCustomerOrders = await OrderModel.find({
+        "inStoreCustomerDetails.phone": normalizedPhone,
+      }).lean();
+      const orderCount = allCustomerOrders.length || 0;
+      const lastOrderAt = allCustomerOrders[0]?.createdAt || null;
+      const firstOrderAt = allCustomerOrders[orderCount - 1]?.createdAt || null;
+      
       order.user = {
         ...(email && { email }),
         ...(phone && { phone }),
+        ...(address && { address }),
         ...(firstName && { firstName }),
         ...(lastName && { lastName }),
+        userType: "in-store",
+        fullName,
+        orderCount,
+        lastOrderAt,
+        firstOrderAt,
       };
     }
     order.productOrders.forEach((productOrder) => {
@@ -986,14 +1000,27 @@ const getProductOrder = async (req, res) => {
       (status) => status.value === productOrder.status.value,
     );
     if (!productOrder?.user && order?.inStoreCustomerDetails) {
-      const { fullName, email, phone } = order.inStoreCustomerDetails;
+      const { fullName, email, phone, address } = order.inStoreCustomerDetails;
       const firstName = fullName?.split(" ")[0] || "";
       const lastName = fullName?.split(" ")[1] || "";
+      const normalizedPhone = normalizePhoneNumber(phone);
+      const allCustomerOrders = await OrderModel.find({
+        "inStoreCustomerDetails.phone": normalizedPhone,
+      }).lean();
+      const orderCount = allCustomerOrders.length || 0;
+      const lastOrderAt = allCustomerOrders[0]?.createdAt || null;
+      const firstOrderAt = allCustomerOrders[orderCount - 1]?.createdAt || null;
       productOrder.user = {
         ...(email && { email }),
         ...(phone && { phone }),
+        ...(address && { address }),
         ...(firstName && { firstName }),
         ...(lastName && { lastName }),
+        userType: "in-store",
+        fullName,
+        orderCount,
+        lastOrderAt,
+        firstOrderAt,
       };
     }
     return res.status(200).send({
@@ -2006,6 +2033,7 @@ const getInstoreCustomers = async (req, res) => {
           country: { $first: "$inStoreCustomerDetails.country" },
           orderCount: { $sum: 1 },
           lastOrderAt: { $max: "$createdAt" },
+
           firstOrderAt: { $min: "$createdAt" },
         },
       },
@@ -2022,6 +2050,7 @@ const getInstoreCustomers = async (req, res) => {
 
     const customers = await OrderModel.aggregate(aggregatePipeline);
     customers.forEach((customer) => {
+      customer.userType = "in-store";
       customer.firstName = customer.fullName?.split(" ")[0] || "";
       customer.lastName = customer.fullName
         ? customer.fullName.split(" ").slice(1).join(" ")
