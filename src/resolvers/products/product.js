@@ -2157,14 +2157,6 @@ const searchSimilarProducts = async (req, res) => {
 
     const should = [
       {
-        text: {
-          query: search,
-          path: {
-            wildcard: "*",
-          },
-        },
-      },
-      {
         autocomplete: {
           query: search,
           path: "title",
@@ -3072,7 +3064,10 @@ const editProductVariation = async (req, res) => {
       originalVariation?.price !== variation.price &&
       originalVariation?.quantity !== variation.quantity
     ) {
-      const newQuantity = productType === "bespokeCloth" || productType === "bespokeShoe" ? variation.quantity || 1 : variation.quantity;
+      const newQuantity =
+        productType === "bespokeCloth" || productType === "bespokeShoe"
+          ? variation.quantity || 1
+          : variation.quantity;
       description = `${descriptionBase}. price updated from ${originalVariation.price} to ${variation.price} and quantity updated from ${originalVariation.quantity} to ${newQuantity}`;
     }
     const newTimeLine = {
