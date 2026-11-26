@@ -2157,14 +2157,6 @@ const searchSimilarProducts = async (req, res) => {
 
     const should = [
       {
-        text: {
-          query: search,
-          path: {
-            wildcard: "*",
-          },
-        },
-      },
-      {
         autocomplete: {
           query: search,
           path: "title",
